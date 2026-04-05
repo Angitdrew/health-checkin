@@ -431,6 +431,7 @@
       </div>
     </div>
     <div style="margin-top:12px;margin-bottom:10px">
+      <div class="target-row" id="targetWalkTraining"></div>
       <div class="target-row" id="targetBurnTraining"></div>
     </div>
     <button class="btn-add" onclick="addTraining()">+ Add another session</button>
@@ -663,6 +664,24 @@
     <div style="display:flex;gap:6px;margin-top:4px">
       <button class="history-btn" onclick="exportData()" style="flex:1">⬇ Export data</button>
       <button class="history-btn" onclick="importData()" style="flex:1">⬆ Import data</button>
+    </div>
+    <div style="margin-top:8px;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+        <span style="font-size:12px;font-weight:600">&#9729; GitHub Sync</span>
+        <span id="syncStatus" style="font-size:10px;color:var(--dim)"></span>
+      </div>
+      <div id="ghSetup" style="display:none;margin-bottom:8px">
+        <div style="font-size:10px;color:var(--dim);margin-bottom:4px">Paste your fine-grained PAT (repo Contents read/write)</div>
+        <div style="display:flex;gap:4px">
+          <input type="password" id="ghToken" placeholder="github_pat_..." style="flex:1;font-size:11px;padding:6px 8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text)">
+          <button class="history-btn" onclick="saveGHToken()" style="white-space:nowrap">Save</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:4px">
+        <button class="history-btn" onclick="toggleGHSetup()" id="ghSetupBtn" style="flex:1">&#9881; Setup</button>
+        <button class="history-btn" onclick="syncFromGitHub()" style="flex:1">&#8595; Pull</button>
+        <button class="history-btn" onclick="syncToGitHub()" style="flex:1">&#8593; Push</button>
+      </div>
     </div>
     <div class="history-panel" id="historyPanel"></div>
   </div>
@@ -1470,6 +1489,9 @@ function submitCheckin() {
   renderDashboards();
   renderDaySummary();
 
+  // Auto-push to GitHub if token is configured
+  if (getGHToken()) { syncToGitHub(); }
+
   setTimeout(() => {
     document.getElementById('submitBtn').disabled = false;
     document.getElementById('submitBtn').textContent = 'Save Check-in';
@@ -1516,7 +1538,8 @@ const TARGETS = {
   sleep:   { label:'Sleep',       unit:'hr',   min:7.0,  max:9.0,  cap:12.0 },
   uv:      { label:'UV Index',    unit:'',     min:3,    max:6,    cap:14 },
   suntime: { label:'Exposure',    unit:'min',  min:10,   max:30,   cap:90 },
-  vitd:    { label:'Vitamin D',   unit:'IU',   min:600,  max:1500, cap:3000 }
+  vitd:    { label:'Vitamin D',   unit:'IU',   min:600,  max:1500, cap:3000 },
+  walk:    { label:'Walking Target', unit:'min', min:30,   max:60,   cap:120 }
 };
 
 // Calorie burn rates per minute by activity (at ~115kg bodyweight)
@@ -1587,17 +1610,29 @@ function renderTargetBar(containerId, key, value) {
   }
 
   const displayVal = Number.isInteger(value) ? value : value.toFixed(1);
+  // Walk target: show steps alongside minutes (~100 steps/min brisk walk)
+  const stepsPerMin = 120;
+  let valueHTML, limitsHTML;
+  if (key === 'walk') {
+    const steps = Math.round(value * stepsPerMin);
+    const stepsStr = steps > 0 ? steps.toLocaleString() : '0';
+    valueHTML = `<span class="target-value" style="color:${value>0?fillColor:'var(--text)'}">${displayVal}min / ${stepsStr}steps</span>${statusHTML}`;
+    limitsHTML = `<span>${t.min}min/${(t.min*stepsPerMin).toLocaleString()}</span><span style="color:var(--green)">${t.min}–${t.max}min</span><span>${t.cap}min/${(t.cap*stepsPerMin).toLocaleString()}</span>`;
+  } else {
+    valueHTML = `<span class="target-value" style="color:${value>0?fillColor:'var(--text)'}">${displayVal}</span> <span style="font-size:10px;color:var(--dim)">${t.unit}</span>${statusHTML}`;
+    limitsHTML = `<span>${t.min}</span><span style="color:var(--green)">${t.min}–${t.max}</span><span>${t.cap}</span>`;
+  }
   el.innerHTML = `
     <div class="target-header">
       <span class="target-label">${t.label}</span>
-      <span><span class="target-value" style="color:${value>0?fillColor:'var(--text)'}">${displayVal}</span> <span style="font-size:10px;color:var(--dim)">${t.unit}</span>${statusHTML}</span>
+      <span>${valueHTML}</span>
     </div>
     <div class="target-track">
       <div class="target-zone" style="left:${zonePctL}%;width:${zoneW}%"></div>
       ${burnHTML}
       <div class="target-fill" style="width:${pct}%;background:${fillColor}"></div>
     </div>
-    <div class="target-limits"><span>${t.min}</span><span style="color:var(--green)">${t.min}–${t.max}</span><span>${t.cap}</span></div>
+    <div class="target-limits">${limitsHTML}</div>
   `;
 }
 
@@ -1671,6 +1706,15 @@ function updateAllTargets() {
   const calIn = parseInt(document.getElementById('totalCal').textContent) || 0;
   const burnt = calcCaloriesBurnt();
   const net = calIn - burnt;
+
+  // Walking minutes from activity entries
+  let walkMins = 0;
+  document.querySelectorAll('.training-entry').forEach(entry => {
+    const type = entry.querySelector('.trainingType')?.value;
+    const dur = parseFloat(entry.querySelector('.trainingDuration')?.value) || 0;
+    if (type === 'walking' && dur > 0) walkMins += dur;
+  });
+  renderTargetBar('targetWalkTraining', 'walk', walkMins);
 
   renderTargetBar('targetCal', 'cal', calIn);
   renderTargetBar('targetBurn', 'burn', burnt);
@@ -2195,6 +2239,110 @@ function importData() {
   };
   input.click();
 }
+
+// ===== GITHUB SYNC =====
+const GH_REPO = 'Angitdrew/health-checkin';
+const GH_PATH = 'data/checkins.json';
+const GH_API = `https://api.github.com/repos/${GH_REPO}/contents/${GH_PATH}`;
+
+function getGHToken() { return localStorage.getItem('ghToken') || ''; }
+function setSyncStatus(msg, color) {
+  const el = document.getElementById('syncStatus');
+  if (el) { el.textContent = msg; el.style.color = color || 'var(--dim)'; }
+}
+
+function toggleGHSetup() {
+  const el = document.getElementById('ghSetup');
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function saveGHToken() {
+  const token = document.getElementById('ghToken').value.trim();
+  if (!token) { alert('Please enter a token.'); return; }
+  localStorage.setItem('ghToken', token);
+  document.getElementById('ghSetup').style.display = 'none';
+  setSyncStatus('Token saved', 'var(--green)');
+}
+
+async function syncToGitHub() {
+  const token = getGHToken();
+  if (!token) { alert('Set up your GitHub token first.'); toggleGHSetup(); return; }
+  setSyncStatus('Pushing...', 'var(--amber)');
+  try {
+    const data = localStorage.getItem('healthCheckins') || '[]';
+    const content = btoa(unescape(encodeURIComponent(data)));
+
+    // Get current file SHA (needed for update)
+    let sha = null;
+    try {
+      const res = await fetch(GH_API, { headers: { 'Authorization': `Bearer ${token}` } });
+      if (res.ok) { const j = await res.json(); sha = j.sha; }
+    } catch {}
+
+    const body = {
+      message: `Sync check-in data ${new Date().toISOString().slice(0,10)}`,
+      content: content
+    };
+    if (sha) body.sha = sha;
+
+    const putRes = await fetch(GH_API, {
+      method: 'PUT',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    if (putRes.ok) {
+      setSyncStatus('Pushed ' + new Date().toLocaleTimeString(), 'var(--green)');
+    } else {
+      const err = await putRes.json();
+      setSyncStatus('Push failed: ' + (err.message || putRes.status), 'var(--red)');
+    }
+  } catch (e) {
+    setSyncStatus('Push error: ' + e.message, 'var(--red)');
+  }
+}
+
+async function syncFromGitHub() {
+  const token = getGHToken();
+  if (!token) { alert('Set up your GitHub token first.'); toggleGHSetup(); return; }
+  setSyncStatus('Pulling...', 'var(--amber)');
+  try {
+    const res = await fetch(GH_API, {
+      headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json' }
+    });
+    if (!res.ok) {
+      if (res.status === 404) { setSyncStatus('No remote data yet — push first', 'var(--dim)'); return; }
+      setSyncStatus('Pull failed: ' + res.status, 'var(--red)'); return;
+    }
+    const json = await res.json();
+    const decoded = decodeURIComponent(escape(atob(json.content.replace(/\n/g, ''))));
+    const incoming = JSON.parse(decoded);
+    const remote = Array.isArray(incoming) ? incoming : [incoming];
+
+    // Merge: remote entries win for same date (most recent push = latest)
+    let local = JSON.parse(localStorage.getItem('healthCheckins') || '[]');
+    const localMap = {};
+    local.forEach(c => { localMap[c.date] = c; });
+    remote.forEach(c => { localMap[c.date] = c; }); // remote overwrites
+    const merged = Object.values(localMap).sort((a, b) => a.date.localeCompare(b.date));
+
+    localStorage.setItem('healthCheckins', JSON.stringify(merged));
+    renderDashboards();
+    loadTodayData();
+    renderDaySummary();
+    setSyncStatus('Pulled ' + remote.length + ' entries · ' + new Date().toLocaleTimeString(), 'var(--green)');
+  } catch (e) {
+    setSyncStatus('Pull error: ' + e.message, 'var(--red)');
+  }
+}
+
+// Auto-sync on page load if token exists
+(async function() {
+  if (getGHToken()) {
+    setSyncStatus('Syncing...', 'var(--dim)');
+    try { await syncFromGitHub(); } catch {}
+  }
+})();
 </script>
 </body>
 </html>
