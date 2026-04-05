@@ -3354,33 +3354,53 @@ async function syncFromGitHub() {
   const HS_BASE_LE = 81.1; // Australian male life expectancy (ABS 2022-24)
   const HS_BASE_HS = 70.3; // Healthspan estimate (~87% of LE, disease-free years)
   const HS_AGE = 58; // DOB: 23 Apr 1967
+  // Known baseline values from Master Health Profile (Medical History/Master Health Profile - Andrew Potts.xlsx)
+  const HS_PROFILE = { bpSys: 125, bpDia: 78, rhr: 78, waist: 117, hip: 120, whr: 0.975 };
 
   function projRenderHealthStatus(proj) {
     const ci = JSON.parse(localStorage.getItem('healthCheckins') || '[]');
-    if (!ci.length) {
-      document.getElementById('projHSLifespan').innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--dim);font-size:11px;padding:12px">Submit check-in data to generate your health status assessment.</div>';
-      document.getElementById('projHSBioAge').innerHTML = '';
-      document.getElementById('projHSCategories').innerHTML = '';
-      document.getElementById('projHSNote').innerHTML = '';
-      document.getElementById('projHSDate').innerHTML = '';
-      return;
-    }
+    const gv = id => parseFloat(document.getElementById(id)?.value) || 0;
 
-    const sorted = [...ci].sort((a,b) => b.date.localeCompare(a.date));
-    const latest = sorted[0];
+    // Projection baseline inputs (user-editable, always available)
+    const baseWt = gv('projStartWeight');
+    const baseWaist = gv('projStartWaist');
+    const baseBF = gv('projStartBF');
+    const baseMuscle = gv('projStartMuscle');
+    const baseNeck = gv('projStartNeck');
+
+    const sorted = ci.length ? [...ci].sort((a,b) => b.date.localeCompare(a.date)) : [];
+    const latest = sorted[0] || null;
     const last7 = sorted.slice(0, 7);
     const last30 = sorted.slice(0, 30);
+    const hasCheckins = ci.length > 0;
 
-    // Extract latest metrics
-    const wt = latest.vitals?.weight || null;
-    const bmi = wt ? Math.round(wt / (PROJ_HEIGHT_M * PROJ_HEIGHT_M) * 10) / 10 : null;
-    const bf = latest.measurements?.body_fat_pct || null;
-    const waist = latest.measurements?.waist_cm || null;
-    const neck = latest.measurements?.neck_cm || null;
-    const muscle = latest.measurements?.skeletal_muscle_kg || null;
-    const bpSys = latest.vitals?.bp_systolic || null;
-    const bpDia = latest.vitals?.bp_diastolic || null;
-    const rhr = latest.vitals?.resting_hr || null;
+    // Extract latest metrics — fall back to projection baselines, then profile baselines
+    const wt = latest?.vitals?.weight || baseWt || 111;
+    const bmi = Math.round(wt / (PROJ_HEIGHT_M * PROJ_HEIGHT_M) * 10) / 10;
+    const bf = latest?.measurements?.body_fat_pct || baseBF || null;
+    const waist = latest?.measurements?.waist_cm || baseWaist || HS_PROFILE.waist;
+    const neck = latest?.measurements?.neck_cm || baseNeck || 44;
+    const muscle = latest?.measurements?.skeletal_muscle_kg || baseMuscle || null;
+    const bpSys = latest?.vitals?.bp_systolic || HS_PROFILE.bpSys;
+    const bpDia = latest?.vitals?.bp_diastolic || HS_PROFILE.bpDia;
+    const rhr = latest?.vitals?.resting_hr || HS_PROFILE.rhr;
+
+    // Search ALL check-ins for best available data if latest is missing fields
+    function bestFromAll(field) {
+      for (const c of sorted) {
+        const v = field(c);
+        if (v != null && v > 0) return v;
+      }
+      return null;
+    }
+    const bestBF = bf || bestFromAll(c => c.measurements?.body_fat_pct) || baseBF;
+    const bestMuscle = muscle || bestFromAll(c => c.measurements?.skeletal_muscle_kg) || baseMuscle;
+    const bestBpSys = latest?.vitals?.bp_systolic || bestFromAll(c => c.vitals?.bp_systolic) || HS_PROFILE.bpSys;
+    const bestBpDia = latest?.vitals?.bp_diastolic || bestFromAll(c => c.vitals?.bp_diastolic) || HS_PROFILE.bpDia;
+    const bestRhr = latest?.vitals?.resting_hr || bestFromAll(c => c.vitals?.resting_hr) || HS_PROFILE.rhr;
+
+    // Use best available data
+    const useBF = bestBF, useMuscle = bestMuscle, useBpSys = bestBpSys, useBpDia = bestBpDia, useRhr = bestRhr;
 
     // Averages from recent data
     const avg = (arr, fn) => { const vals = arr.map(fn).filter(v => v != null && v > 0); return vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null; };
@@ -3397,8 +3417,9 @@ async function syncFromGitHub() {
     const afDays = last30.filter(c => c.cardiac?.af_symptoms === 'yes').length;
     const stiffAvg = avg(last30, c => c.wellbeing?.morning_stiffness_min);
 
-    // Activity frequency
-    const actDays = last7.filter(c => c.training && c.training.some(t => t.duration > 0)).length;
+    // Activity frequency — use training schedule as baseline if few check-ins
+    const actDays7 = last7.filter(c => c.training && c.training.some(t => t.duration > 0)).length;
+    const actDays = last7.length >= 3 ? actDays7 : 5; // Fall back to scheduled 5d/wk from goals
     const avgActMin = avg(last7, c => {
       if (!c.training) return 0;
       return c.training.reduce((s, t) => s + (t.duration || 0), 0);
@@ -3426,31 +3447,32 @@ async function syncFromGitHub() {
       return { color: 'var(--red)', label: 'R', score: 0 };
     }
 
-    // 1. BMI
-    const bmiR = bmi != null ? (bmi <= 24.9 ? rag(bmi, [18.5, 24.9], [25, 29.9]) : bmi <= 29.9 ? { color: 'var(--amber)', label: 'A', score: 0.5 } : { color: 'var(--red)', label: 'R', score: 0 }) : { color: 'var(--dim)', label: '—', score: 0 };
-    const bmiImpact = bmi != null ? (bmi > 25 ? -(Math.min((bmi - 25) * 0.42, 8)) : 0) : 0;
-    cats.push({ cat: 'BMI', val: bmi != null ? bmi.toFixed(1) : '—', rag: bmiR, impact: bmiImpact, pct: bmi != null ? Math.max(0, Math.min(100, (50 - bmi) / 25 * 100)) : 0, tip: bmi != null ? `${bmi < 25 ? 'Healthy' : bmi < 30 ? 'Overweight' : bmi < 35 ? 'Obese I' : 'Obese II'}. Target: <25` : 'No data' });
+    // 1. BMI (always has data via weight fallback)
+    const bmiR = bmi <= 24.9 ? { color: 'var(--green)', label: 'G', score: 1 } : bmi <= 29.9 ? { color: 'var(--amber)', label: 'A', score: 0.5 } : { color: 'var(--red)', label: 'R', score: 0 };
+    const bmiImpact = bmi > 25 ? -(Math.min((bmi - 25) * 0.42, 8)) : 0;
+    cats.push({ cat: 'BMI', val: bmi.toFixed(1), rag: bmiR, impact: bmiImpact, pct: Math.max(0, Math.min(100, (50 - bmi) / 25 * 100)), tip: `${bmi < 25 ? 'Healthy' : bmi < 30 ? 'Overweight' : bmi < 35 ? 'Obese I' : 'Obese II'}. ${wt}kg @ ${PROJ_HEIGHT_M}m. Target: BMI <25` });
 
-    // 2. Body Fat %
-    const bfR = bf != null ? (bf <= 20 ? { color: 'var(--green)', label: 'G', score: 1 } : bf <= 25 ? { color: 'var(--amber)', label: 'A', score: 0.5 } : { color: 'var(--red)', label: 'R', score: 0 }) : { color: 'var(--dim)', label: '—', score: 0 };
-    const bfImpact = bf != null ? (bf > 20 ? -((bf - 20) * 0.15) : 0.5) : 0;
-    cats.push({ cat: 'Body Fat', val: bf != null ? bf + '%' : '—', rag: bfR, impact: bfImpact, pct: bf != null ? Math.max(0, Math.min(100, (40 - bf) / 30 * 100)) : 0, tip: bf != null ? `Target: 15-20%. HR 1.78× mortality at ≥27%` : 'No data' });
+    // 2. Body Fat % (uses best available from check-ins → projection baseline)
+    const bfVal = useBF;
+    const bfR = bfVal != null ? (bfVal <= 20 ? { color: 'var(--green)', label: 'G', score: 1 } : bfVal <= 25 ? { color: 'var(--amber)', label: 'A', score: 0.5 } : { color: 'var(--red)', label: 'R', score: 0 }) : { color: 'var(--dim)', label: '—', score: 0 };
+    const bfImpact = bfVal != null ? (bfVal > 20 ? -((bfVal - 20) * 0.15) : 0.5) : 0;
+    cats.push({ cat: 'Body Fat', val: bfVal != null ? bfVal + '%' : '—', rag: bfR, impact: bfImpact, pct: bfVal != null ? Math.max(0, Math.min(100, (40 - bfVal) / 30 * 100)) : 0, tip: `Target: 15-20%. HR 1.78× mortality at ≥27%. ${bfVal != null ? 'Baseline: ' + bfVal + '%' : 'Enter body fat in check-in or projection baseline'}` });
 
-    // 3. Waist Circumference
-    const waistR = waist != null ? (waist < 94 ? { color: 'var(--green)', label: 'G', score: 1 } : waist < 102 ? { color: 'var(--amber)', label: 'A', score: 0.5 } : { color: 'var(--red)', label: 'R', score: 0 }) : { color: 'var(--dim)', label: '—', score: 0 };
-    const waistImpact = waist != null ? (waist > 94 ? -((waist - 94) * 0.12) : 0.3) : 0;
-    cats.push({ cat: 'Waist', val: waist != null ? waist + 'cm' : '—', rag: waistR, impact: waistImpact, pct: waist != null ? Math.max(0, Math.min(100, (120 - waist) / 40 * 100)) : 0, tip: waist != null ? `<94cm green, <102cm amber. Independent CVD predictor` : 'No data' });
+    // 3. Waist Circumference (always has data via fallbacks)
+    const waistR = waist < 94 ? { color: 'var(--green)', label: 'G', score: 1 } : waist < 102 ? { color: 'var(--amber)', label: 'A', score: 0.5 } : { color: 'var(--red)', label: 'R', score: 0 };
+    const waistImpact = waist > 94 ? -((waist - 94) * 0.12) : 0.3;
+    cats.push({ cat: 'Waist', val: waist + 'cm', rag: waistR, impact: waistImpact, pct: Math.max(0, Math.min(100, (120 - waist) / 40 * 100)), tip: `<94cm green, <102cm amber. WHR: ${HS_PROFILE.whr}. Independent CVD predictor` });
 
-    // 4. Blood Pressure
-    const bpScore = bpSys != null ? (bpSys < 120 ? 1 : bpSys < 140 ? 0.5 : 0) : null;
-    const bpR = bpScore != null ? { color: bpScore === 1 ? 'var(--green)' : bpScore === 0.5 ? 'var(--amber)' : 'var(--red)', label: bpScore === 1 ? 'G' : bpScore === 0.5 ? 'A' : 'R', score: bpScore } : { color: 'var(--dim)', label: '—', score: 0 };
-    const bpImpact = bpSys != null ? (bpSys > 120 ? -((bpSys - 120) * 0.1) : 0.5) : 0;
-    cats.push({ cat: 'Blood Pressure', val: bpSys != null ? `${bpSys}/${bpDia}` : '—', rag: bpR, impact: bpImpact, pct: bpSys != null ? Math.max(0, Math.min(100, (180 - bpSys) / 60 * 100)) : 0, tip: bpSys != null ? `<120/80 optimal. Hypertension: −5.1yr LE` : 'No data' });
+    // 4. Blood Pressure (falls back to profile: 125/78)
+    const bpScore = useBpSys < 120 ? 1 : useBpSys < 140 ? 0.5 : 0;
+    const bpR = { color: bpScore === 1 ? 'var(--green)' : bpScore === 0.5 ? 'var(--amber)' : 'var(--red)', label: bpScore === 1 ? 'G' : bpScore === 0.5 ? 'A' : 'R', score: bpScore };
+    const bpImpact = useBpSys > 120 ? -((useBpSys - 120) * 0.1) : 0.5;
+    cats.push({ cat: 'Blood Pressure', val: `${useBpSys}/${useBpDia}`, rag: bpR, impact: bpImpact, pct: Math.max(0, Math.min(100, (180 - useBpSys) / 60 * 100)), tip: `<120/80 optimal. Profile baseline: ${HS_PROFILE.bpSys}/${HS_PROFILE.bpDia}. Hypertension: −5.1yr LE` });
 
-    // 5. Resting Heart Rate
-    const rhrR = rhr != null ? (rhr < 60 ? { color: 'var(--green)', label: 'G', score: 1 } : rhr <= 72 ? { color: 'var(--amber)', label: 'A', score: 0.5 } : { color: 'var(--red)', label: 'R', score: 0 }) : { color: 'var(--dim)', label: '—', score: 0 };
-    const rhrImpact = rhr != null ? (rhr > 60 ? -((rhr - 60) * 0.05) : 0.3) : 0;
-    cats.push({ cat: 'Resting HR', val: rhr != null ? rhr + 'bpm' : '—', rag: rhrR, impact: rhrImpact, pct: rhr != null ? Math.max(0, Math.min(100, (100 - rhr) / 50 * 100)) : 0, tip: rhr != null ? `<60 athletic, 60-72 good, >72 elevated` : 'No data' });
+    // 5. Resting Heart Rate (falls back to profile: 78bpm)
+    const rhrR = useRhr < 60 ? { color: 'var(--green)', label: 'G', score: 1 } : useRhr <= 72 ? { color: 'var(--amber)', label: 'A', score: 0.5 } : { color: 'var(--red)', label: 'R', score: 0 };
+    const rhrImpact = useRhr > 60 ? -((useRhr - 60) * 0.05) : 0.3;
+    cats.push({ cat: 'Resting HR', val: useRhr + 'bpm', rag: rhrR, impact: rhrImpact, pct: Math.max(0, Math.min(100, (100 - useRhr) / 50 * 100)), tip: `Profile: ${HS_PROFILE.rhr}bpm. <60 athletic, 60-72 good, >72 elevated. AF meds may affect` });
 
     // 6. Sleep
     const sleepR = avgSleep != null ? (avgSleep >= 7 && avgSleep <= 9 ? { color: 'var(--green)', label: 'G', score: 1 } : avgSleep >= 6 ? { color: 'var(--amber)', label: 'A', score: 0.5 } : { color: 'var(--red)', label: 'R', score: 0 }) : { color: 'var(--dim)', label: '—', score: 0 };
@@ -3495,15 +3517,16 @@ async function syncFromGitHub() {
     const compImpact = compDays >= 6 ? 0.3 : 0;
     cats.push({ cat: 'Supplements', val: compDays + '/7d', rag: compR, impact: compImpact, pct: compDays / 7 * 100, tip: `Vit D, probiotics, electrolytes, K2. Consistency matters.` });
 
-    // 13. Neck Circumference (OSA risk indicator — men >43cm elevated)
-    const neckR = neck != null ? (neck < 40 ? { color: 'var(--green)', label: 'G', score: 1 } : neck <= 43 ? { color: 'var(--amber)', label: 'A', score: 0.5 } : { color: 'var(--red)', label: 'R', score: 0 }) : { color: 'var(--dim)', label: '—', score: 0 };
-    const neckImpact = neck != null ? (neck > 43 ? -((neck - 43) * 0.3) : neck <= 40 ? 0.2 : 0) : 0;
-    cats.push({ cat: 'Neck (OSA risk)', val: neck != null ? neck + 'cm' : '—', rag: neckR, impact: neckImpact, pct: neck != null ? Math.max(0, Math.min(100, (50 - neck) / 15 * 100)) : 0, tip: neck != null ? `Men >43cm elevated OSA risk. Target: <40cm` : 'No data' });
+    // 13. Neck Circumference (always has data via fallback to 44cm baseline)
+    const neckR = neck < 40 ? { color: 'var(--green)', label: 'G', score: 1 } : neck <= 43 ? { color: 'var(--amber)', label: 'A', score: 0.5 } : { color: 'var(--red)', label: 'R', score: 0 };
+    const neckImpact = neck > 43 ? -((neck - 43) * 0.3) : neck <= 40 ? 0.2 : 0;
+    cats.push({ cat: 'Neck (OSA risk)', val: neck + 'cm', rag: neckR, impact: neckImpact, pct: Math.max(0, Math.min(100, (50 - neck) / 15 * 100)), tip: `Men >43cm elevated OSA risk. Baseline: 44cm. Target: <40cm` });
 
-    // 14. Muscle Mass (sarcopenia protection — critical at 58)
-    const muscleR = muscle != null ? (muscle >= 38 ? { color: 'var(--green)', label: 'G', score: 1 } : muscle >= 33 ? { color: 'var(--amber)', label: 'A', score: 0.5 } : { color: 'var(--red)', label: 'R', score: 0 }) : { color: 'var(--dim)', label: '—', score: 0 };
-    const muscleImpact = muscle != null ? (muscle >= 38 ? 1.0 : muscle >= 33 ? 0.3 : -0.8) : 0;
-    cats.push({ cat: 'Muscle Mass', val: muscle != null ? muscle + 'kg' : '—', rag: muscleR, impact: muscleImpact, pct: muscle != null ? Math.min(100, muscle / 45 * 100) : 0, tip: muscle != null ? `Sarcopenia prevention critical at 58. ≥38kg good for frame` : 'No data' });
+    // 14. Muscle Mass (uses best available — critical for sarcopenia at 58)
+    const muscleVal = useMuscle;
+    const muscleR = muscleVal != null ? (muscleVal >= 38 ? { color: 'var(--green)', label: 'G', score: 1 } : muscleVal >= 33 ? { color: 'var(--amber)', label: 'A', score: 0.5 } : { color: 'var(--red)', label: 'R', score: 0 }) : { color: 'var(--dim)', label: '—', score: 0 };
+    const muscleImpact = muscleVal != null ? (muscleVal >= 38 ? 1.0 : muscleVal >= 33 ? 0.3 : -0.8) : 0;
+    cats.push({ cat: 'Muscle Mass', val: muscleVal != null ? muscleVal + 'kg' : '—', rag: muscleR, impact: muscleImpact, pct: muscleVal != null ? Math.min(100, muscleVal / 45 * 100) : 0, tip: muscleVal != null ? `Sarcopenia prevention critical at 58. ≥38kg good for frame. Baseline: ${baseMuscle}kg` : 'Enter muscle mass in check-in or projection baseline' });
 
     // 15. Mental Wellbeing (energy + stress)
     const mwScore = (avgEnergy != null && avgStress != null) ? ((avgEnergy + (4 - avgStress)) / 2) : null;
@@ -3512,9 +3535,15 @@ async function syncFromGitHub() {
     cats.push({ cat: 'Mental Wellbeing', val: mwScore != null ? (mwScore >= 3 ? 'Good' : mwScore >= 2 ? 'Fair' : 'Low') : '—', rag: mwR, impact: mwImpact, pct: mwScore != null ? mwScore / 4 * 100 : 0, tip: `Energy + stress composite. Chronic stress: −1yr LE` });
 
     // 16. Known conditions (static modifiers from medical history — always applied)
-    // CTA clear 2025 (protective), on Flecainide+Verapamil (managed AF), family hx: polymyalgia mother, lung cancer father
-    const knownCondImpact = -0.8; // Net: AF managed (−2 base above), RA (above), cervical disc (−0.3), clear CTA (+0.5), family cancer hx (−0.5), family autoimmune (−0.3), surgical resilience (+0.3)
-    cats.push({ cat: 'Medical History', val: 'AF+RA+disc', rag: { color: 'var(--amber)', label: 'A', score: 0.5 }, impact: knownCondImpact, pct: 40, tip: 'AF (managed, Flecainide+Verapamil), RA (since 2010), C4-C8 disc, IBS. CTA clear 2025. Fam: polymyalgia, lung ca.' });
+    // Family: father died 85 (lung ca, smoker — smoking-caused, not genetic cardiac risk), mother alive 95 (strong longevity gene)
+    // CTA clear 2025 (protective), on Flecainide+Verapamil (managed AF), RFA cured AVJRT
+    // Mother alive 95 = ~+2yr longevity signal (top quartile parental longevity, Lancet)
+    // Father 85 despite smoking = decent baseline; cancer was smoking-attributable not genetic
+    const familyBonus = 1.5; // Mother 95 alive: strong longevity genetics. Father 85 (smoker): smoking-attributable cancer, no genetic cardiac/cancer concern
+    const condPenalty = -0.6; // Cervical disc (−0.3), IBS (−0.2), surgical wear (−0.1)
+    const protectiveFactors = 0.5; // CTA clear 2025 (+0.3), post-RFA cure (+0.2)
+    const knownCondImpact = familyBonus + condPenalty + protectiveFactors; // Net: ~+1.4
+    cats.push({ cat: 'Medical History', val: 'AF+RA+fam', rag: { color: 'var(--amber)', label: 'A', score: 0.5 }, impact: knownCondImpact, pct: 55, tip: 'AF (managed, Flecainide+Verapamil), RA (since 2010), C4-C8 disc. CTA clear 2025, RFA cured AVJRT. Mother alive @95 (+1.5yr), father 85 (smoker/lung ca — non-genetic).' });
 
     // ---- COMPUTE PROJECTED LIFESPAN & HEALTHSPAN ----
     const totalImpact = cats.reduce((s, c) => s + c.impact, 0);
@@ -3771,14 +3800,14 @@ async function syncFromGitHub() {
       return `<div class="proj-hs-nm">
         <div class="proj-hs-nm-rank">#${i + 1}</div>
         <div>
-          <div class="proj-hs-nm-cat">${c.cat}</div>
-          <div style="font-size:9px;color:var(--dim)">${c.tip.substring(0, 60)}${c.tip.length > 60 ? '…' : ''}</div>
+          <div class="proj-hs-nm-cat">${c.cat} <span style="color:var(--dim);font-weight:400">${c.val}</span></div>
+          <div style="font-size:9px;color:var(--dim)">${c.tip.substring(0, 70)}${c.tip.length > 70 ? '…' : ''}</div>
         </div>
         <div class="proj-hs-nm-now" style="background:${nowColor}20;color:${nowColor}">${c.impact > 0 ? '+' : ''}${c.impact.toFixed(1)}yr</div>
-        <div class="proj-hs-nm-arrow">→</div>
-        <div class="proj-hs-nm-goal" style="background:${goalColor}20;color:${goalColor}">+${c.bestImpact.toFixed(1)}yr</div>
+        <div style="text-align:center"><span style="color:var(--accent);font-size:12px">→</span><br><span style="font-size:9px;color:var(--green);font-weight:700">+${c.gain.toFixed(1)}</span></div>
+        <div class="proj-hs-nm-goal" style="background:${goalColor}20;color:${goalColor}">${c.bestImpact > 0 ? '+' : ''}${c.bestImpact.toFixed(1)}yr</div>
       </div>`;
-    }).join('') + `<div style="font-size:10px;color:var(--accent);margin-top:6px;font-weight:600">Total potential gain: +${needleMovers.reduce((s,c) => s + c.gain, 0).toFixed(1)} years</div>`;
+    }).join('') + `<div style="font-size:10px;color:var(--accent);margin-top:6px;font-weight:600">Total potential gain: +${needleMovers.reduce((s,c) => s + c.gain, 0).toFixed(1)} years if all optimised</div>`;
 
     // Note
     document.getElementById('projHSNote').innerHTML = `RAG: <span style="color:var(--green)">&#9679;</span> optimal <span style="color:var(--amber)">&#9679;</span> suboptimal <span style="color:var(--red)">&#9679;</span> high risk. Impact = estimated years gained/lost vs population baseline (AU male LE ${HS_BASE_LE}yr). Healthspan = disease-free functional years. Trajectory assumes ${Math.round((parseFloat(document.getElementById('projAdherence').value)||85))}% goal adherence over ${document.getElementById('projTimeframe').value} weeks. Based on published meta-analyses (Lancet, JAMA, AHA, ABS 2022-24). Not medical advice.`;
