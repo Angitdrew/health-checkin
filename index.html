@@ -208,7 +208,29 @@
   .proj-risk-card .proj-rs{font-size:8px;color:var(--dim);margin-top:4px;font-style:italic}
   .proj-bh{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;grid-column:1/-1;margin-top:4px}
   .proj-disclaimer{font-size:10px;color:var(--dim);padding:10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;line-height:1.5;margin-top:8px}
-  @media(max-width:600px){.proj-controls{flex-direction:column}.proj-metric-grid{grid-template-columns:1fr 1fr}.proj-risk-grid{grid-template-columns:1fr}}
+  /* Health Status Assessment styles */
+  .proj-hs-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+  .proj-hs-header .proj-hs-title{font-size:13px;font-weight:600}
+  .proj-hs-header .proj-hs-date{font-size:10px;color:var(--dim)}
+  .proj-hs-lifespan{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+  .proj-hs-lbox{background:var(--surface2);border-radius:10px;padding:14px;text-align:center;position:relative;overflow:hidden}
+  .proj-hs-lbox .proj-hs-ll{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px}
+  .proj-hs-lbox .proj-hs-lyrs{font-size:28px;font-weight:800;line-height:1}
+  .proj-hs-lbox .proj-hs-lage{font-size:11px;color:var(--dim);margin-top:4px}
+  .proj-hs-lbox .proj-hs-ldelta{font-size:10px;margin-top:4px;font-weight:600}
+  .proj-hs-bioage{display:flex;align-items:center;justify-content:center;gap:14px;background:var(--surface2);border-radius:10px;padding:12px;margin-bottom:14px}
+  .proj-hs-bioage .proj-hs-ba-num{font-size:32px;font-weight:800}
+  .proj-hs-bioage .proj-hs-ba-lbl{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:0.8px}
+  .proj-hs-bioage .proj-hs-ba-diff{font-size:12px;font-weight:600}
+  .proj-hs-cats{display:grid;grid-template-columns:1fr;gap:6px}
+  .proj-hs-row{display:grid;grid-template-columns:140px 46px 1fr 40px;align-items:center;gap:8px;padding:7px 10px;background:var(--surface2);border-radius:6px;font-size:11px}
+  .proj-hs-row .proj-hs-cat{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .proj-hs-rag{display:inline-block;width:10px;height:10px;border-radius:50%;flex-shrink:0}
+  .proj-hs-row .proj-hs-bar{height:5px;background:rgba(255,255,255,0.08);border-radius:3px;position:relative;overflow:hidden}
+  .proj-hs-row .proj-hs-bf{height:100%;border-radius:3px;transition:width 0.6s ease}
+  .proj-hs-row .proj-hs-impact{font-size:10px;text-align:right;font-weight:600;white-space:nowrap}
+  .proj-hs-note{font-size:9px;color:var(--dim);margin-top:8px;line-height:1.4}
+  @media(max-width:600px){.proj-controls{flex-direction:column}.proj-metric-grid{grid-template-columns:1fr 1fr}.proj-risk-grid{grid-template-columns:1fr}.proj-hs-row{grid-template-columns:110px 40px 1fr 36px;font-size:10px}}
 </style>
 </head>
 <body>
@@ -733,6 +755,17 @@
           </select>
         </div>
       </div>
+    </div>
+
+    <div class="proj-card" id="projHealthStatusCard">
+      <div class="proj-hs-header">
+        <div class="proj-hs-title">&#129657; Health Status Assessment</div>
+        <div class="proj-hs-date" id="projHSDate"></div>
+      </div>
+      <div class="proj-hs-lifespan" id="projHSLifespan"></div>
+      <div class="proj-hs-bioage" id="projHSBioAge"></div>
+      <div class="proj-hs-cats" id="projHSCategories"></div>
+      <div class="proj-hs-note" id="projHSNote"></div>
     </div>
 
     <div class="proj-card">
@@ -3304,12 +3337,258 @@ async function syncFromGitHub() {
     el.innerHTML=`<p><strong>Diet:</strong> Keto (<30g carbs), high protein (160–220g/day), 1800–2200 kcal/day.</p><p style="margin-top:6px"><strong>Exercise:</strong> BJJ 3×60min, Boxing 2×60min, Weights 1×45min, Walking 5×10+2×20min, Airbike 5×10, Bands/ExBall 5×10, Skipping 3×2, Shadow 3×4, Bag 3×6, Yard 1×60.</p><p style="margin-top:6px"><strong>Weekly burn:</strong> ~${proj.weeklyExBurn.toLocaleString()} kcal (~${proj.dailyExBurn} kcal/day). 85% fat loss partition with high protein muscle preservation.</p>`;
   }
 
+  // ===== HEALTH STATUS ASSESSMENT =====
+  const HS_BASE_LE = 81.1; // Australian male life expectancy (ABS 2022-24)
+  const HS_BASE_HS = 70.3; // Healthspan estimate (~87% of LE, disease-free years)
+  const HS_AGE = 40; // Current age
+
+  function projRenderHealthStatus(proj) {
+    const ci = JSON.parse(localStorage.getItem('healthCheckins') || '[]');
+    if (!ci.length) {
+      document.getElementById('projHSLifespan').innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--dim);font-size:11px;padding:12px">Submit check-in data to generate your health status assessment.</div>';
+      document.getElementById('projHSBioAge').innerHTML = '';
+      document.getElementById('projHSCategories').innerHTML = '';
+      document.getElementById('projHSNote').innerHTML = '';
+      document.getElementById('projHSDate').innerHTML = '';
+      return;
+    }
+
+    const sorted = [...ci].sort((a,b) => b.date.localeCompare(a.date));
+    const latest = sorted[0];
+    const last7 = sorted.slice(0, 7);
+    const last30 = sorted.slice(0, 30);
+
+    // Extract latest metrics
+    const wt = latest.vitals?.weight || null;
+    const bmi = wt ? Math.round(wt / (PROJ_HEIGHT_M * PROJ_HEIGHT_M) * 10) / 10 : null;
+    const bf = latest.measurements?.body_fat_pct || null;
+    const waist = latest.measurements?.waist_cm || null;
+    const neck = latest.measurements?.neck_cm || null;
+    const muscle = latest.measurements?.skeletal_muscle_kg || null;
+    const bpSys = latest.vitals?.bp_systolic || null;
+    const bpDia = latest.vitals?.bp_diastolic || null;
+    const rhr = latest.vitals?.resting_hr || null;
+
+    // Averages from recent data
+    const avg = (arr, fn) => { const vals = arr.map(fn).filter(v => v != null && v > 0); return vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null; };
+    const avgSleep = avg(last7, c => c.sleep?.hours);
+    const avgWater = avg(last7, c => c.nutrition?.water_litres);
+    const avgCal = avg(last7, c => c.nutrition?.totals?.calories);
+    const avgPro = avg(last7, c => c.nutrition?.totals?.protein_g);
+    const avgCarbs = avg(last7, c => c.nutrition?.totals?.carbs_g);
+    const avgEnergy = avg(last7, c => c.wellbeing?.energy);
+    const avgStress = avg(last7, c => c.wellbeing?.stress);
+
+    // Count RA flare days, AF symptom days
+    const raFlares = last30.filter(c => c.wellbeing?.ra_flare === 'yes').length;
+    const afDays = last30.filter(c => c.cardiac?.af_symptoms === 'yes').length;
+    const stiffAvg = avg(last30, c => c.wellbeing?.morning_stiffness_min);
+
+    // Activity frequency
+    const actDays = last7.filter(c => c.training && c.training.some(t => t.duration > 0)).length;
+    const avgActMin = avg(last7, c => {
+      if (!c.training) return 0;
+      return c.training.reduce((s, t) => s + (t.duration || 0), 0);
+    });
+
+    // Supplement compliance
+    const compDays = last7.filter(c => c.compliance?.supplements_taken).length;
+
+    // ---- BUILD CATEGORY ASSESSMENTS ----
+    const cats = [];
+
+    // Helper: RAG
+    function rag(val, greenRange, amberRange) {
+      // greenRange = [min, max] for green, amberRange = [min, max] for amber, else red
+      if (val == null) return { color: 'var(--dim)', label: '—', score: 0 };
+      if (val >= greenRange[0] && val <= greenRange[1]) return { color: 'var(--green)', label: 'G', score: 1 };
+      if (val >= amberRange[0] && val <= amberRange[1]) return { color: 'var(--amber)', label: 'A', score: 0.5 };
+      return { color: 'var(--red)', label: 'R', score: 0 };
+    }
+    function ragLower(val, greenMax, amberMax) {
+      // Lower is better
+      if (val == null) return { color: 'var(--dim)', label: '—', score: 0 };
+      if (val <= greenMax) return { color: 'var(--green)', label: 'G', score: 1 };
+      if (val <= amberMax) return { color: 'var(--amber)', label: 'A', score: 0.5 };
+      return { color: 'var(--red)', label: 'R', score: 0 };
+    }
+
+    // 1. BMI
+    const bmiR = bmi != null ? (bmi <= 24.9 ? rag(bmi, [18.5, 24.9], [25, 29.9]) : bmi <= 29.9 ? { color: 'var(--amber)', label: 'A', score: 0.5 } : { color: 'var(--red)', label: 'R', score: 0 }) : { color: 'var(--dim)', label: '—', score: 0 };
+    const bmiImpact = bmi != null ? (bmi > 25 ? -(Math.min((bmi - 25) * 0.42, 8)) : 0) : 0;
+    cats.push({ cat: 'BMI', val: bmi != null ? bmi.toFixed(1) : '—', rag: bmiR, impact: bmiImpact, pct: bmi != null ? Math.max(0, Math.min(100, (50 - bmi) / 25 * 100)) : 0, tip: bmi != null ? `${bmi < 25 ? 'Healthy' : bmi < 30 ? 'Overweight' : bmi < 35 ? 'Obese I' : 'Obese II'}. Target: <25` : 'No data' });
+
+    // 2. Body Fat %
+    const bfR = bf != null ? (bf <= 20 ? { color: 'var(--green)', label: 'G', score: 1 } : bf <= 25 ? { color: 'var(--amber)', label: 'A', score: 0.5 } : { color: 'var(--red)', label: 'R', score: 0 }) : { color: 'var(--dim)', label: '—', score: 0 };
+    const bfImpact = bf != null ? (bf > 20 ? -((bf - 20) * 0.15) : 0.5) : 0;
+    cats.push({ cat: 'Body Fat', val: bf != null ? bf + '%' : '—', rag: bfR, impact: bfImpact, pct: bf != null ? Math.max(0, Math.min(100, (40 - bf) / 30 * 100)) : 0, tip: bf != null ? `Target: 15-20%. HR 1.78× mortality at ≥27%` : 'No data' });
+
+    // 3. Waist Circumference
+    const waistR = waist != null ? (waist < 94 ? { color: 'var(--green)', label: 'G', score: 1 } : waist < 102 ? { color: 'var(--amber)', label: 'A', score: 0.5 } : { color: 'var(--red)', label: 'R', score: 0 }) : { color: 'var(--dim)', label: '—', score: 0 };
+    const waistImpact = waist != null ? (waist > 94 ? -((waist - 94) * 0.12) : 0.3) : 0;
+    cats.push({ cat: 'Waist', val: waist != null ? waist + 'cm' : '—', rag: waistR, impact: waistImpact, pct: waist != null ? Math.max(0, Math.min(100, (120 - waist) / 40 * 100)) : 0, tip: waist != null ? `<94cm green, <102cm amber. Independent CVD predictor` : 'No data' });
+
+    // 4. Blood Pressure
+    const bpScore = bpSys != null ? (bpSys < 120 ? 1 : bpSys < 140 ? 0.5 : 0) : null;
+    const bpR = bpScore != null ? { color: bpScore === 1 ? 'var(--green)' : bpScore === 0.5 ? 'var(--amber)' : 'var(--red)', label: bpScore === 1 ? 'G' : bpScore === 0.5 ? 'A' : 'R', score: bpScore } : { color: 'var(--dim)', label: '—', score: 0 };
+    const bpImpact = bpSys != null ? (bpSys > 120 ? -((bpSys - 120) * 0.1) : 0.5) : 0;
+    cats.push({ cat: 'Blood Pressure', val: bpSys != null ? `${bpSys}/${bpDia}` : '—', rag: bpR, impact: bpImpact, pct: bpSys != null ? Math.max(0, Math.min(100, (180 - bpSys) / 60 * 100)) : 0, tip: bpSys != null ? `<120/80 optimal. Hypertension: −5.1yr LE` : 'No data' });
+
+    // 5. Resting Heart Rate
+    const rhrR = rhr != null ? (rhr < 60 ? { color: 'var(--green)', label: 'G', score: 1 } : rhr <= 72 ? { color: 'var(--amber)', label: 'A', score: 0.5 } : { color: 'var(--red)', label: 'R', score: 0 }) : { color: 'var(--dim)', label: '—', score: 0 };
+    const rhrImpact = rhr != null ? (rhr > 60 ? -((rhr - 60) * 0.05) : 0.3) : 0;
+    cats.push({ cat: 'Resting HR', val: rhr != null ? rhr + 'bpm' : '—', rag: rhrR, impact: rhrImpact, pct: rhr != null ? Math.max(0, Math.min(100, (100 - rhr) / 50 * 100)) : 0, tip: rhr != null ? `<60 athletic, 60-72 good, >72 elevated` : 'No data' });
+
+    // 6. Sleep
+    const sleepR = avgSleep != null ? (avgSleep >= 7 && avgSleep <= 9 ? { color: 'var(--green)', label: 'G', score: 1 } : avgSleep >= 6 ? { color: 'var(--amber)', label: 'A', score: 0.5 } : { color: 'var(--red)', label: 'R', score: 0 }) : { color: 'var(--dim)', label: '—', score: 0 };
+    const sleepImpact = avgSleep != null ? (avgSleep >= 7 && avgSleep <= 9 ? 1.2 : avgSleep < 6 ? -1.5 : -0.3) : 0;
+    cats.push({ cat: 'Sleep', val: avgSleep != null ? avgSleep.toFixed(1) + 'h' : '—', rag: sleepR, impact: sleepImpact, pct: avgSleep != null ? Math.max(0, Math.min(100, avgSleep / 9 * 100)) : 0, tip: avgSleep != null ? `7d avg. 7-9h optimal (+1.2yr). <6h: −1.5yr` : 'No data' });
+
+    // 7. Exercise/Activity
+    const exR = actDays >= 5 ? { color: 'var(--green)', label: 'G', score: 1 } : actDays >= 3 ? { color: 'var(--amber)', label: 'A', score: 0.5 } : { color: 'var(--red)', label: 'R', score: 0 };
+    const exImpact = actDays >= 5 ? 3.0 : actDays >= 3 ? 1.5 : 0;
+    cats.push({ cat: 'Exercise', val: `${actDays}/7d`, rag: exR, impact: exImpact, pct: Math.min(100, actDays / 7 * 100), tip: `${actDays} active days. ${avgActMin != null ? Math.round(avgActMin) + 'min avg.' : ''} 5+d: +3yr LE` });
+
+    // 8. Nutrition/Diet
+    const carbOK = avgCarbs != null && avgCarbs <= 30;
+    const proOK = avgPro != null && avgPro >= 160;
+    const calOK = avgCal != null && avgCal >= 1800 && avgCal <= 2200;
+    const nutScore = [carbOK, proOK, calOK].filter(Boolean).length;
+    const nutR = nutScore === 3 ? { color: 'var(--green)', label: 'G', score: 1 } : nutScore >= 1 ? { color: 'var(--amber)', label: 'A', score: 0.5 } : { color: 'var(--red)', label: 'R', score: 0 };
+    const nutImpact = nutScore === 3 ? 1.5 : nutScore >= 1 ? 0.5 : -0.5;
+    const nutVal = avgCal != null ? Math.round(avgCal) + 'cal' : '—';
+    cats.push({ cat: 'Nutrition', val: nutVal, rag: nutR, impact: nutImpact, pct: nutScore / 3 * 100, tip: `Keto adherence: carbs ${avgCarbs != null ? Math.round(avgCarbs) + 'g' : '?'}, protein ${avgPro != null ? Math.round(avgPro) + 'g' : '?'}` });
+
+    // 9. Hydration
+    const waterTarget = 2.5; // litres
+    const waterR = avgWater != null ? (avgWater >= waterTarget ? { color: 'var(--green)', label: 'G', score: 1 } : avgWater >= waterTarget * 0.7 ? { color: 'var(--amber)', label: 'A', score: 0.5 } : { color: 'var(--red)', label: 'R', score: 0 }) : { color: 'var(--dim)', label: '—', score: 0 };
+    const waterImpact = avgWater != null ? (avgWater >= waterTarget ? 0.3 : -0.2) : 0;
+    cats.push({ cat: 'Hydration', val: avgWater != null ? avgWater.toFixed(1) + 'L' : '—', rag: waterR, impact: waterImpact, pct: avgWater != null ? Math.min(100, avgWater / waterTarget * 100) : 0, tip: avgWater != null ? `7d avg. Target: ${waterTarget}L+` : 'No data' });
+
+    // 10. RA Status
+    const raRate = last30.length > 0 ? raFlares / last30.length : null;
+    const raR = raRate != null ? (raRate === 0 ? { color: 'var(--green)', label: 'G', score: 1 } : raRate < 0.2 ? { color: 'var(--amber)', label: 'A', score: 0.5 } : { color: 'var(--red)', label: 'R', score: 0 }) : { color: 'var(--dim)', label: '—', score: 0 };
+    const raImpact = raRate != null ? (raRate === 0 ? -1.0 : raRate < 0.2 ? -2.5 : -4.0) : -3.0;
+    cats.push({ cat: 'RA Activity', val: raFlares + '/' + last30.length + 'd', rag: raR, impact: raImpact, pct: raRate != null ? (1 - raRate) * 100 : 0, tip: `${raFlares} flare days in ${last30.length}d. Stiffness avg: ${stiffAvg != null ? Math.round(stiffAvg) + 'min' : '?'}. RA: −1 to −5yr LE` });
+
+    // 11. AF Status
+    const afRate = last30.length > 0 ? afDays / last30.length : null;
+    const afR = afRate != null ? (afRate === 0 ? { color: 'var(--green)', label: 'G', score: 1 } : afRate < 0.15 ? { color: 'var(--amber)', label: 'A', score: 0.5 } : { color: 'var(--red)', label: 'R', score: 0 }) : { color: 'var(--dim)', label: '—', score: 0 };
+    const afImpact = afRate != null ? (afRate === 0 ? -1.0 : afRate < 0.15 ? -2.0 : -2.6) : -2.0;
+    cats.push({ cat: 'AF Status', val: afDays + '/' + last30.length + 'd', rag: afR, impact: afImpact, pct: afRate != null ? (1 - afRate) * 100 : 0, tip: `${afDays} symptom days in ${last30.length}d. AF: −2.0 to −2.6yr LE` });
+
+    // 12. Supplement Compliance
+    const compR = compDays >= 6 ? { color: 'var(--green)', label: 'G', score: 1 } : compDays >= 4 ? { color: 'var(--amber)', label: 'A', score: 0.5 } : { color: 'var(--red)', label: 'R', score: 0 };
+    const compImpact = compDays >= 6 ? 0.3 : 0;
+    cats.push({ cat: 'Supplements', val: compDays + '/7d', rag: compR, impact: compImpact, pct: compDays / 7 * 100, tip: `Vit D, probiotics, electrolytes, K2. Consistency matters.` });
+
+    // 13. Mental Wellbeing (energy + stress)
+    const mwScore = (avgEnergy != null && avgStress != null) ? ((avgEnergy + (4 - avgStress)) / 2) : null;
+    const mwR = mwScore != null ? (mwScore >= 3 ? { color: 'var(--green)', label: 'G', score: 1 } : mwScore >= 2 ? { color: 'var(--amber)', label: 'A', score: 0.5 } : { color: 'var(--red)', label: 'R', score: 0 }) : { color: 'var(--dim)', label: '—', score: 0 };
+    const mwImpact = mwScore != null ? (mwScore >= 3 ? 0.5 : mwScore < 2 ? -1.0 : 0) : 0;
+    cats.push({ cat: 'Mental Wellbeing', val: mwScore != null ? (mwScore >= 3 ? 'Good' : mwScore >= 2 ? 'Fair' : 'Low') : '—', rag: mwR, impact: mwImpact, pct: mwScore != null ? mwScore / 4 * 100 : 0, tip: `Energy + stress composite. Chronic stress: −1yr LE` });
+
+    // ---- COMPUTE PROJECTED LIFESPAN & HEALTHSPAN ----
+    const totalImpact = cats.reduce((s, c) => s + c.impact, 0);
+    const projectedLE = Math.round((HS_BASE_LE + totalImpact) * 10) / 10;
+    const projectedHS = Math.round((HS_BASE_HS + totalImpact * 0.85) * 10) / 10; // healthspan degrades faster
+    const yearsLeftLE = Math.round((projectedLE - HS_AGE) * 10) / 10;
+    const yearsLeftHS = Math.round((projectedHS - HS_AGE) * 10) / 10;
+    const deltaLE = Math.round((projectedLE - HS_BASE_LE) * 10) / 10;
+    const deltaHS = Math.round((projectedHS - HS_BASE_HS) * 10) / 10;
+
+    // Biological age estimate (simplified phenotypic model)
+    const greenCount = cats.filter(c => c.rag.score === 1).length;
+    const amberCount = cats.filter(c => c.rag.score === 0.5).length;
+    const redCount = cats.filter(c => c.rag.score === 0).length;
+    const validCount = cats.filter(c => c.rag.label !== '—').length;
+    const bioAgeOffset = validCount > 0 ? Math.round(((redCount * 3 + amberCount * 0.5 - greenCount * 1.2) / validCount) * 10) / 10 : 0;
+    const bioAge = Math.round((HS_AGE + bioAgeOffset) * 10) / 10;
+
+    // ---- PROJECTED VALUES (after adherence) ----
+    const {data: projData} = proj;
+    const projEnd = projData[projData.length - 1];
+    const projBMI = projEnd.bmi;
+    const projBF = projEnd.bf;
+    const projWaist = projEnd.waist;
+    // Recalculate projected impact
+    const projBmiImpact = projBMI > 25 ? -(Math.min((projBMI - 25) * 0.42, 8)) : 0;
+    const projBfImpact = projBF > 20 ? -((projBF - 20) * 0.15) : 0.5;
+    const projWaistImpact = projWaist > 94 ? -((projWaist - 94) * 0.12) : 0.3;
+    // Replace body comp impacts with projected values, keep everything else
+    const projTotalImpact = totalImpact - bmiImpact - bfImpact - waistImpact + projBmiImpact + projBfImpact + projWaistImpact + exImpact * 0.3;
+    const projFutureLE = Math.round((HS_BASE_LE + projTotalImpact) * 10) / 10;
+    const projFutureHS = Math.round((HS_BASE_HS + projTotalImpact * 0.85) * 10) / 10;
+
+    // ---- RENDER ----
+    document.getElementById('projHSDate').innerHTML = `Based on ${ci.length} check-in${ci.length > 1 ? 's' : ''} · Latest: ${latest.date}`;
+
+    // Lifespan boxes
+    const lsEl = document.getElementById('projHSLifespan');
+    const leDeltaColor = deltaLE >= 0 ? 'var(--green)' : 'var(--red)';
+    const hsDeltaColor = deltaHS >= 0 ? 'var(--green)' : 'var(--red)';
+    const futLEDelta = Math.round((projFutureLE - projectedLE) * 10) / 10;
+    const futHSDelta = Math.round((projFutureHS - projectedHS) * 10) / 10;
+
+    lsEl.innerHTML = `
+      <div class="proj-hs-lbox">
+        <div class="proj-hs-ll">Projected Lifespan</div>
+        <div class="proj-hs-lyrs">${yearsLeftLE}<span style="font-size:14px;color:var(--dim)"> yrs</span></div>
+        <div class="proj-hs-lage">to age ${projectedLE}</div>
+        <div class="proj-hs-ldelta" style="color:${leDeltaColor}">${deltaLE >= 0 ? '+' : ''}${deltaLE}yr vs population avg</div>
+        ${futLEDelta > 0 ? `<div style="font-size:9px;color:var(--accent);margin-top:3px">+${futLEDelta}yr if goals met →${projFutureLE}</div>` : ''}
+      </div>
+      <div class="proj-hs-lbox">
+        <div class="proj-hs-ll">Projected Healthspan</div>
+        <div class="proj-hs-lyrs">${yearsLeftHS}<span style="font-size:14px;color:var(--dim)"> yrs</span></div>
+        <div class="proj-hs-lage">to age ${projectedHS}</div>
+        <div class="proj-hs-ldelta" style="color:${hsDeltaColor}">${deltaHS >= 0 ? '+' : ''}${deltaHS}yr vs population avg</div>
+        ${futHSDelta > 0 ? `<div style="font-size:9px;color:var(--accent);margin-top:3px">+${futHSDelta}yr if goals met →${projFutureHS}</div>` : ''}
+      </div>`;
+
+    // Biological age
+    const baEl = document.getElementById('projHSBioAge');
+    const baDiff = bioAge - HS_AGE;
+    const baColor = baDiff <= -2 ? 'var(--green)' : baDiff <= 2 ? 'var(--amber)' : 'var(--red)';
+    baEl.innerHTML = `
+      <div>
+        <div class="proj-hs-ba-lbl">Biological Age</div>
+        <div class="proj-hs-ba-num" style="color:${baColor}">${bioAge}</div>
+      </div>
+      <div style="text-align:center">
+        <div class="proj-hs-ba-lbl">Chronological</div>
+        <div style="font-size:22px;font-weight:700;color:var(--dim)">${HS_AGE}</div>
+      </div>
+      <div style="text-align:right">
+        <div class="proj-hs-ba-lbl">${baDiff > 0 ? 'Older by' : baDiff < 0 ? 'Younger by' : 'On track'}</div>
+        <div class="proj-hs-ba-diff" style="color:${baColor}">${baDiff > 0 ? '+' : ''}${baDiff !== 0 ? baDiff + ' yrs' : '—'}</div>
+        <div style="font-size:9px;color:var(--dim);margin-top:2px">${greenCount}&#9679; ${amberCount}&#9679; ${redCount}&#9679; of ${validCount} metrics</div>
+      </div>`;
+
+    // Category rows
+    const catsEl = document.getElementById('projHSCategories');
+    catsEl.innerHTML = cats.map(c => {
+      const impactStr = c.impact > 0 ? `+${c.impact.toFixed(1)}` : c.impact.toFixed(1);
+      const impactColor = c.impact > 0 ? 'var(--green)' : c.impact < -1 ? 'var(--red)' : c.impact < 0 ? 'var(--amber)' : 'var(--dim)';
+      return `<div class="proj-hs-row" title="${c.tip}">
+        <div class="proj-hs-cat">${c.cat} <span style="color:var(--dim);font-weight:400">${c.val}</span></div>
+        <div><span class="proj-hs-rag" style="background:${c.rag.color}"></span></div>
+        <div class="proj-hs-bar"><div class="proj-hs-bf" style="width:${c.pct}%;background:${c.rag.color}"></div></div>
+        <div class="proj-hs-impact" style="color:${impactColor}">${impactStr}yr</div>
+      </div>`;
+    }).join('');
+
+    // Note
+    document.getElementById('projHSNote').innerHTML = `RAG: <span style="color:var(--green)">&#9679;</span> optimal <span style="color:var(--amber)">&#9679;</span> suboptimal <span style="color:var(--red)">&#9679;</span> high risk. Impact = estimated years gained/lost vs population baseline (AU male LE ${HS_BASE_LE}yr). Healthspan = disease-free functional years. Based on published meta-analyses (Lancet, JAMA, AHA, ABS 2022-24). Not medical advice.`;
+  }
+
   function projUpdate() {
     const proj=projRun();
     projDrawChart(proj);
     projRenderOutcome(proj);
     projRenderBenefits(proj);
     projRenderAssumptions(proj);
+    projRenderHealthStatus(proj);
   }
 
   // Tab switching
