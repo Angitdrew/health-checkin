@@ -96,6 +96,15 @@
   @media(max-width:900px){.section-chart{display:none} .section.has-chart .section-inputs{padding:20px} .container{max-width:600px}}
 
 
+  /* Collapsible sections */
+  .section-title{cursor:pointer;user-select:none}
+  .section-title .chevron{margin-left:auto;font-size:11px;color:var(--dim);transition:transform 0.2s}
+  .section.collapsed>*:not(.section-title){display:none!important}
+  .section.has-chart>.section-title{padding:20px 20px 0;margin-bottom:0}
+  .section.has-chart.collapsed>.section-title{padding:16px 20px}
+  .section.collapsed{padding-bottom:0}
+  .section:not(.has-chart).collapsed{padding:16px 20px}
+
   /* Fluid balance chart */
   .fluid-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:8px}
   @media(max-width:500px){.fluid-grid{grid-template-columns:repeat(3,1fr)}}
@@ -119,9 +128,9 @@
 
   <!-- VITALS -->
   <div class="section has-chart">
+    <div class="section-title"><span class="icon">&#9829;</span> Vitals</div>
     <div class="section-wrap">
       <div class="section-inputs">
-        <div class="section-title"><span class="icon">&#9829;</span> Vitals</div>
         <div class="row">
           <div class="field">
             <div class="label">Weight <span class="unit">kg</span></div>
@@ -158,9 +167,9 @@
 
   <!-- SLEEP -->
   <div class="section has-chart">
+    <div class="section-title"><span class="icon">&#9790;</span> Sleep</div>
     <div class="section-wrap">
       <div class="section-inputs">
-    <div class="section-title"><span class="icon">&#9790;</span> Sleep</div>
     <div class="row">
       <div class="field">
         <div class="label">Hours Slept</div>
@@ -198,9 +207,9 @@
 
   <!-- CARDIAC / AF -->
   <div class="section has-chart">
+    <div class="section-title"><span class="icon">&#9889;</span> Cardiac & AF</div>
     <div class="section-wrap">
       <div class="section-inputs">
-    <div class="section-title"><span class="icon">&#9889;</span> Cardiac & AF</div>
     <div class="field">
       <div class="label">AF Symptoms Today</div>
       <div class="rating">
@@ -241,9 +250,9 @@
 
   <!-- RA & WELLBEING -->
   <div class="section has-chart">
+    <div class="section-title"><span class="icon">&#9883;</span> RA & Wellbeing</div>
     <div class="section-wrap">
       <div class="section-inputs">
-    <div class="section-title"><span class="icon">&#9883;</span> RA & Wellbeing</div>
     <div class="row">
       <div class="field">
         <div class="label">RA Flare Status</div>
@@ -363,9 +372,9 @@
 
   <!-- NUTRITION -->
   <div class="section has-chart">
+    <div class="section-title"><span class="icon">&#127860;</span> Nutrition</div>
     <div class="section-wrap">
       <div class="section-inputs">
-    <div class="section-title"><span class="icon">&#127860;</span> Nutrition</div>
 
     <!-- Running totals bar -->
     <div id="macroTotals" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;justify-content:space-between;font-size:13px">
@@ -529,6 +538,25 @@
 </div>
 
 <script>
+// ===== COLLAPSIBLE SECTIONS =====
+document.querySelectorAll('.section-title').forEach(title => {
+  // Add chevron
+  const chevron = document.createElement('span');
+  chevron.className = 'chevron';
+  chevron.textContent = '▸';
+  title.appendChild(chevron);
+
+  const section = title.closest('.section');
+  // Start collapsed
+  section.classList.add('collapsed');
+
+  title.addEventListener('click', () => {
+    const wasCollapsed = section.classList.contains('collapsed');
+    section.classList.toggle('collapsed');
+    chevron.textContent = wasCollapsed ? '▾' : '▸';
+  });
+});
+
 // Set today's date and auto-expand measurements on Mondays
 const today = new Date();
 document.getElementById('checkinDate').value = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
@@ -1051,10 +1079,13 @@ function submitCheckin() {
 
   renderDashboards();
 
+  // Auto-close after brief delay so user sees confirmation
   setTimeout(() => {
+    window.close();
+    // If window.close() is blocked (not opened via script), show fallback
     document.getElementById('submitBtn').disabled = false;
     document.getElementById('submitBtn').textContent = 'Save Check-in';
-  }, 3000);
+  }, 1500);
 }
 
 function toggleHistory() {
