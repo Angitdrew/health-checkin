@@ -128,6 +128,20 @@
   .target-over{font-size:9px;color:var(--red);font-weight:600;margin-left:4px}
   .target-under{font-size:9px;color:var(--amber);font-weight:600;margin-left:4px}
   .target-good{font-size:9px;color:var(--green);font-weight:600;margin-left:4px}
+
+  /* Today's summary panel */
+  .day-summary{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px}
+  .day-summary-title{font-size:13px;font-weight:600;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+  .day-summary .summary-empty{font-size:12px;color:var(--dim);font-style:italic}
+  .summary-group{margin-bottom:10px}
+  .summary-group:last-child{margin-bottom:0}
+  .summary-group-label{font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:var(--dim);font-weight:600;margin-bottom:4px}
+  .summary-items{display:flex;flex-wrap:wrap;gap:4px}
+  .summary-chip{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:11px;color:var(--text)}
+  .summary-chip .chip-meta{color:var(--dim);font-size:10px;margin-left:3px}
+  .summary-macros{display:flex;gap:12px;font-size:12px;margin-top:6px;padding:6px 10px;background:var(--surface2);border-radius:6px}
+  .summary-macros span{color:var(--dim)}
+  .summary-macros strong{color:var(--text)}
 </style>
 </head>
 <body>
@@ -137,7 +151,18 @@
 
   <div class="date-display">
     <span>Check-in date:</span>
-    <input type="date" id="checkinDate">
+    <div style="display:flex;gap:6px;align-items:center">
+      <button onclick="const d=document.getElementById('checkinDate');d.stepDown();d.dispatchEvent(new Event('change'))" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);cursor:pointer;font-size:16px" title="Previous day">&#9664;</button>
+      <input type="date" id="checkinDate" onclick="try{this.showPicker()}catch(e){}" style="cursor:pointer">
+      <button onclick="const d=document.getElementById('checkinDate');d.stepUp();d.dispatchEvent(new Event('change'))" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);cursor:pointer;font-size:16px" title="Next day">&#9654;</button>
+      <button onclick="const t=new Date();document.getElementById('checkinDate').value=t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0');document.getElementById('checkinDate').dispatchEvent(new Event('change'))" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--accent);cursor:pointer;font-size:11px;font-weight:600" title="Jump to today">TODAY</button>
+    </div>
+  </div>
+
+  <!-- TODAY'S SUMMARY -->
+  <div class="day-summary" id="daySummary" style="display:none">
+    <div class="day-summary-title">&#128203; Today So Far</div>
+    <div id="summaryContent"></div>
   </div>
 
   <!-- VITALS -->
@@ -427,15 +452,15 @@
     </div>
       </div>
       <div class="section-chart" id="chartNutrition">
-        <div class="chart-title">Daily Calories — last 14 days</div>
-        <div class="chart-stat" id="chartCalAvg">—</div>
-        <div class="chart-sub">avg kcal/day</div>
-        <svg id="svgCalories" viewBox="0 0 280 70" preserveAspectRatio="none"></svg>
+        <div class="chart-title">Daily Protein — last 14 entries</div>
+        <div class="chart-stat" id="chartProAvg">—</div>
+        <div class="chart-sub">avg g/day</div>
+        <svg id="svgProtein" viewBox="0 0 280 70" preserveAspectRatio="none"></svg>
         <div style="margin-top:10px;width:100%">
-          <div class="chart-title">Avg Protein</div>
+          <div class="chart-title">Avg Calories</div>
           <div style="display:flex;align-items:baseline;gap:6px">
-            <span class="chart-stat" id="chartProAvg" style="font-size:18px">—</span>
-            <span class="chart-sub">g/day</span>
+            <span class="chart-stat" id="chartCalAvg" style="font-size:18px">—</span>
+            <span class="chart-sub">kcal/day</span>
           </div>
         </div>
         <div style="width:100%;margin-top:10px">
@@ -1104,6 +1129,7 @@ function submitCheckin() {
   document.getElementById('submitBtn').textContent = '✓ Saved!';
 
   renderDashboards();
+  renderDaySummary();
 
   setTimeout(() => {
     document.getElementById('submitBtn').disabled = false;
@@ -1211,9 +1237,12 @@ function renderDashboards() {
     return;
   }
 
+  const selectedDate = document.getElementById('checkinDate').value;
   const sorted = [...all].sort((a,b) => a.date.localeCompare(b.date));
-  const last30 = sorted.slice(-30);
-  const last14 = sorted.slice(-14);
+  // Filter to entries up to and including the selected date
+  const upTo = selectedDate ? sorted.filter(c => c.date <= selectedDate) : sorted;
+  const last30 = upTo.slice(-30);
+  const last14 = upTo.slice(-14);
 
   // Helper: draw sparkline SVG
   function sparkline(svgId, values, color, opts={}) {
@@ -1328,8 +1357,8 @@ function renderDashboards() {
 
   // ----- CARDIAC -----
   let streak = 0;
-  for (let i = sorted.length-1; i >= 0; i--) {
-    if (sorted[i].cardiac?.af_symptoms === 'none' || !sorted[i].cardiac?.af_symptoms) streak++;
+  for (let i = upTo.length-1; i >= 0; i--) {
+    if (upTo[i].cardiac?.af_symptoms === 'none' || !upTo[i].cardiac?.af_symptoms) streak++;
     else break;
   }
   document.getElementById('chartAFStreak').textContent = streak;
@@ -1366,16 +1395,16 @@ function renderDashboards() {
     v => v === 'none' || !v ? 'var(--green)' : v === 'mild' ? 'var(--amber)' : 'var(--red)'
   );
 
-  // ----- NUTRITION -----
-  const cals = last14.map(c => c.nutrition?.totals?.calories || c.nutrition?.calories || null);
-  const calValid = cals.filter(c => c && c > 0);
-  if (calValid.length > 0) {
-    document.getElementById('chartCalAvg').textContent = Math.round(calValid.reduce((a,b)=>a+b,0)/calValid.length);
-    barChart('svgCalories', cals, v => v >= 1500 && v <= 2500 ? '#22c55e' : v > 3000 ? '#ef4444' : '#f59e0b');
+  // ----- NUTRITION (protein primary, calories secondary) -----
+  const pros = last14.map(c => c.nutrition?.totals?.protein_g || c.nutrition?.protein_g || null);
+  const proValid = pros.filter(p => p && p > 0);
+  if (proValid.length > 0) {
+    document.getElementById('chartProAvg').textContent = Math.round(proValid.reduce((a,b)=>a+b,0)/proValid.length);
+    barChart('svgProtein', pros, v => v >= 160 && v <= 220 ? '#22c55e' : v < 140 ? '#ef4444' : '#f59e0b');
   }
-  const pros = last14.map(c => c.nutrition?.totals?.protein_g || c.nutrition?.protein_g || null).filter(p => p && p > 0);
-  if (pros.length > 0) {
-    document.getElementById('chartProAvg').textContent = Math.round(pros.reduce((a,b)=>a+b,0)/pros.length);
+  const cals = last14.map(c => c.nutrition?.totals?.calories || c.nutrition?.calories || null).filter(c => c && c > 0);
+  if (cals.length > 0) {
+    document.getElementById('chartCalAvg').textContent = Math.round(cals.reduce((a,b)=>a+b,0)/cals.length);
   }
 }
 
@@ -1528,6 +1557,65 @@ function loadTodayData() {
 
 loadTodayData();
 
+// ===== TODAY'S SUMMARY =====
+function renderDaySummary() {
+  const dateVal = document.getElementById('checkinDate').value;
+  const all = JSON.parse(localStorage.getItem('healthCheckins') || '[]');
+  const saved = all.find(c => c.date === dateVal);
+  const panel = document.getElementById('daySummary');
+  const content = document.getElementById('summaryContent');
+  if (!panel || !content) return;
+
+  if (!saved) { panel.style.display = 'none'; return; }
+
+  let html = '';
+  let hasContent = false;
+
+  // Food log
+  if (saved.nutrition && saved.nutrition.food_log && saved.nutrition.food_log.length > 0) {
+    hasContent = true;
+    html += '<div class="summary-group"><div class="summary-group-label">Food Logged</div><div class="summary-items">';
+    saved.nutrition.food_log.forEach(f => {
+      const qtyStr = f.qty > 1 ? ` x${f.qty}` : '';
+      html += `<span class="summary-chip">${f.name}<span class="chip-meta">${f.serving}${qtyStr} · ${f.cal}kcal</span></span>`;
+    });
+    html += '</div>';
+    const t = saved.nutrition.totals;
+    if (t && t.calories) {
+      html += `<div class="summary-macros"><span>Total: <strong>${t.calories}</strong> kcal</span><span>P: <strong>${t.protein_g||0}</strong>g</span><span>C: <strong>${t.carbs_g||0}</strong>g</span><span>F: <strong>${t.fat_g||0}</strong>g</span></div>`;
+    }
+    html += '</div>';
+  }
+
+  // Training
+  if (saved.training && saved.training.length > 0) {
+    const validTraining = saved.training.filter(t => t.type);
+    if (validTraining.length > 0) {
+      hasContent = true;
+      html += '<div class="summary-group"><div class="summary-group-label">Training</div><div class="summary-items">';
+      validTraining.forEach(t => {
+        const dur = t.duration ? ` · ${t.duration}min` : '';
+        const rpe = t.rpe ? ` · RPE ${t.rpe}` : '';
+        html += `<span class="summary-chip">${t.type}${dur}${rpe}</span>`;
+      });
+      html += '</div></div>';
+    }
+  }
+
+  // Water
+  if (saved.nutrition && saved.nutrition.water_litres && saved.nutrition.water_litres > 0) {
+    hasContent = true;
+    html += `<div class="summary-group"><div class="summary-items"><span class="summary-chip">💧 ${saved.nutrition.water_litres.toFixed(1)}L water</span></div></div>`;
+  }
+
+  if (!hasContent) { panel.style.display = 'none'; return; }
+
+  content.innerHTML = html;
+  panel.style.display = 'block';
+}
+
+renderDaySummary();
+
 // Reload data when date changes
 document.getElementById('checkinDate').addEventListener('change', function() {
   // Reset form fields before loading
@@ -1550,6 +1638,7 @@ document.getElementById('checkinDate').addEventListener('change', function() {
   }
   loadTodayData();
   renderDashboards();
+  renderDaySummary();
 });
 
 // Render on load
