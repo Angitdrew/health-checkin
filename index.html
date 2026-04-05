@@ -377,8 +377,11 @@
               <option value="boxing">Boxing</option>
               <option value="mma">Carioti MMA</option>
               <option value="weights">Weights</option>
+              <option value="airbike">Airbike</option>
               <option value="walking">Walking</option>
               <option value="zone2">Zone 2 Cardio</option>
+              <option value="bands">Band Work (Rehab)</option>
+              <option value="exball">Exercise Ball (Core)</option>
               <option value="mobility">Mobility/Yoga</option>
               <option value="rest">Rest Day</option>
               <option value="other">Other</option>
@@ -387,6 +390,10 @@
           <div class="field">
             <div class="label">Duration <span class="unit">min</span></div>
             <input type="number" class="trainingDuration" placeholder="e.g. 60">
+          </div>
+          <div class="field" style="min-width:90px;flex:0 0 auto">
+            <div class="label">🔥 Burnt</div>
+            <div class="burnEstimate" style="padding:10px 0;font-size:16px;font-weight:700;color:var(--amber)">— <span style="font-size:11px;font-weight:400;color:var(--dim)">kcal</span></div>
           </div>
         </div>
         <div class="field">
@@ -405,6 +412,10 @@
           </div>
         </div>
       </div>
+    </div>
+    <div id="trainingBurnBar" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-top:10px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;font-size:13px">
+      <span style="color:var(--dim)">🔥 Total Burnt</span>
+      <span><strong id="trainingBurnTotal" style="font-size:16px;color:var(--amber)">0</strong> <span style="color:var(--dim)">kcal</span></span>
     </div>
     <button class="btn-add" onclick="addTraining()">+ Add another session</button>
   </div>
@@ -533,6 +544,8 @@
         <div style="width:100%;margin-top:10px">
           <div class="chart-title" style="margin-bottom:6px">&#127919; Today vs Targets</div>
           <div class="target-row" id="targetCal"></div>
+          <div class="target-row" id="targetBurn"></div>
+          <div class="target-row" id="targetNet"></div>
           <div class="target-row" id="targetPro"></div>
           <div class="target-row" id="targetFat"></div>
           <div class="target-row" id="targetCarb"></div>
@@ -973,8 +986,11 @@ function addTraining() {
           <option value="boxing">Boxing</option>
           <option value="mma">Carioti MMA</option>
           <option value="weights">Weights</option>
+          <option value="airbike">Airbike</option>
           <option value="walking">Walking</option>
           <option value="zone2">Zone 2 Cardio</option>
+          <option value="bands">Band Work (Rehab)</option>
+          <option value="exball">Exercise Ball (Core)</option>
           <option value="mobility">Mobility/Yoga</option>
           <option value="rest">Rest Day</option>
           <option value="other">Other</option>
@@ -983,6 +999,10 @@ function addTraining() {
       <div class="field">
         <div class="label">Duration <span class="unit">min</span></div>
         <input type="number" class="trainingDuration" placeholder="e.g. 60">
+      </div>
+      <div class="field" style="min-width:90px;flex:0 0 auto">
+        <div class="label">🔥 Burnt</div>
+        <div class="burnEstimate" style="padding:10px 0;font-size:16px;font-weight:700;color:var(--amber)">— <span style="font-size:11px;font-weight:400;color:var(--dim)">kcal</span></div>
       </div>
     </div>
     <div class="field">
@@ -1081,6 +1101,7 @@ function collectData() {
       bowel: getRadioValue('bowel')
     },
     training: getTrainingData(),
+    calories_burnt: calcCaloriesBurnt(),
     nutrition: {
       food_log: getFoodLog(),
       totals: {
@@ -1161,7 +1182,7 @@ function toggleHistory() {
         ${c.wellbeing.energy ? `<div class="data-row"><span>Energy</span><span>${c.wellbeing.energy}/10</span></div>` : ''}
         ${c.cardiac.af_symptoms ? `<div class="data-row"><span>AF</span><span>${c.cardiac.af_symptoms}</span></div>` : ''}
         ${c.wellbeing.ra_flare ? `<div class="data-row"><span>RA</span><span>${c.wellbeing.ra_flare}</span></div>` : ''}
-        ${c.training.length ? `<div class="data-row"><span>Training</span><span>${c.training.map(t=>t.type).join(', ')}</span></div>` : ''}
+        ${c.training && c.training.length ? `<div class="data-row"><span>Training</span><span>${c.training.map(t=>t.type).join(', ')}${c.calories_burnt ? ' · 🔥'+c.calories_burnt+'kcal' : ''}</span></div>` : ''}
         ${c.notes ? `<div class="data-row"><span>Notes</span><span>${c.notes}</span></div>` : ''}
       </div>
     `).join('');
@@ -1171,13 +1192,53 @@ function toggleHistory() {
 
 // ===== DAILY TARGETS =====
 const TARGETS = {
-  cal:   { label:'Calories',  unit:'kcal', min:1800, max:2200, cap:3500 },
-  pro:   { label:'Protein',   unit:'g',    min:160,  max:220,  cap:300 },
-  fat:   { label:'Fat',       unit:'g',    min:120,  max:160,  cap:250 },
-  carb:  { label:'Carbs',     unit:'g',    min:0,    max:30,   cap:60,  invertColor:true },
-  water: { label:'Water',     unit:'L',    min:3.0,  max:4.0,  cap:6.0 },
-  sleep: { label:'Sleep',     unit:'hr',   min:7.0,  max:9.0,  cap:12.0 }
+  cal:   { label:'Calories In', unit:'kcal', min:1800, max:2200, cap:3500 },
+  burn:  { label:'Burnt',       unit:'kcal', min:200,  max:800,  cap:1200 },
+  net:   { label:'Net Calories',unit:'kcal', min:1800, max:2200, cap:3500 },
+  pro:   { label:'Protein',     unit:'g',    min:160,  max:220,  cap:300 },
+  fat:   { label:'Fat',         unit:'g',    min:120,  max:160,  cap:250 },
+  carb:  { label:'Carbs',       unit:'g',    min:0,    max:30,   cap:60,  invertColor:true },
+  water: { label:'Water',       unit:'L',    min:3.0,  max:4.0,  cap:6.0 },
+  sleep: { label:'Sleep',       unit:'hr',   min:7.0,  max:9.0,  cap:12.0 }
 };
+
+// Calorie burn rates per minute by activity (at ~115kg bodyweight)
+// Base rates are for moderate intensity; RPE scales them
+const BURN_RATES = {
+  bjj:      12.0,   // grappling — high output
+  boxing:   11.0,   // heavy bag + sparring
+  mma:      11.5,   // mixed martial arts
+  weights:   7.0,   // resistance training
+  airbike:  10.0,   // assault/air bike
+  walking:   5.0,   // brisk walk
+  zone2:     8.0,   // steady-state cardio
+  bands:     4.0,   // rehab band work
+  exball:    4.5,   // core / exercise ball
+  mobility:  3.0,   // yoga / stretching
+  rest:      0,
+  other:     6.0    // generic moderate
+};
+
+function calcCaloriesBurnt() {
+  let total = 0;
+  document.querySelectorAll('.training-entry').forEach((entry, i) => {
+    const type = entry.querySelector('.trainingType')?.value;
+    const dur = parseFloat(entry.querySelector('.trainingDuration')?.value) || 0;
+    const rpeEl = entry.querySelector(`input[name="rpe${i+1}"]:checked`);
+    const rpe = rpeEl ? parseInt(rpeEl.value) : 5;
+    const burnEl = entry.querySelector('.burnEstimate');
+    if (!type || type === 'rest' || dur <= 0) {
+      if (burnEl) burnEl.innerHTML = '— <span style="font-size:11px;font-weight:400;color:var(--dim)">kcal</span>';
+      return;
+    }
+    const base = BURN_RATES[type] || 6.0;
+    const rpeMultiplier = 1 + (rpe - 5) * 0.12;
+    const entryBurn = Math.round(base * dur * rpeMultiplier);
+    total += entryBurn;
+    if (burnEl) burnEl.innerHTML = `${entryBurn} <span style="font-size:11px;font-weight:400;color:var(--dim)">kcal</span>`;
+  });
+  return total;
+}
 
 function renderTargetBar(containerId, key, value) {
   const el = document.getElementById(containerId);
@@ -1214,13 +1275,38 @@ function renderTargetBar(containerId, key, value) {
 }
 
 function updateAllTargets() {
-  renderTargetBar('targetCal', 'cal', parseInt(document.getElementById('totalCal').textContent) || 0);
+  const calIn = parseInt(document.getElementById('totalCal').textContent) || 0;
+  const burnt = calcCaloriesBurnt();
+  const net = calIn - burnt;
+
+  renderTargetBar('targetCal', 'cal', calIn);
+  renderTargetBar('targetBurn', 'burn', burnt);
+  const burnEl = document.getElementById('trainingBurnTotal');
+  if (burnEl) { burnEl.textContent = burnt; burnEl.style.color = burnt > 0 ? 'var(--amber)' : 'var(--dim)'; }
+
+  // Dynamically adjust net calorie target: shift green zone up by burnt amount
+  const baseMin = 1800, baseMax = 2200;
+  TARGETS.net.min = baseMin + burnt;
+  TARGETS.net.max = baseMax + burnt;
+  TARGETS.net.cap = 3500 + burnt;
+  renderTargetBar('targetNet', 'net', calIn);
+
   renderTargetBar('targetPro', 'pro', parseInt(document.getElementById('totalPro').textContent) || 0);
   renderTargetBar('targetFat', 'fat', parseInt(document.getElementById('totalFat').textContent) || 0);
   renderTargetBar('targetCarb', 'carb', parseInt(document.getElementById('totalCarb').textContent) || 0);
   renderTargetBar('targetWater', 'water', parseFloat(document.getElementById('waterIntake').value) || 0);
   renderTargetBar('targetSleep', 'sleep', parseFloat(document.getElementById('sleepHours').value) || 0);
 }
+
+// Also update targets when training fields change
+document.addEventListener('change', function(e) {
+  if (e.target.classList.contains('trainingType') || e.target.classList.contains('trainingDuration') || (e.target.type === 'radio' && e.target.name.startsWith('rpe'))) {
+    updateAllTargets();
+  }
+});
+document.addEventListener('input', function(e) {
+  if (e.target.classList.contains('trainingDuration')) updateAllTargets();
+});
 
 document.getElementById('sleepHours').addEventListener('input', updateAllTargets);
 setTimeout(updateAllTargets, 100);
@@ -1602,6 +1688,9 @@ function renderDaySummary() {
         const rpe = t.rpe ? ` · RPE ${t.rpe}` : '';
         html += `<span class="summary-chip">${t.type}${dur}${rpe}</span>`;
       });
+      if (saved.calories_burnt > 0) {
+        html += `<span class="summary-chip">🔥 ~${saved.calories_burnt} kcal burnt</span>`;
+      }
       html += '</div></div>';
     }
   }
