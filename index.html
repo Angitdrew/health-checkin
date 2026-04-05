@@ -1079,13 +1079,17 @@ function submitCheckin() {
 
   renderDashboards();
 
-  // Auto-close after brief delay so user sees confirmation
+  // Replace page with "done" screen after save
   setTimeout(() => {
+    document.body.innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f1117;color:#e4e4e7;text-align:center;padding:20px">
+        <div style="font-size:72px;margin-bottom:16px">&#10003;</div>
+        <div style="font-size:22px;font-weight:600;margin-bottom:8px;color:#22c55e">Check-in Saved!</div>
+        <div style="font-size:14px;color:#9ca3af">${data.date} &mdash; ${allCheckins.length} total check-in${allCheckins.length !== 1 ? 's' : ''}</div>
+        <div style="font-size:13px;color:#9ca3af;margin-top:24px">You can close this tab now.</div>
+      </div>`;
     window.close();
-    // If window.close() is blocked (not opened via script), show fallback
-    document.getElementById('submitBtn').disabled = false;
-    document.getElementById('submitBtn').textContent = 'Save Check-in';
-  }, 1500);
+  }, 600);
 }
 
 function toggleHistory() {
