@@ -2045,7 +2045,8 @@ function renderVitalsChart() {
   const rangeVal = parseInt(document.getElementById('vitalsRange')?.value) || 0;
   const days = rangeSteps[rangeVal] || 7;
   const labels = { 7:'7 days', 14:'14 days', 30:'30 days', 90:'3 months', 180:'6 months' };
-  document.getElementById('vitalsChartTitle').textContent = `BP & HR — last ${labels[days] || days + ' days'}`;
+  const vtEl = document.getElementById('vitalsChartTitle');
+  if (vtEl) vtEl.textContent = `BP & HR — last ${labels[days] || days + ' days'}`;
 
   const entries = window._vitalsAllData.slice(-days);
   const sysList = entries.map(c => c.vitals?.bp_systolic || null);
@@ -2215,12 +2216,12 @@ function renderDashboards() {
   const weights = last30.map(c => c.vitals?.weight).filter(w => w);
   if (weights.length > 0) {
     const latest = weights[weights.length-1];
-    document.getElementById('chartWeightVal').textContent = latest.toFixed(1) + ' kg';
+    const wvEl = document.getElementById('chartWeightVal');
+    if (wvEl) wvEl.textContent = latest.toFixed(1) + ' kg';
     if (weights.length > 1) {
       const delta = latest - weights[0];
       const el = document.getElementById('chartWeightDelta');
-      el.textContent = (delta > 0 ? '+' : '') + delta.toFixed(1) + ' kg over ' + weights.length + ' entries';
-      el.style.color = delta > 0 ? 'var(--red)' : 'var(--green)';
+      if (el) { el.textContent = (delta > 0 ? '+' : '') + delta.toFixed(1) + ' kg over ' + weights.length + ' entries'; el.style.color = delta > 0 ? 'var(--red)' : 'var(--green)'; }
     }
     sparkline('svgWeight', last30.map(c => c.vitals?.weight), '#3b82f6');
   }
@@ -2234,12 +2235,14 @@ function renderDashboards() {
   const sleepH = last14.map(c => c.sleep?.hours);
   const sleepValid = sleepH.filter(h => h);
   if (sleepValid.length > 0) {
-    document.getElementById('chartSleepAvg').textContent = (sleepValid.reduce((a,b)=>a+b,0)/sleepValid.length).toFixed(1);
+    const csaEl = document.getElementById('chartSleepAvg');
+    if (csaEl) csaEl.textContent = (sleepValid.reduce((a,b)=>a+b,0)/sleepValid.length).toFixed(1);
     barChart('svgSleep', sleepH, v => v >= 7 ? '#22c55e' : v >= 5 ? '#f59e0b' : '#ef4444');
     const quals = last14.filter(c => c.sleep?.quality).map(c => c.sleep.quality);
     if (quals.length) {
       const avgQ = (quals.reduce((a,b)=>a+b,0)/quals.length).toFixed(1);
-      document.getElementById('chartSleepQual').textContent = `Avg quality: ${avgQ}/5`;
+      const csqEl = document.getElementById('chartSleepQual');
+      if (csqEl) csqEl.textContent = `Avg quality: ${avgQ}/5`;
     }
   }
 
@@ -2249,8 +2252,8 @@ function renderDashboards() {
     if (upTo[i].cardiac?.af_symptoms === 'none' || !upTo[i].cardiac?.af_symptoms) streak++;
     else break;
   }
-  document.getElementById('chartAFStreak').textContent = streak;
-  document.getElementById('chartAFStreak').style.color = streak >= 7 ? 'var(--green)' : streak >= 3 ? 'var(--amber)' : 'var(--red)';
+  const afEl = document.getElementById('chartAFStreak');
+  if (afEl) { afEl.textContent = streak; afEl.style.color = streak >= 7 ? 'var(--green)' : streak >= 3 ? 'var(--amber)' : 'var(--red)'; }
 
   dotGrid('afDotGrid', last14, c => c.cardiac?.af_symptoms,
     v => v === 'none' || !v ? 'var(--green)' : v === 'mild' ? 'var(--amber)' : v === 'moderate' ? 'var(--amber)' : 'var(--red)'
@@ -2287,12 +2290,14 @@ function renderDashboards() {
   const pros = last14.map(c => c.nutrition?.totals?.protein_g || c.nutrition?.protein_g || null);
   const proValid = pros.filter(p => p && p > 0);
   if (proValid.length > 0) {
-    document.getElementById('chartProAvg').textContent = Math.round(proValid.reduce((a,b)=>a+b,0)/proValid.length);
+    const cpaEl = document.getElementById('chartProAvg');
+    if (cpaEl) cpaEl.textContent = Math.round(proValid.reduce((a,b)=>a+b,0)/proValid.length);
     barChart('svgProtein', pros, v => v >= 160 && v <= 220 ? '#22c55e' : v < 140 ? '#ef4444' : '#f59e0b');
   }
   const cals = last14.map(c => c.nutrition?.totals?.calories || c.nutrition?.calories || null).filter(c => c && c > 0);
   if (cals.length > 0) {
-    document.getElementById('chartCalAvg').textContent = Math.round(cals.reduce((a,b)=>a+b,0)/cals.length);
+    const ccaEl = document.getElementById('chartCalAvg');
+    if (ccaEl) ccaEl.textContent = Math.round(cals.reduce((a,b)=>a+b,0)/cals.length);
   }
 }
 
@@ -2632,10 +2637,10 @@ async function syncFromGitHub() {
     Object.assign(localGoals, remoteGoals);
     localStorage.setItem('dailyGoals', JSON.stringify(localGoals));
 
-    renderDashboards();
-    loadTodayData();
-    renderDaySummary();
-    renderGoals();
+    try { renderDashboards(); } catch(err) { console.warn('renderDashboards after pull:', err); }
+    try { loadTodayData(); } catch(err) { console.warn('loadTodayData after pull:', err); }
+    try { renderDaySummary(); } catch(err) { console.warn('renderDaySummary after pull:', err); }
+    try { renderGoals(); } catch(err) { console.warn('renderGoals after pull:', err); }
     setSyncStatus('Pulled ' + remoteCheckins.length + ' entries · ' + new Date().toLocaleTimeString(), 'var(--green)');
   } catch (e) {
     setSyncStatus('Pull error: ' + e.message, 'var(--red)');
