@@ -957,7 +957,7 @@ function getRadioValue(name) {
 
 function getTrainingData() {
   const entries = [];
-  document.querySelectorAll('.training-entry').forEach((entry, i) => {
+  document.querySelectorAll('#trainingEntries .training-entry').forEach((entry, i) => {
     const type = entry.querySelector('.trainingType').value;
     const duration = entry.querySelector('.trainingDuration').value;
     const rpe = getRadioValue(`rpe${i+1}`);
