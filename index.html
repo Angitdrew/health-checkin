@@ -745,7 +745,7 @@
         <div class="proj-fg"><label>Waist (cm)</label><input type="number" id="projStartWaist" value="118" step="0.1"></div>
         <div class="proj-fg"><label>Body Fat %</label><input type="number" id="projStartBF" value="32" step="0.1"></div>
         <div class="proj-fg"><label>Muscle (kg)</label><input type="number" id="projStartMuscle" value="38" step="0.1"></div>
-        <div class="proj-fg"><label>Neck (cm)</label><input type="number" id="projStartNeck" value="42" step="0.1"></div>
+        <div class="proj-fg"><label>Neck (cm)</label><input type="number" id="projStartNeck" value="44" step="0.1"></div>
         <div class="proj-fg"><label>Adherence %</label><input type="number" id="projAdherence" value="85" min="50" max="100" step="5"></div>
         <div class="proj-fg"><label>Timeframe</label>
           <select id="projTimeframe">
@@ -3220,14 +3220,14 @@ async function syncFromGitHub() {
   function projRun() {
     const gv = id => parseFloat(document.getElementById(id).value) || 0;
     const sw = gv('projStartWeight')||112, swa = gv('projStartWaist')||118, sbf = gv('projStartBF')||32;
-    const sm = gv('projStartMuscle')||38, sn = gv('projStartNeck')||42;
+    const sm = gv('projStartMuscle')||38, sn = gv('projStartNeck')||44;
     const adh = (gv('projAdherence')||85)/100;
     const weeks = parseInt(document.getElementById('projTimeframe').value)||26;
     const weBurn = projWeeklyBurn()*adh, deBurn = weBurn/7, hCm = PROJ_HEIGHT_M*100;
     let w=sw, fm=w*(sbf/100), lm=w-fm, mu=sm, wa=swa, nk=sn;
     const data=[{week:0,weight:w,fatMass:fm,leanMass:lm,muscle:mu,waist:wa,neck:nk,bmi:Math.round(w/(PROJ_HEIGHT_M*PROJ_HEIGHT_M)*10)/10,bf:sbf}];
     for(let i=1;i<=weeks;i++){
-      const bmr=projBMR(w,hCm,40), tdee=bmr+bmr*0.25+deBurn;
+      const bmr=projBMR(w,hCm,58), tdee=bmr+bmr*0.25+deBurn;
       const calIn=2000+(1-adh)*300, deficit=(tdee-calIn)*7;
       let wl=0; if(i<=2)wl=1; else if(i===3)wl=0.5;
       const ewc=deficit/7700+wl;
@@ -3340,7 +3340,7 @@ async function syncFromGitHub() {
   // ===== HEALTH STATUS ASSESSMENT =====
   const HS_BASE_LE = 81.1; // Australian male life expectancy (ABS 2022-24)
   const HS_BASE_HS = 70.3; // Healthspan estimate (~87% of LE, disease-free years)
-  const HS_AGE = 40; // Current age
+  const HS_AGE = 58; // DOB: 23 Apr 1967
 
   function projRenderHealthStatus(proj) {
     const ci = JSON.parse(localStorage.getItem('healthCheckins') || '[]');
@@ -3482,11 +3482,26 @@ async function syncFromGitHub() {
     const compImpact = compDays >= 6 ? 0.3 : 0;
     cats.push({ cat: 'Supplements', val: compDays + '/7d', rag: compR, impact: compImpact, pct: compDays / 7 * 100, tip: `Vit D, probiotics, electrolytes, K2. Consistency matters.` });
 
-    // 13. Mental Wellbeing (energy + stress)
+    // 13. Neck Circumference (OSA risk indicator — men >43cm elevated)
+    const neckR = neck != null ? (neck < 40 ? { color: 'var(--green)', label: 'G', score: 1 } : neck <= 43 ? { color: 'var(--amber)', label: 'A', score: 0.5 } : { color: 'var(--red)', label: 'R', score: 0 }) : { color: 'var(--dim)', label: '—', score: 0 };
+    const neckImpact = neck != null ? (neck > 43 ? -((neck - 43) * 0.3) : neck <= 40 ? 0.2 : 0) : 0;
+    cats.push({ cat: 'Neck (OSA risk)', val: neck != null ? neck + 'cm' : '—', rag: neckR, impact: neckImpact, pct: neck != null ? Math.max(0, Math.min(100, (50 - neck) / 15 * 100)) : 0, tip: neck != null ? `Men >43cm elevated OSA risk. Target: <40cm` : 'No data' });
+
+    // 14. Muscle Mass (sarcopenia protection — critical at 58)
+    const muscleR = muscle != null ? (muscle >= 38 ? { color: 'var(--green)', label: 'G', score: 1 } : muscle >= 33 ? { color: 'var(--amber)', label: 'A', score: 0.5 } : { color: 'var(--red)', label: 'R', score: 0 }) : { color: 'var(--dim)', label: '—', score: 0 };
+    const muscleImpact = muscle != null ? (muscle >= 38 ? 1.0 : muscle >= 33 ? 0.3 : -0.8) : 0;
+    cats.push({ cat: 'Muscle Mass', val: muscle != null ? muscle + 'kg' : '—', rag: muscleR, impact: muscleImpact, pct: muscle != null ? Math.min(100, muscle / 45 * 100) : 0, tip: muscle != null ? `Sarcopenia prevention critical at 58. ≥38kg good for frame` : 'No data' });
+
+    // 15. Mental Wellbeing (energy + stress)
     const mwScore = (avgEnergy != null && avgStress != null) ? ((avgEnergy + (4 - avgStress)) / 2) : null;
     const mwR = mwScore != null ? (mwScore >= 3 ? { color: 'var(--green)', label: 'G', score: 1 } : mwScore >= 2 ? { color: 'var(--amber)', label: 'A', score: 0.5 } : { color: 'var(--red)', label: 'R', score: 0 }) : { color: 'var(--dim)', label: '—', score: 0 };
     const mwImpact = mwScore != null ? (mwScore >= 3 ? 0.5 : mwScore < 2 ? -1.0 : 0) : 0;
     cats.push({ cat: 'Mental Wellbeing', val: mwScore != null ? (mwScore >= 3 ? 'Good' : mwScore >= 2 ? 'Fair' : 'Low') : '—', rag: mwR, impact: mwImpact, pct: mwScore != null ? mwScore / 4 * 100 : 0, tip: `Energy + stress composite. Chronic stress: −1yr LE` });
+
+    // 16. Known conditions (static modifiers from medical history — always applied)
+    // CTA clear 2025 (protective), on Flecainide+Verapamil (managed AF), family hx: polymyalgia mother, lung cancer father
+    const knownCondImpact = -0.8; // Net: AF managed (−2 base above), RA (above), cervical disc (−0.3), clear CTA (+0.5), family cancer hx (−0.5), family autoimmune (−0.3), surgical resilience (+0.3)
+    cats.push({ cat: 'Medical History', val: 'AF+RA+disc', rag: { color: 'var(--amber)', label: 'A', score: 0.5 }, impact: knownCondImpact, pct: 40, tip: 'AF (managed, Flecainide+Verapamil), RA (since 2010), C4-C8 disc, IBS. CTA clear 2025. Fam: polymyalgia, lung ca.' });
 
     // ---- COMPUTE PROJECTED LIFESPAN & HEALTHSPAN ----
     const totalImpact = cats.reduce((s, c) => s + c.impact, 0);
