@@ -128,20 +128,36 @@
   .target-over{font-size:9px;color:var(--red);font-weight:600;margin-left:4px}
   .target-under{font-size:9px;color:var(--amber);font-weight:600;margin-left:4px}
   .target-good{font-size:9px;color:var(--green);font-weight:600;margin-left:4px}
+  .target-burn-marker{position:absolute;top:-2px;bottom:-2px;width:3px;background:var(--red);border-radius:2px;z-index:2}
+  .target-burn-marker::after{content:'☀ BURN';position:absolute;top:-13px;left:50%;transform:translateX(-50%);font-size:7px;font-weight:700;color:var(--red);white-space:nowrap;letter-spacing:0.5px}
+
+  /* Sun Exposure wider chart panel */
+  #chartSun{width:500px;align-items:stretch}
+  #chartSun .target-row{margin-bottom:22px;width:100%}
+  #chartSun .target-track{height:22px;border-radius:11px}
+  #chartSun .target-label{font-size:12px}
+  #chartSun .target-value{font-size:15px}
+  #chartSun .target-limits{font-size:10px;margin-top:3px}
+
+  /* RAG panel */
+  .rag-panel{display:flex;flex-direction:column;gap:6px}
+  .rag-row{display:flex;align-items:center;gap:8px}
+  .rag-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+  .rag-dot.green{background:var(--green);box-shadow:0 0 4px rgba(34,197,94,0.4)}
+  .rag-dot.amber{background:var(--amber);box-shadow:0 0 4px rgba(245,158,11,0.4)}
+  .rag-dot.red{background:var(--red);box-shadow:0 0 4px rgba(239,68,68,0.4)}
+  .rag-dot.grey{background:var(--border)}
+  .rag-label{font-size:11px;color:var(--dim);min-width:120px}
+  .rag-bar-wrap{flex:1;display:flex;align-items:center;gap:8px}
+  .rag-bar-track{flex:1;height:14px;background:var(--surface);border:1px solid var(--border);border-radius:7px;position:relative;overflow:hidden}
+  .rag-bar-zone{position:absolute;top:0;bottom:0;background:rgba(34,197,94,0.12);border-left:1.5px dashed var(--green);border-right:1.5px dashed var(--green)}
+  .rag-bar-fill{position:absolute;top:1px;bottom:1px;left:0;border-radius:6px;transition:width 0.3s}
+  .rag-bar-value{font-size:11px;font-weight:600;min-width:55px;text-align:right;white-space:nowrap}
 
   /* Today's summary panel */
   .day-summary{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px}
   .day-summary-title{font-size:13px;font-weight:600;margin-bottom:10px;display:flex;align-items:center;gap:6px}
   .day-summary .summary-empty{font-size:12px;color:var(--dim);font-style:italic}
-  .summary-group{margin-bottom:10px}
-  .summary-group:last-child{margin-bottom:0}
-  .summary-group-label{font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:var(--dim);font-weight:600;margin-bottom:4px}
-  .summary-items{display:flex;flex-wrap:wrap;gap:4px}
-  .summary-chip{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:11px;color:var(--text)}
-  .summary-chip .chip-meta{color:var(--dim);font-size:10px;margin-left:3px}
-  .summary-macros{display:flex;gap:12px;font-size:12px;margin-top:6px;padding:6px 10px;background:var(--surface2);border-radius:6px}
-  .summary-macros span{color:var(--dim)}
-  .summary-macros strong{color:var(--text)}
 </style>
 </head>
 <body>
@@ -162,7 +178,7 @@
   <!-- TODAY'S SUMMARY -->
   <div class="day-summary" id="daySummary" style="display:none">
     <div class="day-summary-title">&#128203; Today So Far</div>
-    <div id="summaryContent"></div>
+    <div id="ragPanel" class="rag-panel"></div>
   </div>
 
   <!-- SLEEP -->
@@ -413,9 +429,8 @@
         </div>
       </div>
     </div>
-    <div id="trainingBurnBar" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-top:10px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;font-size:13px">
-      <span style="color:var(--dim)">🔥 Total Burnt</span>
-      <span><strong id="trainingBurnTotal" style="font-size:16px;color:var(--amber)">0</strong> <span style="color:var(--dim)">kcal</span></span>
+    <div style="margin-top:12px;margin-bottom:10px">
+      <div class="target-row" id="targetBurnTraining"></div>
     </div>
     <button class="btn-add" onclick="addTraining()">+ Add another session</button>
   </div>
@@ -577,6 +592,46 @@
     <div class="toggle-row">
       <span class="toggle-label">Vitamin K2 source today <span style="color:var(--dim);font-size:11px">(fermented milk, eggs, natto, cheese, or supplement)</span></span>
       <label class="toggle"><input type="checkbox" id="k2Taken"><span class="slider"></span></label>
+    </div>
+  </div>
+
+  <!-- SUN EXPOSURE -->
+  <!-- SUN EXPOSURE -->
+  <div class="section has-chart">
+    <div class="section-title"><span class="icon">&#9728;</span> Sun Exposure</div>
+    <div class="section-wrap">
+      <div class="section-inputs">
+        <div class="row">
+          <div class="field">
+            <div class="label">Time of Exposure</div>
+            <input type="time" id="sunTime" style="width:140px" oninput="updateSunCalc()">
+          </div>
+          <div class="field">
+            <div class="label">Duration <span class="unit">min</span></div>
+            <input type="number" id="sunMinutes" placeholder="e.g. 20" oninput="updateSunCalc()">
+          </div>
+        </div>
+        <div class="field" style="margin-top:12px">
+          <div class="label">Cloud Cover</div>
+          <select id="sunCloud" onchange="updateSunCalc()">
+            <option value="clear">Clear sky</option>
+            <option value="light">Light cloud</option>
+            <option value="partly">Partly cloudy</option>
+            <option value="overcast">Overcast</option>
+            <option value="heavy">Heavy cloud/rain</option>
+          </select>
+        </div>
+        <div id="sunWindow" style="margin-top:12px;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px">
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--dim);margin-bottom:6px">☀ Best Window Today</div>
+          <div id="sunWindowContent" style="font-size:13px"></div>
+        </div>
+        <div id="sunAdvice" style="margin-top:8px;font-size:12px;color:var(--dim);padding:8px 12px;background:var(--surface2);border-radius:8px;display:none"></div>
+      </div>
+      <div class="section-chart" id="chartSun">
+        <div class="target-row" id="targetUV"></div>
+        <div class="target-row" id="targetSunTime"></div>
+        <div class="target-row" id="targetVitD"></div>
+      </div>
     </div>
   </div>
 
@@ -1078,6 +1133,241 @@ function getFoodLog() {
   return items;
 }
 
+// ===== SUN EXPOSURE & VITAMIN D =====
+// Solar position algorithm for UV estimation — Sydney, Australia (33.87°S, 151.21°E)
+const SUN_LAT = -33.87;
+const SUN_LON = 151.21;
+
+function estimateUV(dateStr, timeStr, cloudCover) {
+  if (!dateStr || !timeStr) return null;
+  const [yr, mo, dy] = dateStr.split('-').map(Number);
+  const [hr, mn] = timeStr.split(':').map(Number);
+  const decimalHour = hr + mn / 60;
+
+  // Day of year
+  const date = new Date(yr, mo - 1, dy);
+  const jan1 = new Date(yr, 0, 1);
+  const doy = Math.floor((date - jan1) / 86400000) + 1;
+
+  // Solar declination (Spencer, 1971)
+  const B = (2 * Math.PI / 365) * (doy - 1);
+  const decl = 0.006918 - 0.399912*Math.cos(B) + 0.070257*Math.sin(B)
+             - 0.006758*Math.cos(2*B) + 0.000907*Math.sin(2*B)
+             - 0.002697*Math.cos(3*B) + 0.00148*Math.sin(3*B);
+
+  // Equation of time (minutes)
+  const eot = 229.18 * (0.000075 + 0.001868*Math.cos(B) - 0.032077*Math.sin(B)
+             - 0.014615*Math.cos(2*B) - 0.04089*Math.sin(2*B));
+
+  // Solar noon in local standard time (AEST = UTC+10, no DST adjustment needed for UV calc)
+  // True solar time
+  const tst = decimalHour * 60 + eot + 4 * SUN_LON - 600; // 600 = UTC+10 offset in min
+  const hourAngle = (tst / 4 - 180) * Math.PI / 180;
+
+  // Solar zenith angle
+  const latRad = SUN_LAT * Math.PI / 180;
+  const cosZenith = Math.sin(latRad)*Math.sin(decl) + Math.cos(latRad)*Math.cos(decl)*Math.cos(hourAngle);
+  const zenith = Math.acos(Math.max(-1, Math.min(1, cosZenith))) * 180 / Math.PI;
+
+  if (zenith >= 90) return 0; // sun below horizon
+
+  // Clear-sky UV index estimation
+  // Based on empirical model: UVI ≈ 12.5 * cos(zenith)^1.4 * ozone_factor * altitude_factor
+  // Sydney: mean column ozone ~300 DU, altitude ~0m
+  const cosZ = Math.cos(zenith * Math.PI / 180);
+  let uvi = 12.5 * Math.pow(cosZ, 1.4);
+
+  // Seasonal ozone adjustment for Southern Hemisphere
+  // Higher ozone in spring (Sept-Nov) reduces UV; lower in summer increases it
+  const ozoneFactor = mo >= 12 || mo <= 2 ? 1.05 : // summer — thinner ozone
+                      mo >= 3 && mo <= 5 ? 0.95 :   // autumn
+                      mo >= 6 && mo <= 8 ? 0.85 :   // winter — thicker ozone
+                      0.92;                           // spring
+  uvi *= ozoneFactor;
+
+  // Cloud cover modifier
+  const cloudMod = { clear: 1.0, light: 0.89, partly: 0.73, overcast: 0.47, heavy: 0.25 };
+  uvi *= (cloudMod[cloudCover] || 1.0);
+
+  return Math.max(0, Math.round(uvi * 10) / 10);
+}
+
+function uvLabel(uvi) {
+  if (uvi < 3) return { text: 'Low', color: 'var(--green)' };
+  if (uvi < 6) return { text: 'Moderate', color: 'var(--amber)' };
+  if (uvi < 8) return { text: 'High', color: '#ff6600' };
+  if (uvi < 11) return { text: 'Very High', color: 'var(--red)' };
+  return { text: 'Extreme', color: '#cc00ff' };
+}
+
+function vitDCalc(uvi, durationMin) {
+  // Vitamin D production for very fair Caucasian (Fitzpatrick I-II), 59yo, balding
+  // Exposed areas: face, arms, hands + scalp (~20-25% body surface)
+  // At UVI 1: ~40 IU/min base; scales roughly linearly up to ~UVI 10 then plateaus
+  // Age 59: ~50% synthesis efficiency vs age 20 (reduced 7-dehydrocholesterol)
+  // Target: 1000-1500 IU/day recommended for 50+ age group
+
+  if (uvi < 0.5) return { targetMin: null, iuProduced: 0 };
+
+  // IU per minute of exposure at given UV (fair skin, 15-20% body exposed)
+  // Empirical: ~7 * UVI IU/min for Fitzpatrick II with arms+face exposed
+  const iuPerMin = Math.min(7 * uvi, 80); // caps at ~80 IU/min (very high UV)
+
+  // Age adjustment: Vitamin D synthesis at age 59 is ~50% of a 20yo
+  // (skin 7-dehydrocholesterol decreases significantly with age)
+  const ageFactor = 0.50;
+  const effectiveIU = iuPerMin * ageFactor;
+
+  // Target: 1000 IU
+  const targetIU = 1000;
+  const targetMin = Math.ceil(targetIU / effectiveIU);
+
+  const iuProduced = Math.round(effectiveIU * (durationMin || 0));
+
+  return { targetMin, iuProduced, iuPerMin: effectiveIU };
+}
+
+function calcOptimalSunWindow(dateStr, cloud) {
+  if (!dateStr) return null;
+  // Sweep every 15 min from 6am to 6pm, find UV at each point
+  const slots = [];
+  for (let h = 6; h <= 18; h++) {
+    for (let m = 0; m < 60; m += 15) {
+      const timeStr = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+      const uv = estimateUV(dateStr, timeStr, cloud || 'clear');
+      if (uv > 0) slots.push({ time: timeStr, h, m, uv });
+    }
+  }
+  if (slots.length === 0) return null;
+
+  const peakUV = Math.max(...slots.map(s => s.uv));
+
+  // Find the "sweet spot" windows where UV is 3-6 (ideal for Vit D, manageable burn)
+  // If peak UV never reaches 3, find the highest UV window instead
+  const idealMin = 3, idealMax = 6;
+  const idealSlots = slots.filter(s => s.uv >= idealMin && s.uv <= idealMax);
+
+  if (idealSlots.length > 0) {
+    // Find morning and afternoon windows
+    const solarNoonIdx = slots.findIndex(s => s.uv === peakUV);
+    const solarNoonH = slots[solarNoonIdx]?.h || 12;
+    const morning = idealSlots.filter(s => s.h < solarNoonH);
+    const afternoon = idealSlots.filter(s => s.h >= solarNoonH);
+
+    // Pick the best window: morning is gentler on skin
+    const bestSlots = morning.length > 0 ? morning : afternoon;
+    const start = bestSlots[0];
+    const end = bestSlots[bestSlots.length - 1];
+
+    // Calculate how long you need in this window
+    const avgUV = bestSlots.reduce((a, s) => a + s.uv, 0) / bestSlots.length;
+    const vitD = vitDCalc(avgUV, 60);
+    const minsNeeded = vitD.targetMin;
+    const burnTime = Math.round(150 / avgUV);
+
+    return {
+      type: 'ideal',
+      startTime: start.time,
+      endTime: end.time,
+      avgUV: avgUV.toFixed(1),
+      peakUV: peakUV.toFixed(1),
+      minsNeeded,
+      burnTime,
+      hasMorning: morning.length > 0,
+      hasAfternoon: afternoon.length > 0
+    };
+  }
+
+  // Peak UV < 3 — find the highest UV slot(s)
+  const bestUV = Math.max(...slots.map(s => s.uv));
+  const bestSlots = slots.filter(s => s.uv >= bestUV * 0.9);
+  const start = bestSlots[0];
+  const end = bestSlots[bestSlots.length - 1];
+  const vitD = vitDCalc(bestUV, 60);
+
+  return {
+    type: 'low',
+    startTime: start.time,
+    endTime: end.time,
+    avgUV: bestUV.toFixed(1),
+    peakUV: peakUV.toFixed(1),
+    minsNeeded: vitD.targetMin,
+    burnTime: bestUV > 0.5 ? Math.round(150 / bestUV) : null
+  };
+}
+
+function updateSunCalc() {
+  const dateStr = document.getElementById('checkinDate').value;
+  const timeStr = document.getElementById('sunTime').value;
+  const cloud = document.getElementById('sunCloud').value;
+  const duration = parseFloat(document.getElementById('sunMinutes').value) || 0;
+  const adviceEl = document.getElementById('sunAdvice');
+
+  // Always calculate and show the optimal window for today's date
+  const win = calcOptimalSunWindow(dateStr, cloud);
+  const winEl = document.getElementById('sunWindowContent');
+  if (win && winEl) {
+    const fmt = t => { const [h,m] = t.split(':'); const hr = parseInt(h); return (hr>12?(hr-12):hr)+':'+m+(hr>=12?' PM':' AM'); };
+    if (win.type === 'ideal') {
+      let html = `<span style="color:var(--green);font-weight:600">${fmt(win.startTime)} – ${fmt(win.endTime)}</span>`;
+      html += `<div style="font-size:11px;color:var(--dim);margin-top:4px">UV ~${win.avgUV} in this window · Need <strong style="color:var(--text)">${win.minsNeeded} min</strong> for 1000 IU</div>`;
+      html += `<div style="font-size:11px;color:var(--dim);margin-top:2px">Burn risk after <strong style="color:var(--red)">${win.burnTime} min</strong> unprotected</div>`;
+      if (win.hasMorning) html += `<div style="font-size:11px;color:var(--accent);margin-top:4px">Morning window is gentler on skin</div>`;
+      winEl.innerHTML = html;
+    } else {
+      let html = `<span style="color:var(--amber);font-weight:600">${fmt(win.startTime)} – ${fmt(win.endTime)}</span>`;
+      html += `<div style="font-size:11px;color:var(--dim);margin-top:4px">Peak UV only ${win.peakUV} today — too low for good Vit D</div>`;
+      html += `<div style="font-size:11px;color:var(--amber);margin-top:2px">Supplementation recommended (1000–2000 IU D3)</div>`;
+      winEl.innerHTML = html;
+    }
+  }
+
+  if (!timeStr) {
+    if (adviceEl) adviceEl.style.display = 'none';
+    return;
+  }
+
+  const uvi = estimateUV(dateStr, timeStr, cloud);
+  const vitD = vitDCalc(uvi, duration);
+
+  // UV Index bar — green zone 3-6 (moderate, ideal for Vit D without burn risk)
+  renderTargetBar('targetUV', 'uv', uvi || 0);
+
+  // Burn time: MED for Fitzpatrick Type I-II (very fair, freckles, balding)
+  // MED ≈ 150 / UVI minutes — lower threshold than standard Type II
+  // Exposed scalp increases vulnerability
+  const burnTime = uvi > 0.5 ? Math.round(150 / uvi) : null;
+
+  // Exposure time bar — dynamically set target zone based on Vit D calc
+  if (vitD.targetMin !== null) {
+    TARGETS.suntime.min = Math.max(5, vitD.targetMin);
+    TARGETS.suntime.max = Math.min(burnTime || 60, Math.round(vitD.targetMin * 2));
+    TARGETS.suntime.cap = Math.max(90, burnTime ? Math.round(burnTime * 1.5) : 90);
+    TARGETS.suntime.burnAt = burnTime;
+  }
+  renderTargetBar('targetSunTime', 'suntime', duration);
+
+  // Vitamin D IU bar
+  renderTargetBar('targetVitD', 'vitd', vitD.iuProduced || 0);
+  updateRAGLights();
+
+  // Advice
+  let advice = '';
+  if (uvi < 3) {
+    advice = 'UV is too low for meaningful Vitamin D production. Consider supplementation (1000–2000 IU D3).';
+  } else if (uvi < 6) {
+    advice = `Moderate UV. ${vitD.targetMin} min with face & arms exposed should provide ~1000 IU. No sunscreen needed for this short exposure.`;
+  } else if (uvi < 8) {
+    advice = `High UV. Only ${vitD.targetMin} min needed for 1000 IU — apply sunscreen after this to prevent damage.`;
+  } else {
+    advice = `Very high UV! Just ${vitD.targetMin} min gives you 1000 IU. Apply SPF 30+ after and avoid prolonged exposure.`;
+  }
+  if (duration > 0 && vitD.iuProduced >= 1000) {
+    advice += ' ✓ You\'ve likely hit your daily Vitamin D target.';
+  }
+  if (adviceEl) { adviceEl.style.display = 'block'; adviceEl.textContent = advice; }
+}
+
 function collectData() {
   return {
     date: document.getElementById('checkinDate').value,
@@ -1137,6 +1427,16 @@ function collectData() {
       chest_cm: parseFloat(document.getElementById('chest').value) || null,
       upper_arm_cm: parseFloat(document.getElementById('upperArm').value) || null,
       thigh_cm: parseFloat(document.getElementById('thigh').value) || null
+    },
+    sun_exposure: {
+      time: document.getElementById('sunTime').value || null,
+      duration_min: parseFloat(document.getElementById('sunMinutes').value) || null,
+      cloud_cover: document.getElementById('sunCloud').value || null,
+      est_uv: estimateUV(document.getElementById('checkinDate').value, document.getElementById('sunTime').value, document.getElementById('sunCloud').value),
+      est_vit_d_iu: vitDCalc(
+        estimateUV(document.getElementById('checkinDate').value, document.getElementById('sunTime').value, document.getElementById('sunCloud').value),
+        parseFloat(document.getElementById('sunMinutes').value) || 0
+      ).iuProduced
     },
     notes: document.getElementById('notes').value || null
   };
@@ -1204,7 +1504,10 @@ const TARGETS = {
   fat:   { label:'Fat',         unit:'g',    min:120,  max:160,  cap:250 },
   carb:  { label:'Carbs',       unit:'g',    min:0,    max:30,   cap:60,  invertColor:true },
   water: { label:'Water',       unit:'L',    min:3.0,  max:4.0,  cap:6.0 },
-  sleep: { label:'Sleep',       unit:'hr',   min:7.0,  max:9.0,  cap:12.0 }
+  sleep:   { label:'Sleep',       unit:'hr',   min:7.0,  max:9.0,  cap:12.0 },
+  uv:      { label:'UV Index',    unit:'',     min:3,    max:6,    cap:14 },
+  suntime: { label:'Exposure',    unit:'min',  min:10,   max:30,   cap:90 },
+  vitd:    { label:'Vitamin D',   unit:'IU',   min:600,  max:1500, cap:3000 }
 };
 
 // Calorie burn rates per minute by activity (at ~115kg bodyweight)
@@ -1265,6 +1568,14 @@ function renderTargetBar(containerId, key, value) {
     else if (value <= t.max) { fillColor = 'var(--green)'; statusHTML = '<span class="target-good">&#10003;</span>'; }
     else { fillColor = 'var(--red)'; statusHTML = '<span class="target-over">OVER</span>'; }
   }
+  // Burn marker (optional)
+  const burnPct = t.burnAt ? Math.min(t.burnAt / t.cap * 100, 99) : null;
+  const burnHTML = burnPct !== null ? `<div class="target-burn-marker" style="left:${burnPct}%"></div>` : '';
+  // Status override: if past burn threshold, show BURN warning
+  if (t.burnAt && value > t.burnAt) {
+    fillColor = 'var(--red)'; statusHTML = '<span class="target-over">⚠ BURN RISK</span>';
+  }
+
   const displayVal = Number.isInteger(value) ? value : value.toFixed(1);
   el.innerHTML = `
     <div class="target-header">
@@ -1273,10 +1584,77 @@ function renderTargetBar(containerId, key, value) {
     </div>
     <div class="target-track">
       <div class="target-zone" style="left:${zonePctL}%;width:${zoneW}%"></div>
+      ${burnHTML}
       <div class="target-fill" style="width:${pct}%;background:${fillColor}"></div>
     </div>
     <div class="target-limits"><span>${t.min}</span><span style="color:var(--green)">${t.min}–${t.max}</span><span>${t.cap}</span></div>
   `;
+}
+
+function updateRAGLights() {
+  const ragEl = document.getElementById('ragPanel');
+  const panel = document.getElementById('daySummary');
+  if (!ragEl || !panel) return;
+
+  const sleep = parseFloat(document.getElementById('sleepHours').value) || 0;
+  const pro = parseInt(document.getElementById('totalPro').textContent) || 0;
+  const cal = parseInt(document.getElementById('totalCal').textContent) || 0;
+  const carb = parseInt(document.getElementById('totalCarb').textContent) || 0;
+  const fat = parseInt(document.getElementById('totalFat').textContent) || 0;
+  const water = parseFloat(document.getElementById('waterIntake').value) || 0;
+  const burnt = calcCaloriesBurnt();
+  const vitDEl = document.querySelector('#targetVitD .target-value');
+  const vitD = vitDEl ? parseInt(vitDEl.textContent) || 0 : 0;
+
+  function ragColor(val, min, max, invert) {
+    if (!val && val !== 0) return 'grey';
+    if (invert) return val <= max ? 'green' : 'red';
+    if (val < min) return 'amber';
+    if (val <= max) return 'green';
+    return 'red';
+  }
+
+  function fillColor(color) {
+    if (color === 'green') return 'var(--green)';
+    if (color === 'amber') return 'var(--amber)';
+    if (color === 'red') return 'var(--red)';
+    return 'var(--border)';
+  }
+
+  const metrics = [
+    { label:'Sleep',             val:sleep, min:7,    max:9,    cap:12,   unit:'hr',   decimals:1 },
+    { label:'Protein',           val:pro,   min:160,  max:220,  cap:300,  unit:'g' },
+    { label:'Calories Consumed', val:cal,   min:1800, max:2200, cap:3500, unit:'kcal' },
+    { label:'Fat',               val:fat,   min:120,  max:160,  cap:250,  unit:'g' },
+    { label:'Carbs',             val:carb,  min:0,    max:30,   cap:60,   unit:'g', invert:true },
+    { label:'Water',             val:water, min:3.0,  max:4.0,  cap:6.0,  unit:'L',    decimals:1 },
+    { label:'Calories Used',     val:burnt, min:200,  max:800,  cap:1200, unit:'kcal' },
+    { label:'Sun (Vit D)',        val:vitD,  min:600,  max:1500, cap:3000, unit:'IU' }
+  ];
+
+  const hasAnyData = metrics.some(m => m.val > 0);
+  if (!hasAnyData) { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+
+  ragEl.innerHTML = metrics.map(m => {
+    const color = m.val > 0 ? ragColor(m.val, m.min, m.max, m.invert) : 'grey';
+    const fillPct = m.val > 0 ? Math.min(m.val / m.cap * 100, 100) : 0;
+    const zoneLPct = m.min / m.cap * 100;
+    const zoneRPct = m.max / m.cap * 100;
+    const displayVal = m.decimals ? m.val.toFixed(m.decimals) : Math.round(m.val);
+    const valStr = m.val > 0 ? `<span style="color:${fillColor(color)}">${displayVal}</span> <span style="font-size:10px;color:var(--dim)">${m.unit}</span>` : `<span style="color:var(--dim)">—</span>`;
+    return `<div class="rag-row">
+      <div class="rag-dot ${color}"></div>
+      <span class="rag-label">${m.label}</span>
+      <div class="rag-bar-wrap">
+        <div class="rag-bar-track">
+          <div class="rag-bar-zone" style="left:${zoneLPct}%;width:${zoneRPct - zoneLPct}%"></div>
+          <div class="rag-bar-fill" style="width:${fillPct}%;background:${fillColor(color)}"></div>
+        </div>
+        <div class="rag-bar-value">${valStr}</div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 function updateAllTargets() {
@@ -1286,8 +1664,7 @@ function updateAllTargets() {
 
   renderTargetBar('targetCal', 'cal', calIn);
   renderTargetBar('targetBurn', 'burn', burnt);
-  const burnEl = document.getElementById('trainingBurnTotal');
-  if (burnEl) { burnEl.textContent = burnt; burnEl.style.color = burnt > 0 ? 'var(--amber)' : 'var(--dim)'; }
+  renderTargetBar('targetBurnTraining', 'burn', burnt);
 
   // Dynamically adjust net calorie target: shift green zone up by burnt amount
   const baseMin = 1800, baseMax = 2200;
@@ -1301,6 +1678,7 @@ function updateAllTargets() {
   renderTargetBar('targetCarb', 'carb', parseInt(document.getElementById('totalCarb').textContent) || 0);
   renderTargetBar('targetWater', 'water', parseFloat(document.getElementById('waterIntake').value) || 0);
   renderTargetBar('targetSleep', 'sleep', parseFloat(document.getElementById('sleepHours').value) || 0);
+  updateRAGLights();
 }
 
 // Also update targets when training fields change
@@ -1315,6 +1693,7 @@ document.addEventListener('input', function(e) {
 
 document.getElementById('sleepHours').addEventListener('input', updateAllTargets);
 setTimeout(updateAllTargets, 100);
+setTimeout(updateSunCalc, 150);
 
 // ===== DASHBOARD SPARKLINES =====
 function renderDashboards() {
@@ -1647,6 +2026,13 @@ function loadTodayData() {
     setVal('thigh', saved.measurements.thigh_cm);
   }
   // Notes
+  // Sun Exposure
+  if (saved.sun_exposure) {
+    if (saved.sun_exposure.time) document.getElementById('sunTime').value = saved.sun_exposure.time;
+    if (saved.sun_exposure.duration_min) document.getElementById('sunMinutes').value = saved.sun_exposure.duration_min;
+    if (saved.sun_exposure.cloud_cover) document.getElementById('sunCloud').value = saved.sun_exposure.cloud_cover;
+    updateSunCalc();
+  }
   if (saved.notes) document.getElementById('notes').value = saved.notes;
 }
 
@@ -1654,62 +2040,8 @@ loadTodayData();
 
 // ===== TODAY'S SUMMARY =====
 function renderDaySummary() {
-  const dateVal = document.getElementById('checkinDate').value;
-  const all = JSON.parse(localStorage.getItem('healthCheckins') || '[]');
-  const saved = all.find(c => c.date === dateVal);
-  const panel = document.getElementById('daySummary');
-  const content = document.getElementById('summaryContent');
-  if (!panel || !content) return;
-
-  if (!saved) { panel.style.display = 'none'; return; }
-
-  let html = '';
-  let hasContent = false;
-
-  // Food log
-  if (saved.nutrition && saved.nutrition.food_log && saved.nutrition.food_log.length > 0) {
-    hasContent = true;
-    html += '<div class="summary-group"><div class="summary-group-label">Food Logged</div><div class="summary-items">';
-    saved.nutrition.food_log.forEach(f => {
-      const qtyStr = f.qty > 1 ? ` x${f.qty}` : '';
-      html += `<span class="summary-chip">${f.name}<span class="chip-meta">${f.serving}${qtyStr} · ${f.cal}kcal</span></span>`;
-    });
-    html += '</div>';
-    const t = saved.nutrition.totals;
-    if (t && t.calories) {
-      html += `<div class="summary-macros"><span>Total: <strong>${t.calories}</strong> kcal</span><span>P: <strong>${t.protein_g||0}</strong>g</span><span>C: <strong>${t.carbs_g||0}</strong>g</span><span>F: <strong>${t.fat_g||0}</strong>g</span></div>`;
-    }
-    html += '</div>';
-  }
-
-  // Training
-  if (saved.training && saved.training.length > 0) {
-    const validTraining = saved.training.filter(t => t.type);
-    if (validTraining.length > 0) {
-      hasContent = true;
-      html += '<div class="summary-group"><div class="summary-group-label">Training</div><div class="summary-items">';
-      validTraining.forEach(t => {
-        const dur = t.duration ? ` · ${t.duration}min` : '';
-        const rpe = t.rpe ? ` · RPE ${t.rpe}` : '';
-        html += `<span class="summary-chip">${t.type}${dur}${rpe}</span>`;
-      });
-      if (saved.calories_burnt > 0) {
-        html += `<span class="summary-chip">🔥 ~${saved.calories_burnt} kcal burnt</span>`;
-      }
-      html += '</div></div>';
-    }
-  }
-
-  // Water
-  if (saved.nutrition && saved.nutrition.water_litres && saved.nutrition.water_litres > 0) {
-    hasContent = true;
-    html += `<div class="summary-group"><div class="summary-items"><span class="summary-chip">💧 ${saved.nutrition.water_litres.toFixed(1)}L water</span></div></div>`;
-  }
-
-  if (!hasContent) { panel.style.display = 'none'; return; }
-
-  content.innerHTML = html;
-  panel.style.display = 'block';
+  // Now handled entirely by updateRAGLights() reading live form data
+  updateRAGLights();
 }
 
 renderDaySummary();
@@ -1717,11 +2049,13 @@ renderDaySummary();
 // Reload data when date changes
 document.getElementById('checkinDate').addEventListener('change', function() {
   // Reset form fields before loading
-  document.querySelectorAll('input[type=number], input[type=text], textarea').forEach(el => el.value = '');
+  document.querySelectorAll('input[type=number], input[type=text], input[type=time], textarea').forEach(el => el.value = '');
   document.querySelectorAll('input[type=radio]:checked').forEach(el => el.checked = false);
   document.querySelectorAll('input[type=checkbox]').forEach(el => el.checked = false);
   document.getElementById('foodEntries').innerHTML = '';
   document.querySelectorAll('.fluid-input').forEach(el => el.value = '');
+  document.getElementById('sunCloud').value = 'clear';
+  const sunAdv = document.getElementById('sunAdvice'); if (sunAdv) sunAdv.style.display = 'none';
   updateFluidTotal();
   recalcMacros();
   // Remove extra training entries, keep first
