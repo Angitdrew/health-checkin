@@ -259,81 +259,77 @@
     </div>
   </div>
 
-  <!-- BODY MEASUREMENTS (auto-expands on Mondays) -->
+  <!-- BODY MEASUREMENTS -->
   <div class="section has-chart" id="measurementsSection">
-    <div class="section-title"><span class="icon">&#128207;</span> Body Measurements <span class="hint" style="font-weight:normal;font-size:12px;color:var(--dim)" id="measureFreqHint">— weekly/as needed</span></div>
+    <div class="section-title"><span class="icon">&#128207;</span> Body Measurements</div>
     <div class="section-wrap">
       <div class="section-inputs">
-    <div class="row">
-      <div class="field">
-        <div class="label">Weight <span class="unit">kg</span></div>
-        <input type="number" id="weight" step="0.1" placeholder="e.g. 115.0">
+        <div class="row">
+          <div class="field">
+            <div class="label">Weight <span class="unit">kg</span></div>
+            <input type="number" id="weight" step="0.1" placeholder="e.g. 115.0" oninput="updateBMI()">
+          </div>
+          <div class="field">
+            <div class="label">Waist <span class="unit">cm</span></div>
+            <input type="number" id="waist" step="0.5" placeholder="at navel">
+          </div>
+        </div>
+        <div class="row" style="margin-top:6px">
+          <div class="field">
+            <div class="label">Hip <span class="unit">cm</span></div>
+            <input type="number" id="hip" step="0.5" placeholder="widest">
+          </div>
+          <div class="field">
+            <div class="label">Neck <span class="unit">cm</span></div>
+            <input type="number" id="neck" step="0.5" placeholder="thickest" oninput="updateNeckRisk()">
+            <div id="neckRisk" style="font-size:10px;margin-top:3px;display:none"></div>
+          </div>
+        </div>
+        <div class="row" style="margin-top:6px">
+          <div class="field">
+            <div class="label">Fat Mass <span class="unit">kg</span></div>
+            <input type="number" id="fatMass" step="0.1" placeholder="watch/scale">
+          </div>
+          <div class="field">
+            <div class="label">Body Fat %</div>
+            <input type="number" id="bodyFat" step="0.1" placeholder="e.g. 28.5">
+          </div>
+        </div>
+        <div class="row" style="margin-top:6px">
+          <div class="field">
+            <div class="label">Muscle <span class="unit">kg</span></div>
+            <input type="number" id="skeletalMuscle" step="0.1" placeholder="watch/scale">
+          </div>
+          <div class="field">
+            <div class="label">Body Water %</div>
+            <input type="number" id="bodyWater" step="0.1" placeholder="e.g. 52.0">
+          </div>
+        </div>
+        <div class="row" style="margin-top:6px">
+          <div class="field" style="flex:0 0 60px;text-align:center">
+            <div class="label">BMI</div>
+            <div id="bmiDisplay" style="padding:9px 0;font-size:14px;font-weight:600;color:var(--dim)">—</div>
+          </div>
+        </div>
+        <!-- Hidden fields to preserve data compatibility -->
+        <input type="hidden" id="chest" value="">
+        <input type="hidden" id="upperArm" value="">
+        <input type="hidden" id="thigh" value="">
       </div>
-    </div>
-    <div id="weeklyPrompt" style="background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.25);border-radius:8px;padding:10px 14px;margin:14px 0;font-size:13px;color:var(--accent);display:none">
-      It's measurement day! Grab the tape measure and jump on the scales.
-    </div>
-    <span class="measurements-toggle" onclick="toggleMeasurements()" id="measureToggle">Show measurement fields</span>
-    <div class="measurements-hidden" id="measurementsPanel">
-      <div style="font-size:11px;color:var(--dim);margin:12px 0 8px;text-transform:uppercase;letter-spacing:1px;font-weight:600">From Watch / Scale</div>
-      <div class="row">
-        <div class="field">
-          <div class="label">Fat Mass <span class="unit">kg</span></div>
-          <input type="number" id="fatMass" step="0.1" placeholder="from watch/scale">
+      <div class="section-chart" style="flex:2;min-width:0">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <div class="chart-title" id="bodyChartTitle">Body Comp — 30d</div>
+          <input type="range" id="bodyRange" min="0" max="4" value="2" style="width:80px;accent-color:var(--accent)">
         </div>
-        <div class="field">
-          <div class="label">Skeletal Muscle <span class="unit">kg</span></div>
-          <input type="number" id="skeletalMuscle" step="0.1" placeholder="from watch/scale">
+        <svg id="svgBody" viewBox="0 0 400 300" style="width:100%;height:auto"></svg>
+        <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:4px;font-size:9px">
+          <span><span style="display:inline-block;width:8px;height:3px;background:#3b82f6;border-radius:2px;margin-right:2px"></span>Weight</span>
+          <span><span style="display:inline-block;width:8px;height:3px;background:#ef4444;border-radius:2px;margin-right:2px"></span>Fat</span>
+          <span><span style="display:inline-block;width:8px;height:3px;background:#22c55e;border-radius:2px;margin-right:2px"></span>Muscle</span>
+          <span><span style="display:inline-block;width:8px;height:3px;background:#f59e0b;border-radius:2px;margin-right:2px"></span>Waist</span>
+          <span><span style="display:inline-block;width:8px;height:3px;background:#a855f7;border-radius:2px;margin-right:2px"></span>BF%</span>
+          <span><span style="display:inline-block;width:8px;height:3px;background:#ec4899;border-radius:2px;margin-right:2px"></span>BMI</span>
         </div>
-      </div>
-      <div class="row" style="margin-top:8px">
-        <div class="field">
-          <div class="label">Body Fat % <span class="hint">(watch/scale)</span></div>
-          <input type="number" id="bodyFat" step="0.1" placeholder="e.g. 28.5">
-        </div>
-        <div class="field">
-          <div class="label">Body Water % <span class="hint">(if available)</span></div>
-          <input type="number" id="bodyWater" step="0.1" placeholder="e.g. 52.0">
-        </div>
-      </div>
-      <div style="font-size:11px;color:var(--dim);margin:16px 0 8px;text-transform:uppercase;letter-spacing:1px;font-weight:600">Tape Measurements</div>
-      <div class="row">
-        <div class="field">
-          <div class="label">Waist <span class="unit">cm</span></div>
-          <input type="number" id="waist" step="0.5" placeholder="at navel">
-        </div>
-        <div class="field">
-          <div class="label">Hip <span class="unit">cm</span></div>
-          <input type="number" id="hip" step="0.5" placeholder="widest point">
-        </div>
-      </div>
-      <div class="row" style="margin-top:8px">
-        <div class="field">
-          <div class="label">Neck <span class="unit">cm</span></div>
-          <input type="number" id="neck" step="0.5" placeholder="thickest part">
-        </div>
-        <div class="field">
-          <div class="label">Chest <span class="unit">cm</span> <span class="hint">(optional)</span></div>
-          <input type="number" id="chest" step="0.5" placeholder="at nipple line">
-        </div>
-      </div>
-      <div class="row" style="margin-top:8px">
-        <div class="field">
-          <div class="label">Upper Arm <span class="unit">cm</span> <span class="hint">(optional)</span></div>
-          <input type="number" id="upperArm" step="0.5" placeholder="flexed, widest">
-        </div>
-        <div class="field">
-          <div class="label">Thigh <span class="unit">cm</span> <span class="hint">(optional)</span></div>
-          <input type="number" id="thigh" step="0.5" placeholder="midway">
-        </div>
-      </div>
-    </div>
-      </div>
-      <div class="section-chart" id="chartVitals">
-        <div class="chart-title">Weight — last 30 entries</div>
-        <div class="chart-stat" id="chartWeightVal">—</div>
-        <div class="chart-sub" id="chartWeightDelta"></div>
-        <svg id="svgWeight" viewBox="0 0 280 70" preserveAspectRatio="none"></svg>
       </div>
     </div>
   </div>
@@ -750,13 +746,11 @@ document.querySelectorAll('.section-title').forEach(title => {
 const today = new Date();
 document.getElementById('checkinDate').value = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
 
-// Auto-expand measurements on Mondays (measurement day)
+// Monday reminder (measurement day)
 const dayOfWeek = today.getDay(); // 0=Sun, 1=Mon
 if (dayOfWeek === 1) {
-  document.getElementById('measurementsPanel').classList.add('show');
-  document.getElementById('weeklyPrompt').style.display = 'block';
-  document.getElementById('measureToggle').textContent = 'Hide measurement fields';
-  document.getElementById('measureFreqHint').textContent = '— Monday = Measurement Day!';
+  const measSection = document.getElementById('measurementsSection');
+  if (measSection) measSection.style.borderColor = 'rgba(59,130,246,0.4)';
 }
 
 // ===== FOOD DATABASE =====
@@ -1145,13 +1139,6 @@ function addTraining() {
   container.appendChild(entry);
 }
 
-function toggleMeasurements() {
-  const panel = document.getElementById('measurementsPanel');
-  const link = document.querySelector('.measurements-toggle');
-  panel.classList.toggle('show');
-  link.textContent = panel.classList.contains('show') ? 'Hide measurement fields' : 'Show measurement fields';
-}
-
 function getRadioValue(name) {
   const el = document.querySelector(`input[name="${name}"]:checked`);
   return el ? el.value : null;
@@ -1491,6 +1478,7 @@ function collectData() {
       waist_cm: parseFloat(document.getElementById('waist').value) || null,
       hip_cm: parseFloat(document.getElementById('hip').value) || null,
       neck_cm: parseFloat(document.getElementById('neck').value) || null,
+      bmi: calcBMI(parseFloat(document.getElementById('weight').value) || 0),
       chest_cm: parseFloat(document.getElementById('chest').value) || null,
       upper_arm_cm: parseFloat(document.getElementById('upperArm').value) || null,
       thigh_cm: parseFloat(document.getElementById('thigh').value) || null
@@ -1732,7 +1720,7 @@ function autoAssessGoals(goals, dateStr) {
     let result = null;
 
     // Daily nutrition/health goals
-    if (g.auto === 'protein' && pro > 0)    result = pro >= 160 && pro <= 220;
+    if (g.auto === 'protein' && pro > 0)    result = pro >= 160;
     if (g.auto === 'calories' && cal > 0)   result = cal >= 1800 && cal <= 2200;
     if (g.auto === 'carbs' && carb > 0)     result = carb <= 30;
     if (g.auto === 'water' && water > 0)    result = water >= getWaterTarget().min;
@@ -1974,6 +1962,48 @@ const TARGETS = {
 
 // Calorie burn rates per minute by activity (at ~115kg bodyweight)
 // Base rates are for moderate intensity; RPE scales them
+const USER_HEIGHT_M = 1.77; // height in metres for BMI calculation
+function calcBMI(weightKg) { return weightKg > 0 ? Math.round(weightKg / (USER_HEIGHT_M * USER_HEIGHT_M) * 10) / 10 : null; }
+function updateBMI() {
+  const w = parseFloat(document.getElementById('weight').value) || 0;
+  const el = document.getElementById('bmiDisplay');
+  if (!el) return;
+  const bmi = calcBMI(w);
+  if (!bmi) { el.textContent = '—'; el.style.color = 'var(--dim)'; return; }
+  el.textContent = bmi;
+  el.style.color = bmi < 18.5 ? 'var(--amber)' : bmi < 25 ? 'var(--green)' : bmi < 30 ? 'var(--amber)' : 'var(--red)';
+}
+
+function updateNeckRisk() {
+  const el = document.getElementById('neckRisk');
+  if (!el) return;
+  const neck = parseFloat(document.getElementById('neck').value) || 0;
+  if (!neck) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  // BMI as additional risk factor
+  const w = parseFloat(document.getElementById('weight').value) || 0;
+  const bmi = calcBMI(w);
+  // Sleep apnea risk thresholds (men): <38 low, 38-40 mild, 40-43 moderate, >43 high
+  // BJJ/strength athletes often have thicker necks from muscle, so note that
+  let risk, color, note;
+  if (neck >= 43) {
+    risk = 'HIGH'; color = 'var(--red)';
+    note = 'Strong OSA risk factor — discuss with GP if snoring/fatigue present';
+  } else if (neck >= 40) {
+    risk = 'MODERATE'; color = 'var(--amber)';
+    note = 'Elevated OSA risk — monitor for snoring, daytime fatigue';
+  } else if (neck >= 38) {
+    risk = 'MILD'; color = 'var(--amber)';
+    note = 'Slightly elevated — keep monitoring';
+  } else {
+    risk = 'LOW'; color = 'var(--green)';
+    note = 'Within normal range';
+  }
+  // Additional risk if BMI > 30
+  const bmiNote = bmi && bmi >= 30 ? ' · BMI >30 adds risk' : '';
+  el.innerHTML = `<span style="font-weight:600;color:${color}">&#9679; Sleep Apnea: ${risk}</span><br><span style="color:var(--dim)">${note}${bmiNote}</span>`;
+}
+
 const BURN_RATES = {
   bjj:      12.0,   // grappling — high output
   boxing:   11.0,   // heavy bag + sparring
@@ -2293,6 +2323,98 @@ function renderVitalsChart() {
   svg.innerHTML = html;
 }
 
+function renderBodyChart() {
+  const svg = document.getElementById('svgBody');
+  if (!svg || !window._bodyAllData) return;
+
+  const rangeSteps = [7, 14, 30, 90, 180];
+  const rangeVal = parseInt(document.getElementById('bodyRange')?.value) || 2;
+  const days = rangeSteps[rangeVal] || 30;
+  const labels = { 7:'7d', 14:'14d', 30:'30d', 90:'3m', 180:'6m' };
+  const btEl = document.getElementById('bodyChartTitle');
+  if (btEl) btEl.textContent = `Body Comp — ${labels[days] || days + 'd'}`;
+
+  const entries = window._bodyAllData.slice(-days);
+
+  const series = [
+    { key: c => c.vitals?.weight, color: '#3b82f6', label: 'Wt', unit: 'kg' },
+    { key: c => c.measurements?.fat_mass_kg, color: '#ef4444', label: 'Fat', unit: 'kg' },
+    { key: c => c.measurements?.skeletal_muscle_kg, color: '#22c55e', label: 'Musc', unit: 'kg' },
+    { key: c => c.measurements?.waist_cm, color: '#f59e0b', label: 'Waist', unit: 'cm' },
+    { key: c => c.measurements?.body_fat_pct, color: '#a855f7', label: 'BF%', unit: '%' },
+    { key: c => c.measurements?.bmi || (c.vitals?.weight ? calcBMI(c.vitals.weight) : null), color: '#ec4899', label: 'BMI', unit: '' }
+  ];
+
+  // Check if any data exists
+  let hasAny = false;
+  series.forEach(s => { entries.forEach(c => { if (s.key(c)) hasAny = true; }); });
+  if (!hasAny) { svg.innerHTML = ''; return; }
+
+  const W = 400, H = 300, pad = 8, padR = 30, padT = 14, padB = 18;
+  const chartW = W - pad - padR, chartH = H - padT - padB;
+  const n = entries.length;
+  const step = n > 1 ? chartW / (n - 1) : 0;
+
+  let html = '';
+
+  // Gridlines (no Y labels since each series has own scale)
+  for (let i = 0; i <= 4; i++) {
+    const y = padT + (chartH / 4) * i;
+    html += `<line x1="${pad}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="var(--border)" stroke-width="0.5" opacity="0.2"/>`;
+  }
+
+  // Date labels
+  const labelEvery = n > 60 ? 10 : n > 30 ? 5 : n > 15 ? 3 : n > 8 ? 2 : 1;
+  entries.forEach((c, i) => {
+    if (i % labelEvery !== 0 && i !== n - 1) return;
+    const x = pad + i * step;
+    const d = c.date ? c.date.slice(5) : '';
+    html += `<text x="${x}" y="${H-2}" text-anchor="middle" font-size="7" fill="var(--dim)">${d}</text>`;
+  });
+
+  // Draw each series normalized to its own min/max range
+  series.forEach(s => {
+    const vals = entries.map(c => s.key(c)).filter(v => v);
+    if (vals.length < 1) return;
+    const sMin = Math.min(...vals);
+    const sMax = Math.max(...vals);
+    const sRange = sMax - sMin || 1;
+    const sPad = sRange * 0.15;
+
+    function yPos(v) {
+      return padT + chartH - ((v - (sMin - sPad)) / (sRange + sPad * 2)) * chartH;
+    }
+
+    const pts = [];
+    entries.forEach((c, i) => {
+      const v = s.key(c);
+      if (!v) return;
+      pts.push({ x: pad + i * step, y: yPos(v), v });
+    });
+
+    if (pts.length >= 2) {
+      html += `<polyline points="${pts.map(p=>`${p.x},${p.y}`).join(' ')}" fill="none" stroke="${s.color}" stroke-width="1.5" stroke-linejoin="round" opacity="0.85"/>`;
+    }
+    const showEvery = n > 30 ? 7 : n > 14 ? 3 : 1;
+    pts.forEach((p, idx) => {
+      html += `<circle cx="${p.x}" cy="${p.y}" r="${n > 30 ? 1.5 : 2.5}" fill="${s.color}"/>`;
+      if (idx === pts.length - 1 || idx % showEvery === 0) {
+        const dispV = Number.isInteger(p.v) ? p.v : p.v.toFixed(1);
+        html += `<text x="${p.x}" y="${p.y - 5}" text-anchor="middle" font-size="7" font-weight="600" fill="${s.color}">${dispV}</text>`;
+      }
+    });
+
+    // Latest value label on right edge
+    const last = pts[pts.length - 1];
+    if (last) {
+      const dispV = Number.isInteger(last.v) ? last.v : last.v.toFixed(1);
+      html += `<text x="${W - padR + 2}" y="${last.y + 3}" font-size="7" font-weight="600" fill="${s.color}" text-anchor="start">${s.label}</text>`;
+    }
+  });
+
+  svg.innerHTML = html;
+}
+
 function renderDashboards() {
   const all = JSON.parse(localStorage.getItem('healthCheckins') || '[]');
   if (all.length === 0) {
@@ -2398,19 +2520,12 @@ function renderDashboards() {
     });
   }
 
-  // ----- VITALS -----
-  const weights = last30.map(c => c.vitals?.weight).filter(w => w);
-  if (weights.length > 0) {
-    const latest = weights[weights.length-1];
-    const wvEl = document.getElementById('chartWeightVal');
-    if (wvEl) wvEl.textContent = latest.toFixed(1) + ' kg';
-    if (weights.length > 1) {
-      const delta = latest - weights[0];
-      const el = document.getElementById('chartWeightDelta');
-      if (el) { el.textContent = (delta > 0 ? '+' : '') + delta.toFixed(1) + ' kg over ' + weights.length + ' entries'; el.style.color = delta > 0 ? 'var(--red)' : 'var(--green)'; }
-    }
-    sparkline('svgWeight', last30.map(c => c.vitals?.weight), '#3b82f6');
-  }
+  // ----- BODY COMPOSITION CHART -----
+  window._bodyAllData = upTo;
+  renderBodyChart();
+  const bodyRangeEl = document.getElementById('bodyRange');
+  if (bodyRangeEl) bodyRangeEl.addEventListener('input', renderBodyChart);
+
   // Combined BP & HR chart — fixed Y axis 50-150, slicer-controlled
   window._vitalsAllData = upTo;
   renderVitalsChart();
@@ -2537,6 +2652,7 @@ function loadTodayData() {
   // Vitals
   if (saved.vitals) {
     setVal('weight', saved.vitals.weight);
+    updateBMI();
     setVal('bpSys', saved.vitals.bp_systolic);
     setVal('bpDia', saved.vitals.bp_diastolic);
     setVal('restHR', saved.vitals.resting_hr);
@@ -2626,6 +2742,7 @@ function loadTodayData() {
     setVal('waist', saved.measurements.waist_cm);
     setVal('hip', saved.measurements.hip_cm);
     setVal('neck', saved.measurements.neck_cm);
+    updateNeckRisk();
     setVal('chest', saved.measurements.chest_cm);
     setVal('upperArm', saved.measurements.upper_arm_cm);
     setVal('thigh', saved.measurements.thigh_cm);
