@@ -114,6 +114,20 @@
   .fluid-cell input:focus{border-color:var(--accent);outline:none}
   .fluid-total-bar{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:13px}
   .fluid-total-bar .fluid-litres{font-size:20px;font-weight:700;color:var(--accent)}
+
+  /* Daily target bars */
+  .target-row{margin-bottom:14px}
+  .target-row:last-child{margin-bottom:4px}
+  .target-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px}
+  .target-label{font-size:10px;color:var(--dim);font-weight:600;text-transform:uppercase;letter-spacing:0.3px}
+  .target-value{font-size:12px;font-weight:700}
+  .target-track{position:relative;height:16px;background:rgba(239,68,68,0.12);border-radius:8px;overflow:hidden}
+  .target-zone{position:absolute;top:0;height:100%;background:rgba(34,197,94,0.18);border-left:2px solid var(--green);border-right:2px solid var(--green)}
+  .target-fill{position:absolute;top:0;left:0;height:100%;border-radius:8px 0 0 8px;transition:width 0.3s ease, background 0.3s ease;opacity:0.5}
+  .target-limits{display:flex;justify-content:space-between;font-size:8px;color:var(--dim);margin-top:1px;padding:0 2px}
+  .target-over{font-size:9px;color:var(--red);font-weight:600;margin-left:4px}
+  .target-under{font-size:9px;color:var(--amber);font-weight:600;margin-left:4px}
+  .target-good{font-size:9px;color:var(--green);font-weight:600;margin-left:4px}
 </style>
 </head>
 <body>
@@ -201,6 +215,9 @@
         <div class="chart-sub">avg hours</div>
         <svg id="svgSleep" viewBox="0 0 280 70" preserveAspectRatio="none"></svg>
         <div class="chart-sub" id="chartSleepQual" style="margin-top:6px"></div>
+        <div style="width:100%;margin-top:8px">
+          <div class="target-row" id="targetSleep"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -420,6 +437,14 @@
             <span class="chart-stat" id="chartProAvg" style="font-size:18px">—</span>
             <span class="chart-sub">g/day</span>
           </div>
+        </div>
+        <div style="width:100%;margin-top:10px">
+          <div class="chart-title" style="margin-bottom:6px">&#127919; Today vs Targets</div>
+          <div class="target-row" id="targetCal"></div>
+          <div class="target-row" id="targetPro"></div>
+          <div class="target-row" id="targetFat"></div>
+          <div class="target-row" id="targetCarb"></div>
+          <div class="target-row" id="targetWater"></div>
         </div>
       </div>
     </div>
@@ -896,6 +921,7 @@ function recalcMacros() {
   // Color code calories
   const calEl = document.getElementById('totalCal');
   calEl.style.color = tCal===0?'var(--text)': tCal<1500?'var(--amber)': tCal>3000?'var(--red)':'var(--green)';
+  if (typeof updateAllTargets === 'function') updateAllTargets();
 }
 
 // Add first food entry on load
@@ -1079,17 +1105,10 @@ function submitCheckin() {
 
   renderDashboards();
 
-  // Replace page with "done" screen after save
   setTimeout(() => {
-    document.body.innerHTML = `
-      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f1117;color:#e4e4e7;text-align:center;padding:20px">
-        <div style="font-size:72px;margin-bottom:16px">&#10003;</div>
-        <div style="font-size:22px;font-weight:600;margin-bottom:8px;color:#22c55e">Check-in Saved!</div>
-        <div style="font-size:14px;color:#9ca3af">${data.date} &mdash; ${allCheckins.length} total check-in${allCheckins.length !== 1 ? 's' : ''}</div>
-        <div style="font-size:13px;color:#9ca3af;margin-top:24px">You can close this tab now.</div>
-      </div>`;
-    window.close();
-  }, 600);
+    document.getElementById('submitBtn').disabled = false;
+    document.getElementById('submitBtn').textContent = 'Save Check-in';
+  }, 3000);
 }
 
 function toggleHistory() {
@@ -1119,6 +1138,62 @@ function toggleHistory() {
   }
   panel.style.display = 'block';
 }
+
+// ===== DAILY TARGETS =====
+const TARGETS = {
+  cal:   { label:'Calories',  unit:'kcal', min:1800, max:2200, cap:3500 },
+  pro:   { label:'Protein',   unit:'g',    min:160,  max:220,  cap:300 },
+  fat:   { label:'Fat',       unit:'g',    min:120,  max:160,  cap:250 },
+  carb:  { label:'Carbs',     unit:'g',    min:0,    max:30,   cap:60,  invertColor:true },
+  water: { label:'Water',     unit:'L',    min:3.0,  max:4.0,  cap:6.0 },
+  sleep: { label:'Sleep',     unit:'hr',   min:7.0,  max:9.0,  cap:12.0 }
+};
+
+function renderTargetBar(containerId, key, value) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  const t = TARGETS[key];
+  const pct = Math.min(value / t.cap * 100, 100);
+  const zonePctL = (t.min / t.cap) * 100;
+  const zonePctR = (t.max / t.cap) * 100;
+  const zoneW = zonePctR - zonePctL;
+
+  let fillColor, statusHTML;
+  if (value === 0 || value === null) {
+    fillColor = 'var(--surface)'; statusHTML = '';
+  } else if (t.invertColor) {
+    if (value <= t.max) { fillColor = 'var(--green)'; statusHTML = '<span class="target-good">&#10003;</span>'; }
+    else { fillColor = 'var(--red)'; statusHTML = '<span class="target-over">OVER</span>'; }
+  } else {
+    if (value < t.min) { fillColor = 'var(--amber)'; statusHTML = '<span class="target-under">LOW</span>'; }
+    else if (value <= t.max) { fillColor = 'var(--green)'; statusHTML = '<span class="target-good">&#10003;</span>'; }
+    else { fillColor = 'var(--red)'; statusHTML = '<span class="target-over">OVER</span>'; }
+  }
+  const displayVal = Number.isInteger(value) ? value : value.toFixed(1);
+  el.innerHTML = `
+    <div class="target-header">
+      <span class="target-label">${t.label}</span>
+      <span><span class="target-value" style="color:${value>0?fillColor:'var(--text)'}">${displayVal}</span> <span style="font-size:10px;color:var(--dim)">${t.unit}</span>${statusHTML}</span>
+    </div>
+    <div class="target-track">
+      <div class="target-zone" style="left:${zonePctL}%;width:${zoneW}%"></div>
+      <div class="target-fill" style="width:${pct}%;background:${fillColor}"></div>
+    </div>
+    <div class="target-limits"><span>${t.min}</span><span style="color:var(--green)">${t.min}–${t.max}</span><span>${t.cap}</span></div>
+  `;
+}
+
+function updateAllTargets() {
+  renderTargetBar('targetCal', 'cal', parseInt(document.getElementById('totalCal').textContent) || 0);
+  renderTargetBar('targetPro', 'pro', parseInt(document.getElementById('totalPro').textContent) || 0);
+  renderTargetBar('targetFat', 'fat', parseInt(document.getElementById('totalFat').textContent) || 0);
+  renderTargetBar('targetCarb', 'carb', parseInt(document.getElementById('totalCarb').textContent) || 0);
+  renderTargetBar('targetWater', 'water', parseFloat(document.getElementById('waterIntake').value) || 0);
+  renderTargetBar('targetSleep', 'sleep', parseFloat(document.getElementById('sleepHours').value) || 0);
+}
+
+document.getElementById('sleepHours').addEventListener('input', updateAllTargets);
+setTimeout(updateAllTargets, 100);
 
 // ===== DASHBOARD SPARKLINES =====
 function renderDashboards() {
@@ -1322,6 +1397,7 @@ function updateFluidTotal() {
   document.getElementById('fluidLitres').textContent = (total / 1000).toFixed(1);
   document.getElementById('fluidMl').textContent = total;
   document.getElementById('waterIntake').value = (total / 1000).toFixed(2);
+  if (typeof updateAllTargets === 'function') updateAllTargets();
 }
 
 function getFluidBalance() {
@@ -1334,6 +1410,147 @@ function getFluidBalance() {
 }
 
 buildFluidGrid();
+
+// ===== LOAD TODAY'S SAVED DATA =====
+function loadTodayData() {
+  const today = document.getElementById('checkinDate').value;
+  if (!today) return;
+  const allCheckins = JSON.parse(localStorage.getItem('healthCheckins') || '[]');
+  const saved = allCheckins.find(c => c.date === today);
+  if (!saved) return;
+
+  // Helper: set input value
+  function setVal(id, val) { if (val != null) document.getElementById(id).value = val; }
+  // Helper: set radio
+  function setRadio(name, val) { if (val != null) { const el = document.querySelector(`input[name="${name}"][value="${val}"]`); if (el) el.checked = true; } }
+  // Helper: set checkbox
+  function setCheck(id, val) { if (val != null) document.getElementById(id).checked = val; }
+
+  // Vitals
+  if (saved.vitals) {
+    setVal('weight', saved.vitals.weight);
+    setVal('bpSys', saved.vitals.bp_systolic);
+    setVal('bpDia', saved.vitals.bp_diastolic);
+    setVal('restHR', saved.vitals.resting_hr);
+  }
+  // Sleep
+  if (saved.sleep) {
+    setVal('sleepHours', saved.sleep.hours);
+    setRadio('sleepQuality', saved.sleep.quality);
+    setRadio('madWorn', saved.sleep.mad_worn);
+  }
+  // Cardiac
+  if (saved.cardiac) {
+    setRadio('afSymptoms', saved.cardiac.af_symptoms);
+    setRadio('palpitations', saved.cardiac.palpitations);
+    setRadio('ecgTaken', saved.cardiac.ecg_taken);
+  }
+  // Wellbeing
+  if (saved.wellbeing) {
+    setRadio('raFlare', saved.wellbeing.ra_flare);
+    setVal('morningStiffness', saved.wellbeing.morning_stiffness_min);
+    setRadio('energy', saved.wellbeing.energy);
+    setRadio('stress', saved.wellbeing.stress);
+    setRadio('bowel', saved.wellbeing.bowel);
+  }
+  // Training
+  if (saved.training && saved.training.length > 0) {
+    saved.training.forEach((t, i) => {
+      if (i > 0) addTraining();
+      const entries = document.querySelectorAll('#trainingEntries .training-entry');
+      const entry = entries[i];
+      if (!entry) return;
+      if (t.type) entry.querySelector('.trainingType').value = t.type;
+      if (t.duration) entry.querySelector('.trainingDuration').value = t.duration;
+      if (t.rpe) setRadio('rpe' + (i+1), t.rpe);
+    });
+  }
+  // Nutrition — food log
+  if (saved.nutrition && saved.nutrition.food_log && saved.nutrition.food_log.length > 0) {
+    // Remove the default empty entry if present
+    document.getElementById('foodEntries').innerHTML = '';
+    saved.nutrition.food_log.forEach(item => {
+      addFoodEntry();
+      const entries = document.querySelectorAll('#foodEntries .training-entry');
+      const entry = entries[entries.length - 1];
+      const foodSel = entry.querySelector('.foodSelect');
+      // Find matching food in DB by name
+      const dbIdx = foodDB.findIndex(f => f.name === item.name);
+      if (dbIdx >= 0) {
+        foodSel.value = dbIdx;
+        onFoodSelect(foodSel);
+        // Set serving
+        const food = foodDB[dbIdx];
+        if (!food.name.startsWith('Custom')) {
+          const servSel = entry.querySelector('.servingSelect');
+          const sIdx = food.servings.findIndex(s => s.label === item.serving);
+          if (sIdx >= 0) servSel.value = sIdx;
+        }
+      }
+      if (item.qty) entry.querySelector('.foodQty').value = item.qty;
+    });
+    recalcMacros();
+  }
+  // Nutrition — fluid balance
+  if (saved.nutrition && saved.nutrition.fluid_balance && saved.nutrition.fluid_balance.length > 0) {
+    saved.nutrition.fluid_balance.forEach(fb => {
+      const inp = document.querySelector(`.fluid-input[data-time="${fb.time}"]`);
+      if (inp) inp.value = fb.ml;
+    });
+    updateFluidTotal();
+  }
+  // Nutrition — food quality
+  if (saved.nutrition) setRadio('foodQuality', saved.nutrition.food_quality);
+  // Compliance
+  if (saved.compliance) {
+    setCheck('suppsTaken', saved.compliance.supplements_taken);
+    setCheck('probioticTaken', saved.compliance.probiotic_taken);
+    setCheck('electrolytesTaken', saved.compliance.electrolytes_taken);
+    setCheck('coloxylTaken', saved.compliance.coloxyl_taken);
+    setCheck('k2Taken', saved.compliance.k2_source_taken);
+  }
+  // Measurements
+  if (saved.measurements) {
+    setVal('fatMass', saved.measurements.fat_mass_kg);
+    setVal('skeletalMuscle', saved.measurements.skeletal_muscle_kg);
+    setVal('bodyFat', saved.measurements.body_fat_pct);
+    setVal('bodyWater', saved.measurements.body_water_pct);
+    setVal('waist', saved.measurements.waist_cm);
+    setVal('hip', saved.measurements.hip_cm);
+    setVal('neck', saved.measurements.neck_cm);
+    setVal('chest', saved.measurements.chest_cm);
+    setVal('upperArm', saved.measurements.upper_arm_cm);
+    setVal('thigh', saved.measurements.thigh_cm);
+  }
+  // Notes
+  if (saved.notes) document.getElementById('notes').value = saved.notes;
+}
+
+loadTodayData();
+
+// Reload data when date changes
+document.getElementById('checkinDate').addEventListener('change', function() {
+  // Reset form fields before loading
+  document.querySelectorAll('input[type=number], input[type=text], textarea').forEach(el => el.value = '');
+  document.querySelectorAll('input[type=radio]:checked').forEach(el => el.checked = false);
+  document.querySelectorAll('input[type=checkbox]').forEach(el => el.checked = false);
+  document.getElementById('foodEntries').innerHTML = '';
+  document.querySelectorAll('.fluid-input').forEach(el => el.value = '');
+  updateFluidTotal();
+  recalcMacros();
+  // Remove extra training entries, keep first
+  const trainingEntries = document.querySelectorAll('#trainingEntries .training-entry');
+  trainingEntries.forEach((el, i) => { if (i > 0) el.remove(); });
+  const firstTraining = document.querySelector('#trainingEntries .training-entry');
+  if (firstTraining) {
+    firstTraining.querySelector('.trainingType').value = '';
+    firstTraining.querySelector('.trainingDuration').value = '';
+    const rpe = firstTraining.querySelector('input[type=radio]:checked');
+    if (rpe) rpe.checked = false;
+  }
+  loadTodayData();
+  renderDashboards();
+});
 
 // Render on load
 renderDashboards();
