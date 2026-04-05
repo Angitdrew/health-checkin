@@ -174,6 +174,41 @@
   .day-summary{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px}
   .day-summary-title{font-size:13px;font-weight:600;margin-bottom:10px;display:flex;align-items:center;gap:6px}
   .day-summary .summary-empty{font-size:12px;color:var(--dim);font-style:italic}
+  /* PROJECTION SECTION */
+  .proj-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px}
+  .proj-card-title{font-size:13px;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+  .proj-controls{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
+  .proj-controls label{font-size:11px;color:var(--dim)}
+  .proj-controls input,.proj-controls select{background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 8px;font-size:12px}
+  .proj-controls input[type=number]{width:72px}
+  .proj-fg{display:flex;flex-direction:column;gap:2px}
+  .proj-metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:12px}
+  .proj-mbox{background:var(--surface2);border-radius:8px;padding:10px;text-align:center}
+  .proj-mbox .proj-ml{font-size:10px;color:var(--dim);margin-bottom:3px}
+  .proj-mbox .proj-mv{font-size:18px;font-weight:700}
+  .proj-mbox .proj-md{font-size:11px;margin-top:2px}
+  .proj-pos{color:var(--green)}.proj-neg{color:var(--red)}
+  .proj-tab-bar{display:flex;gap:4px;margin-bottom:12px}
+  .proj-tab{padding:5px 12px;border-radius:6px;font-size:11px;cursor:pointer;background:var(--surface2);border:1px solid var(--border);color:var(--dim);transition:all 0.2s}
+  .proj-tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .proj-legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;font-size:11px}
+  .proj-legend-item{display:flex;align-items:center;gap:4px}
+  .proj-legend-dot{width:8px;height:8px;border-radius:50%}
+  .proj-assumptions{font-size:11px;color:var(--dim);line-height:1.6}
+  .proj-assumptions strong{color:var(--text)}
+  .proj-risk-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .proj-risk-card{background:var(--surface2);border-radius:8px;padding:10px;position:relative;overflow:hidden}
+  .proj-risk-card .proj-ri{font-size:16px;margin-bottom:4px}
+  .proj-risk-card .proj-rl{font-size:11px;font-weight:600;margin-bottom:6px}
+  .proj-risk-card .proj-rbt{height:5px;background:rgba(255,255,255,0.08);border-radius:3px;margin-bottom:5px}
+  .proj-risk-card .proj-rbf{height:100%;border-radius:3px;transition:width 0.6s ease}
+  .proj-risk-card .proj-rd{font-size:10px;color:var(--dim);line-height:1.4}
+  .proj-risk-card .proj-rp{font-size:22px;font-weight:800;margin-bottom:1px}
+  .proj-risk-card .proj-rdir{font-size:9px;text-transform:uppercase;letter-spacing:0.5px;color:var(--green)}
+  .proj-risk-card .proj-rs{font-size:8px;color:var(--dim);margin-top:4px;font-style:italic}
+  .proj-bh{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;grid-column:1/-1;margin-top:4px}
+  .proj-disclaimer{font-size:10px;color:var(--dim);padding:10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;line-height:1.5;margin-top:8px}
+  @media(max-width:600px){.proj-controls{flex-direction:column}.proj-metric-grid{grid-template-columns:1fr 1fr}.proj-risk-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -674,6 +709,63 @@
     <div class="toggle-row">
       <span class="toggle-label">Vitamin K2 source today <span style="color:var(--dim);font-size:11px">(fermented milk, eggs, natto, cheese, or supplement)</span></span>
       <label class="toggle"><input type="checkbox" id="k2Taken"><span class="slider"></span></label>
+    </div>
+  </div>
+
+  <!-- PROJECTION -->
+  <div class="section">
+    <div class="section-title"><span class="icon">&#128200;</span> Goal Adherence Projection</div>
+
+    <div class="proj-card">
+      <div class="proj-card-title">Baseline — edit to match your current readings</div>
+      <div class="proj-controls" id="projBaselineControls">
+        <div class="proj-fg"><label>Weight (kg)</label><input type="number" id="projStartWeight" value="112" step="0.1"></div>
+        <div class="proj-fg"><label>Waist (cm)</label><input type="number" id="projStartWaist" value="118" step="0.1"></div>
+        <div class="proj-fg"><label>Body Fat %</label><input type="number" id="projStartBF" value="32" step="0.1"></div>
+        <div class="proj-fg"><label>Muscle (kg)</label><input type="number" id="projStartMuscle" value="38" step="0.1"></div>
+        <div class="proj-fg"><label>Neck (cm)</label><input type="number" id="projStartNeck" value="42" step="0.1"></div>
+        <div class="proj-fg"><label>Adherence %</label><input type="number" id="projAdherence" value="85" min="50" max="100" step="5"></div>
+        <div class="proj-fg"><label>Timeframe</label>
+          <select id="projTimeframe">
+            <option value="13">3 months</option>
+            <option value="26" selected>6 months</option>
+            <option value="52">12 months</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="proj-card">
+      <div class="proj-card-title">Projected Outcome</div>
+      <div class="proj-metric-grid" id="projOutcomeGrid"></div>
+    </div>
+
+    <div class="proj-card">
+      <div class="proj-card-title">Projection Timeline</div>
+      <div class="proj-tab-bar" id="projTabBar">
+        <div class="proj-tab active" data-chart="weight">Weight &amp; BMI</div>
+        <div class="proj-tab" data-chart="composition">Body Composition</div>
+        <div class="proj-tab" data-chart="waist">Waist &amp; Neck</div>
+      </div>
+      <div id="projActualStatus" style="font-size:10px;color:var(--dim);margin-bottom:6px"></div>
+      <canvas id="projMainChart" height="280"></canvas>
+      <div class="proj-legend" id="projChartLegend"></div>
+    </div>
+
+    <div class="proj-card">
+      <div class="proj-card-title">Projected Health Benefits</div>
+      <div class="proj-risk-grid" id="projHealthBenefits"></div>
+    </div>
+
+    <div class="proj-card">
+      <div class="proj-card-title">Assumptions</div>
+      <div class="proj-assumptions" id="projAssumptions"></div>
+    </div>
+
+    <div class="proj-disclaimer">
+      <strong>Disclaimer:</strong> Projections are estimates based on energy balance models and population-level meta-analyses.
+      Individual results vary. Risk reduction percentages represent population averages. Not medical advice — consult your GP,
+      rheumatologist, or cardiologist for personalised guidance.
     </div>
   </div>
 
@@ -3063,6 +3155,202 @@ async function syncFromGitHub() {
     setSyncStatus('Syncing...', 'var(--dim)');
     try { await syncFromGitHub(); } catch {}
   }
+})();
+
+// ===== PROJECTION MODULE (isolated) =====
+(function() {
+  const PROJ_HEIGHT_M = 1.77;
+  const PROJ_SESSIONS = [
+    { type:'bjj', freq:3, dur:60, burn:12 },{ type:'boxing', freq:2, dur:60, burn:11 },
+    { type:'weights', freq:1, dur:45, burn:7 },{ type:'walk_s', freq:5, dur:10, burn:5 },
+    { type:'walk_l', freq:2, dur:20, burn:5 },{ type:'airbike', freq:5, dur:10, burn:10 },
+    { type:'bands', freq:5, dur:10, burn:4 },{ type:'exball', freq:5, dur:10, burn:4.5 },
+    { type:'skip', freq:3, dur:2, burn:12 },{ type:'shadow', freq:3, dur:4, burn:9 },
+    { type:'bag', freq:3, dur:6, burn:10 },{ type:'yard', freq:1, dur:60, burn:5.5 }
+  ];
+  const projColors = { weight:'#3b82f6', bmi:'#8b5cf6', fatMass:'#ef4444', muscle:'#06b6d4', bf:'#f59e0b', waist:'#ec4899', neck:'#f97316' };
+  let projCurrentChart = 'weight';
+
+  function projWeeklyBurn() { return PROJ_SESSIONS.reduce((s,x) => s + x.freq*x.dur*x.burn, 0); }
+  function projBMR(w,h,a) { return 10*w + 6.25*h - 5*a + 5; }
+
+  function projRun() {
+    const gv = id => parseFloat(document.getElementById(id).value) || 0;
+    const sw = gv('projStartWeight')||112, swa = gv('projStartWaist')||118, sbf = gv('projStartBF')||32;
+    const sm = gv('projStartMuscle')||38, sn = gv('projStartNeck')||42;
+    const adh = (gv('projAdherence')||85)/100;
+    const weeks = parseInt(document.getElementById('projTimeframe').value)||26;
+    const weBurn = projWeeklyBurn()*adh, deBurn = weBurn/7, hCm = PROJ_HEIGHT_M*100;
+    let w=sw, fm=w*(sbf/100), lm=w-fm, mu=sm, wa=swa, nk=sn;
+    const data=[{week:0,weight:w,fatMass:fm,leanMass:lm,muscle:mu,waist:wa,neck:nk,bmi:Math.round(w/(PROJ_HEIGHT_M*PROJ_HEIGHT_M)*10)/10,bf:sbf}];
+    for(let i=1;i<=weeks;i++){
+      const bmr=projBMR(w,hCm,40), tdee=bmr+bmr*0.25+deBurn;
+      const calIn=2000+(1-adh)*300, deficit=(tdee-calIn)*7;
+      let wl=0; if(i<=2)wl=1; else if(i===3)wl=0.5;
+      const ewc=deficit/7700+wl;
+      const mgr=(w>100?0.08:w>90?0.06:0.04)*adh;
+      fm=Math.max(fm-ewc*0.85,w*0.05); lm=lm-ewc*0.05+mgr; mu+=mgr*0.7; w=fm+lm;
+      const flfs=(sw*sbf/100)-fm; wa=swa-flfs/1.3; nk=sn-flfs/8;
+      data.push({week:i,weight:Math.round(w*10)/10,fatMass:Math.round(fm*10)/10,leanMass:Math.round(lm*10)/10,muscle:Math.round(mu*10)/10,waist:Math.round(wa*10)/10,neck:Math.round(nk*10)/10,bmi:Math.round(w/(PROJ_HEIGHT_M*PROJ_HEIGHT_M)*10)/10,bf:Math.round(fm/w*1000)/10});
+    }
+    return {data,dailyExBurn:Math.round(deBurn),weeklyExBurn:Math.round(weBurn)};
+  }
+
+  function projGetActuals() {
+    const ci=JSON.parse(localStorage.getItem('healthCheckins')||'[]');
+    if(!ci.length)return[];
+    const s=[...ci].sort((a,b)=>a.date.localeCompare(b.date));
+    const sd=new Date(s[0].date);
+    return s.map(c=>{
+      const d=new Date(c.date),wk=(d-sd)/(1000*60*60*24*7);
+      const wt=c.vitals?.weight||null, bmi=wt?Math.round(wt/(PROJ_HEIGHT_M*PROJ_HEIGHT_M)*10)/10:null;
+      return{week:wk,date:c.date,weight:wt,bmi,fatMass:c.measurements?.fat_mass_kg||null,muscle:c.measurements?.skeletal_muscle_kg||null,bf:c.measurements?.body_fat_pct||null,waist:c.measurements?.waist_cm||null,neck:c.measurements?.neck_cm||null};
+    });
+  }
+
+  function projDrawChart(proj) {
+    const {data}=proj, actuals=projGetActuals();
+    const cv=document.getElementById('projMainChart'); if(!cv)return;
+    const cx=cv.getContext('2d'), dpr=window.devicePixelRatio||1;
+    const rect=cv.parentElement.getBoundingClientRect(), W=rect.width-32, H=260;
+    cv.width=(W+32)*dpr; cv.height=(H+45)*dpr;
+    cv.style.width=(W+32)+'px'; cv.style.height=(H+45)+'px';
+    cx.setTransform(dpr,0,0,dpr,0,0); cx.clearRect(0,0,W+32,H+45);
+    const p={top:15,right:18,bottom:30,left:46}, cW=W+32-p.left-p.right, cH=H-p.top-p.bottom;
+
+    let series=[];
+    if(projCurrentChart==='weight') series=[{key:'weight',label:'Weight (kg)',color:projColors.weight},{key:'bmi',label:'BMI',color:projColors.bmi,sec:true}];
+    else if(projCurrentChart==='composition') series=[{key:'fatMass',label:'Fat Mass (kg)',color:projColors.fatMass},{key:'muscle',label:'Muscle (kg)',color:projColors.muscle},{key:'bf',label:'Body Fat %',color:projColors.bf,sec:true}];
+    else series=[{key:'waist',label:'Waist (cm)',color:projColors.waist},{key:'neck',label:'Neck (cm)',color:projColors.neck}];
+
+    const pri=series.filter(s=>!s.sec), sec=series.filter(s=>s.sec);
+    function gR(keys){let mn=Infinity,mx=-Infinity;keys.forEach(k=>{data.forEach(d=>{mn=Math.min(mn,d[k]);mx=Math.max(mx,d[k])});actuals.forEach(a=>{if(a[k]!=null&&a.week<=data.length){mn=Math.min(mn,a[k]);mx=Math.max(mx,a[k])}})});const m=(mx-mn)*0.1||1;return{min:mn-m,max:mx+m}}
+    const pR=gR(pri.map(s=>s.key)), sR=sec.length?gR(sec.map(s=>s.key)):null;
+    const tw=data.length-1;
+    function xP(wk){return p.left+(wk/tw)*cW}
+    function yP(v,r){return p.top+cH-((v-r.min)/(r.max-r.min))*cH}
+
+    cx.strokeStyle='rgba(71,85,105,0.3)';cx.lineWidth=0.5;
+    for(let i=0;i<=5;i++){const y=p.top+(i/5)*cH;cx.beginPath();cx.moveTo(p.left,y);cx.lineTo(p.left+cW,y);cx.stroke()}
+
+    cx.fillStyle='#94a3b8';cx.font='10px -apple-system,sans-serif';cx.textAlign='center';
+    const step=data.length<=13?1:data.length<=26?2:4;
+    for(let i=0;i<data.length;i+=step)cx.fillText('W'+data[i].week,xP(data[i].week),p.top+cH+18);
+
+    cx.textAlign='right';cx.fillStyle=pri[0]?.color||'#94a3b8';
+    for(let i=0;i<=5;i++){const v=pR.min+(1-i/5)*(pR.max-pR.min);cx.fillText(Math.round(v*10)/10,p.left-5,p.top+(i/5)*cH+4)}
+    if(sR){cx.textAlign='left';cx.fillStyle=sec[0].color;for(let i=0;i<=5;i++){const v=sR.min+(1-i/5)*(sR.max-sR.min);cx.fillText(Math.round(v*10)/10,p.left+cW+3,p.top+(i/5)*cH+4)}}
+
+    // Projected (faded)
+    [...pri,...sec].forEach(s=>{const r=s.sec?sR:pR;cx.strokeStyle=s.color;cx.lineWidth=2;cx.lineJoin='round';cx.setLineDash([]);cx.globalAlpha=0.35;cx.beginPath();data.forEach((d,i)=>{const x=xP(d.week),y=yP(d[s.key],r);i===0?cx.moveTo(x,y):cx.lineTo(x,y)});cx.stroke();cx.globalAlpha=1;
+      const last=data[data.length-1],lx=xP(last.week),ly=yP(last[s.key],r);cx.fillStyle=s.color;cx.globalAlpha=0.5;cx.beginPath();cx.arc(lx,ly,3,0,Math.PI*2);cx.fill();cx.globalAlpha=0.6;cx.font='9px -apple-system,sans-serif';cx.textAlign='right';cx.fillText(last[s.key],lx-5,ly-7);cx.globalAlpha=1});
+
+    // Actuals (solid + dots)
+    const hasA=actuals.some(a=>series.some(s=>a[s.key]!=null&&a.week<=tw));
+    if(hasA){[...pri,...sec].forEach(s=>{const r=s.sec?sR:pR,pts=actuals.filter(a=>a[s.key]!=null&&a.week<=tw).sort((a,b)=>a.week-b.week);if(!pts.length)return;cx.strokeStyle=s.color;cx.lineWidth=2.5;cx.lineJoin='round';cx.setLineDash([]);cx.beginPath();pts.forEach((q,i)=>{const x=xP(q.week),y=yP(q[s.key],r);i===0?cx.moveTo(x,y):cx.lineTo(x,y)});cx.stroke();
+      pts.forEach(q=>{const x=xP(q.week),y=yP(q[s.key],r);cx.fillStyle='#0f172a';cx.beginPath();cx.arc(x,y,4,0,Math.PI*2);cx.fill();cx.fillStyle=s.color;cx.beginPath();cx.arc(x,y,3,0,Math.PI*2);cx.fill()});
+      const lp=pts[pts.length-1];cx.font='bold 10px -apple-system,sans-serif';cx.textAlign='left';cx.fillStyle=s.color;cx.fillText(lp[s.key],xP(lp.week)+7,yP(lp[s.key],r)+4)})}
+
+    // BMI 30 line
+    if(projCurrentChart==='weight'){const b30w=30*PROJ_HEIGHT_M*PROJ_HEIGHT_M;if(b30w>=pR.min&&b30w<=pR.max){const y30=yP(b30w,pR);cx.strokeStyle='rgba(245,158,11,0.4)';cx.setLineDash([4,4]);cx.lineWidth=1;cx.beginPath();cx.moveTo(p.left,y30);cx.lineTo(p.left+cW,y30);cx.stroke();cx.setLineDash([]);cx.fillStyle='#f59e0b';cx.font='9px -apple-system,sans-serif';cx.textAlign='left';cx.fillText('BMI 30 ('+Math.round(b30w)+'kg)',p.left+4,y30-4)}}
+
+    // Legend
+    const le=document.getElementById('projChartLegend');
+    let lh=series.map(s=>`<div class="proj-legend-item"><div class="proj-legend-dot" style="background:${s.color}"></div>${s.label}</div>`).join('');
+    if(hasA)lh+=`<div class="proj-legend-item" style="margin-left:8px;padding-left:8px;border-left:1px solid var(--border)"><div style="width:18px;height:2.5px;background:var(--text);border-radius:2px;margin-right:3px"></div>Actual</div><div class="proj-legend-item"><div style="width:18px;height:2.5px;background:var(--text);opacity:0.35;border-radius:2px;margin-right:3px"></div>Projected</div>`;
+    le.innerHTML=lh;
+
+    // Status
+    const st=document.getElementById('projActualStatus');
+    if(actuals.length>0){const sp=actuals[actuals.length-1].week-actuals[0].week;st.innerHTML=`${actuals.length} check-ins loaded (${actuals[0].date} → ${actuals[actuals.length-1].date}, ~${Math.round(sp)}wk). Solid = actual, faded = projected.`}
+    else st.innerHTML='No check-in data yet. Save check-ins to see actuals overlaid.';
+  }
+
+  function projRenderOutcome(proj) {
+    const {data}=proj, f=data[0], l=data[data.length-1];
+    const g=document.getElementById('projOutcomeGrid');
+    const ms=[{l:'Weight',s:f.weight,e:l.weight,u:'kg',lo:true},{l:'BMI',s:f.bmi,e:l.bmi,u:'',lo:true},{l:'Body Fat',s:f.bf,e:l.bf,u:'%',lo:true},{l:'Fat Mass',s:f.fatMass,e:l.fatMass,u:'kg',lo:true},{l:'Muscle',s:f.muscle,e:l.muscle,u:'kg',lo:false},{l:'Waist',s:f.waist,e:l.waist,u:'cm',lo:true}];
+    g.innerHTML=ms.map(m=>{const d=m.e-m.s,sg=d>0?'+':'',gd=m.lo?d<0:d>0;return`<div class="proj-mbox"><div class="proj-ml">${m.l}</div><div class="proj-mv">${m.e}${m.u?' '+m.u:''}</div><div class="proj-md ${gd?'proj-pos':'proj-neg'}">${sg}${Math.round(d*10)/10} ${m.u}</div></div>`}).join('');
+  }
+
+  function projRenderBenefits(proj) {
+    const {data}=proj, f=data[0], l=data[data.length-1];
+    const wlKg=f.weight-l.weight, wlPct=(wlKg/f.weight)*100, bmiD=f.bmi-l.bmi;
+    const bn=[];
+    const cvd=Math.min(Math.round(wlPct*2),40); bn.push({i:'&#10084;',l:'Cardiovascular Disease',p:cvd,c:'#ef4444',d:`~${Math.round(wlKg*0.4)} mmHg systolic BP reduction. Improved lipids.`,s:'PMC3120182'});
+    const af=Math.round(bmiD*4); bn.push({i:'&#9889;',l:'Atrial Fibrillation',p:af,c:'#f59e0b',d:`${Math.round(bmiD*10)/10} BMI drop → ~${af}% lower AF risk. ${wlPct>=10?'10%+ loss: 6× AF freedom.':''}`,s:'AHA, JACC 2017'});
+    const crp=Math.min(Math.round(wlPct*3.8),50), raR=wlPct>=10?63:wlPct>=5?35:Math.round(wlPct*2.7); bn.push({i:'&#128293;',l:'RA Inflammation',p:crp,c:'#f97316',d:`~${crp}% CRP reduction. RA remission chance: ~${raR}%. Keto adds anti-inflammatory benefits.`,s:'PMC5875117'});
+    const apn=Math.min(Math.round(wlPct*2.6),60); bn.push({i:'&#128164;',l:'Sleep Apnea',p:apn,c:'#06b6d4',d:`~${Math.round(wlKg*0.78)} fewer events/hr. Neck ${f.neck}→${l.neck}cm.`,s:'Lancet eClinMed 2025'});
+    const dia=Math.min(Math.round(wlKg*4.5),70); bn.push({i:'&#128137;',l:'Type 2 Diabetes',p:dia,c:'#8b5cf6',d:`~16% risk reduction per kg. Keto improves insulin sensitivity.`,s:'DPP Study'});
+    const can=Math.min(Math.round(bmiD*1.4)+25,35); bn.push({i:'&#9878;',l:'Cancer Risk',p:can,c:'#ec4899',d:`BMI + exercise combined reduction across multiple types.`,s:'JAMA Network 2021'});
+    const dep=Math.min(Math.round(25+wlPct*1.5),55); bn.push({i:'&#129504;',l:'Depression & Mood',p:dep,c:'#22c55e',d:`Exercise: ~39% reduced risk. Keto: 37-70% symptom reduction.`,s:'JAMA Psychiatry'});
+    const mor=Math.min(Math.round(15+wlPct*0.8),30); bn.push({i:'&#9200;',l:'All-Cause Mortality',p:mor,c:'#3b82f6',d:`Weight loss + exercise = significant lifespan impact.`,s:'Sci Reports 2023'});
+    const el=document.getElementById('projHealthBenefits');
+    el.innerHTML=`<div class="proj-bh">Risk reductions — ${Math.round(wlKg*10)/10}kg loss (${Math.round(wlPct)}%) + exercise</div>`+bn.map(b=>`<div class="proj-risk-card"><div class="proj-ri">${b.i}</div><div class="proj-rl">${b.l}</div><div class="proj-rp" style="color:${b.c}">-${b.p}%</div><div class="proj-rdir">&#9660; reduced risk</div><div class="proj-rbt"><div class="proj-rbf" style="width:${b.p}%;background:${b.c}"></div></div><div class="proj-rd">${b.d}</div><div class="proj-rs">${b.s}</div></div>`).join('');
+  }
+
+  function projRenderAssumptions(proj) {
+    const el=document.getElementById('projAssumptions'); if(!el)return;
+    el.innerHTML=`<p><strong>Diet:</strong> Keto (<30g carbs), high protein (160–220g/day), 1800–2200 kcal/day.</p><p style="margin-top:6px"><strong>Exercise:</strong> BJJ 3×60min, Boxing 2×60min, Weights 1×45min, Walking 5×10+2×20min, Airbike 5×10, Bands/ExBall 5×10, Skipping 3×2, Shadow 3×4, Bag 3×6, Yard 1×60.</p><p style="margin-top:6px"><strong>Weekly burn:</strong> ~${proj.weeklyExBurn.toLocaleString()} kcal (~${proj.dailyExBurn} kcal/day). 85% fat loss partition with high protein muscle preservation.</p>`;
+  }
+
+  function projUpdate() {
+    const proj=projRun();
+    projDrawChart(proj);
+    projRenderOutcome(proj);
+    projRenderBenefits(proj);
+    projRenderAssumptions(proj);
+  }
+
+  // Tab switching
+  document.querySelectorAll('.proj-tab').forEach(tab=>{
+    tab.addEventListener('click',()=>{
+      document.querySelectorAll('.proj-tab').forEach(t=>t.classList.remove('active'));
+      tab.classList.add('active');
+      projCurrentChart=tab.dataset.chart;
+      projUpdate();
+    });
+  });
+
+  // Input changes
+  document.querySelectorAll('#projBaselineControls input, #projBaselineControls select').forEach(el=>{
+    el.addEventListener('input',projUpdate);
+    el.addEventListener('change',projUpdate);
+  });
+
+  // Auto-populate baselines from today's data
+  function projAutoBaseline() {
+    const ci=JSON.parse(localStorage.getItem('healthCheckins')||'[]');
+    if(!ci.length)return;
+    const latest=ci.sort((a,b)=>b.date.localeCompare(a.date))[0];
+    if(latest.vitals?.weight) document.getElementById('projStartWeight').value=latest.vitals.weight;
+    if(latest.measurements?.waist_cm) document.getElementById('projStartWaist').value=latest.measurements.waist_cm;
+    if(latest.measurements?.body_fat_pct) document.getElementById('projStartBF').value=latest.measurements.body_fat_pct;
+    if(latest.measurements?.skeletal_muscle_kg) document.getElementById('projStartMuscle').value=latest.measurements.skeletal_muscle_kg;
+    if(latest.measurements?.neck_cm) document.getElementById('projStartNeck').value=latest.measurements.neck_cm;
+  }
+
+  projAutoBaseline();
+
+  // Defer initial render — section starts collapsed so canvas has 0 width
+  // Re-render when section is expanded via click on section-title
+  const projSection = document.getElementById('projMainChart')?.closest('.section');
+  if (projSection) {
+    const projTitle = projSection.querySelector('.section-title');
+    if (projTitle) {
+      projTitle.addEventListener('click', () => {
+        // Small delay to let the collapsed class toggle first
+        setTimeout(() => {
+          if (!projSection.classList.contains('collapsed')) projUpdate();
+        }, 50);
+      });
+    }
+  }
+
+  // Also render on resize (only if visible)
+  window.addEventListener('resize', () => {
+    if (projSection && !projSection.classList.contains('collapsed')) projUpdate();
+  });
 })();
 </script>
 </body>
