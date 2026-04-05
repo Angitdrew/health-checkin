@@ -165,45 +165,6 @@
     <div id="summaryContent"></div>
   </div>
 
-  <!-- VITALS -->
-  <div class="section has-chart">
-    <div class="section-title"><span class="icon">&#9829;</span> Vitals</div>
-    <div class="section-wrap">
-      <div class="section-inputs">
-        <div class="row">
-          <div class="field">
-            <div class="label">Weight <span class="unit">kg</span></div>
-            <input type="number" id="weight" step="0.1" placeholder="e.g. 115.0">
-          </div>
-          <div class="field">
-            <div class="label">Blood Pressure <span class="hint">(if measured)</span></div>
-            <div class="row">
-              <input type="number" id="bpSys" placeholder="Sys" style="width:70px">
-              <span style="color:var(--dim);padding-bottom:10px">/</span>
-              <input type="number" id="bpDia" placeholder="Dia" style="width:70px">
-            </div>
-          </div>
-        </div>
-        <div class="row" style="margin-top:12px">
-          <div class="field">
-            <div class="label">Resting HR <span class="unit">bpm</span> <span class="hint">(if known)</span></div>
-            <input type="number" id="restHR" placeholder="e.g. 72">
-          </div>
-        </div>
-      </div>
-      <div class="section-chart" id="chartVitals">
-        <div class="chart-title">Weight — last 30 entries</div>
-        <div class="chart-stat" id="chartWeightVal">—</div>
-        <div class="chart-sub" id="chartWeightDelta"></div>
-        <svg id="svgWeight" viewBox="0 0 280 70" preserveAspectRatio="none"></svg>
-        <div style="margin-top:10px;width:100%">
-          <div class="chart-title">Resting HR</div>
-          <svg id="svgHR" viewBox="0 0 280 40" preserveAspectRatio="none"></svg>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- SLEEP -->
   <div class="section has-chart">
     <div class="section-title"><span class="icon">&#9790;</span> Sleep</div>
@@ -247,45 +208,81 @@
     </div>
   </div>
 
-  <!-- CARDIAC / AF -->
-  <div class="section has-chart">
-    <div class="section-title"><span class="icon">&#9889;</span> Cardiac & AF</div>
+  <!-- BODY MEASUREMENTS (auto-expands on Mondays) -->
+  <div class="section has-chart" id="measurementsSection">
+    <div class="section-title"><span class="icon">&#128207;</span> Body Measurements <span class="hint" style="font-weight:normal;font-size:12px;color:var(--dim)" id="measureFreqHint">— weekly/as needed</span></div>
     <div class="section-wrap">
       <div class="section-inputs">
-    <div class="field">
-      <div class="label">AF Symptoms Today</div>
-      <div class="rating">
-        <label class="rating-green"><input type="radio" name="afSymptoms" value="none"><span>None</span></label>
-        <label class="rating-amber"><input type="radio" name="afSymptoms" value="mild"><span>Mild</span></label>
-        <label class="rating-amber"><input type="radio" name="afSymptoms" value="moderate"><span>Moderate</span></label>
-        <label class="rating-red"><input type="radio" name="afSymptoms" value="episode"><span>AF Episode</span></label>
+    <div class="row">
+      <div class="field">
+        <div class="label">Weight <span class="unit">kg</span></div>
+        <input type="number" id="weight" step="0.1" placeholder="e.g. 115.0">
       </div>
     </div>
-    <div class="field">
-      <div class="label">Palpitations</div>
-      <div class="rating">
-        <label class="rating-green"><input type="radio" name="palpitations" value="none"><span>None</span></label>
-        <label class="rating-amber"><input type="radio" name="palpitations" value="occasional"><span>Occasional</span></label>
-        <label class="rating-red"><input type="radio" name="palpitations" value="frequent"><span>Frequent</span></label>
-      </div>
+    <div id="weeklyPrompt" style="background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.25);border-radius:8px;padding:10px 14px;margin:14px 0;font-size:13px;color:var(--accent);display:none">
+      It's measurement day! Grab the tape measure and jump on the scales.
     </div>
-    <div class="field">
-      <div class="label">ECG taken? <span class="hint">(saved to ECG folder?)</span></div>
-      <div class="rating">
-        <label><input type="radio" name="ecgTaken" value="no"><span>No</span></label>
-        <label><input type="radio" name="ecgTaken" value="yes-normal"><span>Yes — Normal</span></label>
-        <label class="rating-red"><input type="radio" name="ecgTaken" value="yes-abnormal"><span>Yes — Abnormal</span></label>
-      </div>
-    </div>
-      </div>
-      <div class="section-chart" id="chartCardiac">
-        <div class="chart-title">AF Symptom Streak</div>
-        <div class="chart-stat" id="chartAFStreak">—</div>
-        <div class="chart-sub" id="chartAFStreakLabel">days symptom-free</div>
-        <div style="margin-top:10px;width:100%">
-          <div class="chart-title">Last 14 days</div>
-          <div id="afDotGrid" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px"></div>
+    <span class="measurements-toggle" onclick="toggleMeasurements()" id="measureToggle">Show measurement fields</span>
+    <div class="measurements-hidden" id="measurementsPanel">
+      <div style="font-size:11px;color:var(--dim);margin:12px 0 8px;text-transform:uppercase;letter-spacing:1px;font-weight:600">From Watch / Scale</div>
+      <div class="row">
+        <div class="field">
+          <div class="label">Fat Mass <span class="unit">kg</span></div>
+          <input type="number" id="fatMass" step="0.1" placeholder="from watch/scale">
         </div>
+        <div class="field">
+          <div class="label">Skeletal Muscle <span class="unit">kg</span></div>
+          <input type="number" id="skeletalMuscle" step="0.1" placeholder="from watch/scale">
+        </div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div class="field">
+          <div class="label">Body Fat % <span class="hint">(watch/scale)</span></div>
+          <input type="number" id="bodyFat" step="0.1" placeholder="e.g. 28.5">
+        </div>
+        <div class="field">
+          <div class="label">Body Water % <span class="hint">(if available)</span></div>
+          <input type="number" id="bodyWater" step="0.1" placeholder="e.g. 52.0">
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--dim);margin:16px 0 8px;text-transform:uppercase;letter-spacing:1px;font-weight:600">Tape Measurements</div>
+      <div class="row">
+        <div class="field">
+          <div class="label">Waist <span class="unit">cm</span></div>
+          <input type="number" id="waist" step="0.5" placeholder="at navel">
+        </div>
+        <div class="field">
+          <div class="label">Hip <span class="unit">cm</span></div>
+          <input type="number" id="hip" step="0.5" placeholder="widest point">
+        </div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div class="field">
+          <div class="label">Neck <span class="unit">cm</span></div>
+          <input type="number" id="neck" step="0.5" placeholder="thickest part">
+        </div>
+        <div class="field">
+          <div class="label">Chest <span class="unit">cm</span> <span class="hint">(optional)</span></div>
+          <input type="number" id="chest" step="0.5" placeholder="at nipple line">
+        </div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div class="field">
+          <div class="label">Upper Arm <span class="unit">cm</span> <span class="hint">(optional)</span></div>
+          <input type="number" id="upperArm" step="0.5" placeholder="flexed, widest">
+        </div>
+        <div class="field">
+          <div class="label">Thigh <span class="unit">cm</span> <span class="hint">(optional)</span></div>
+          <input type="number" id="thigh" step="0.5" placeholder="midway">
+        </div>
+      </div>
+    </div>
+      </div>
+      <div class="section-chart" id="chartVitals">
+        <div class="chart-title">Weight — last 30 entries</div>
+        <div class="chart-stat" id="chartWeightVal">—</div>
+        <div class="chart-sub" id="chartWeightDelta"></div>
+        <svg id="svgWeight" viewBox="0 0 280 70" preserveAspectRatio="none"></svg>
       </div>
     </div>
   </div>
@@ -412,6 +409,76 @@
     <button class="btn-add" onclick="addTraining()">+ Add another session</button>
   </div>
 
+  <!-- VITALS -->
+  <div class="section has-chart">
+    <div class="section-title"><span class="icon">&#9829;</span> Vitals</div>
+    <div class="section-wrap">
+      <div class="section-inputs">
+        <div class="row">
+          <div class="field">
+            <div class="label">Blood Pressure <span class="hint">(if measured)</span></div>
+            <div class="row">
+              <input type="number" id="bpSys" placeholder="Sys" style="width:70px">
+              <span style="color:var(--dim);padding-bottom:10px">/</span>
+              <input type="number" id="bpDia" placeholder="Dia" style="width:70px">
+            </div>
+          </div>
+          <div class="field">
+            <div class="label">Resting HR <span class="unit">bpm</span> <span class="hint">(if known)</span></div>
+            <input type="number" id="restHR" placeholder="e.g. 72">
+          </div>
+        </div>
+      </div>
+      <div class="section-chart" id="chartHR">
+        <div class="chart-title">Resting HR — last 14 entries</div>
+        <svg id="svgHR" viewBox="0 0 280 60" preserveAspectRatio="none"></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- CARDIAC / AF -->
+  <div class="section has-chart">
+    <div class="section-title"><span class="icon">&#9889;</span> Cardiac & AF</div>
+    <div class="section-wrap">
+      <div class="section-inputs">
+    <div class="field">
+      <div class="label">AF Symptoms Today</div>
+      <div class="rating">
+        <label class="rating-green"><input type="radio" name="afSymptoms" value="none"><span>None</span></label>
+        <label class="rating-amber"><input type="radio" name="afSymptoms" value="mild"><span>Mild</span></label>
+        <label class="rating-amber"><input type="radio" name="afSymptoms" value="moderate"><span>Moderate</span></label>
+        <label class="rating-red"><input type="radio" name="afSymptoms" value="episode"><span>AF Episode</span></label>
+      </div>
+    </div>
+    <div class="field">
+      <div class="label">Palpitations</div>
+      <div class="rating">
+        <label class="rating-green"><input type="radio" name="palpitations" value="none"><span>None</span></label>
+        <label class="rating-amber"><input type="radio" name="palpitations" value="occasional"><span>Occasional</span></label>
+        <label class="rating-red"><input type="radio" name="palpitations" value="frequent"><span>Frequent</span></label>
+      </div>
+    </div>
+    <div class="field">
+      <div class="label">ECG taken? <span class="hint">(saved to ECG folder?)</span></div>
+      <div class="rating">
+        <label><input type="radio" name="ecgTaken" value="no"><span>No</span></label>
+        <label><input type="radio" name="ecgTaken" value="yes-normal"><span>Yes — Normal</span></label>
+        <label class="rating-red"><input type="radio" name="ecgTaken" value="yes-abnormal"><span>Yes — Abnormal</span></label>
+      </div>
+    </div>
+      </div>
+      <div class="section-chart" id="chartCardiac">
+        <div class="chart-title">AF Symptom Streak</div>
+        <div class="chart-stat" id="chartAFStreak">—</div>
+        <div class="chart-sub" id="chartAFStreakLabel">days symptom-free</div>
+        <div style="margin-top:10px;width:100%">
+          <div class="chart-title">Last 14 days</div>
+          <div id="afDotGrid" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- NUTRITION -->
   <div class="section has-chart">
     <div class="section-title"><span class="icon">&#127860;</span> Nutrition</div>
@@ -497,69 +564,6 @@
     <div class="toggle-row">
       <span class="toggle-label">Vitamin K2 source today <span style="color:var(--dim);font-size:11px">(fermented milk, eggs, natto, cheese, or supplement)</span></span>
       <label class="toggle"><input type="checkbox" id="k2Taken"><span class="slider"></span></label>
-    </div>
-  </div>
-
-  <!-- BODY MEASUREMENTS (auto-expands on Mondays) -->
-  <div class="section" id="measurementsSection">
-    <div class="section-title"><span class="icon">&#128207;</span> Body Measurements <span class="hint" style="font-weight:normal;font-size:12px;color:var(--dim)" id="measureFreqHint">— weekly/as needed</span></div>
-    <div id="weeklyPrompt" style="background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.25);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--accent);display:none">
-      It's measurement day! Grab the tape measure and jump on the scales.
-    </div>
-    <span class="measurements-toggle" onclick="toggleMeasurements()" id="measureToggle">Show measurement fields</span>
-    <div class="measurements-hidden" id="measurementsPanel">
-      <div style="font-size:11px;color:var(--dim);margin:12px 0 8px;text-transform:uppercase;letter-spacing:1px;font-weight:600">From Watch / Scale</div>
-      <div class="row">
-        <div class="field">
-          <div class="label">Fat Mass <span class="unit">kg</span></div>
-          <input type="number" id="fatMass" step="0.1" placeholder="from watch/scale">
-        </div>
-        <div class="field">
-          <div class="label">Skeletal Muscle <span class="unit">kg</span></div>
-          <input type="number" id="skeletalMuscle" step="0.1" placeholder="from watch/scale">
-        </div>
-      </div>
-      <div class="row" style="margin-top:8px">
-        <div class="field">
-          <div class="label">Body Fat % <span class="hint">(watch/scale)</span></div>
-          <input type="number" id="bodyFat" step="0.1" placeholder="e.g. 28.5">
-        </div>
-        <div class="field">
-          <div class="label">Body Water % <span class="hint">(if available)</span></div>
-          <input type="number" id="bodyWater" step="0.1" placeholder="e.g. 52.0">
-        </div>
-      </div>
-      <div style="font-size:11px;color:var(--dim);margin:16px 0 8px;text-transform:uppercase;letter-spacing:1px;font-weight:600">Tape Measurements</div>
-      <div class="row">
-        <div class="field">
-          <div class="label">Waist <span class="unit">cm</span></div>
-          <input type="number" id="waist" step="0.5" placeholder="at navel">
-        </div>
-        <div class="field">
-          <div class="label">Hip <span class="unit">cm</span></div>
-          <input type="number" id="hip" step="0.5" placeholder="widest point">
-        </div>
-      </div>
-      <div class="row" style="margin-top:8px">
-        <div class="field">
-          <div class="label">Neck <span class="unit">cm</span></div>
-          <input type="number" id="neck" step="0.5" placeholder="thickest part">
-        </div>
-        <div class="field">
-          <div class="label">Chest <span class="unit">cm</span> <span class="hint">(optional)</span></div>
-          <input type="number" id="chest" step="0.5" placeholder="at nipple line">
-        </div>
-      </div>
-      <div class="row" style="margin-top:8px">
-        <div class="field">
-          <div class="label">Upper Arm <span class="unit">cm</span> <span class="hint">(optional)</span></div>
-          <input type="number" id="upperArm" step="0.5" placeholder="flexed, widest">
-        </div>
-        <div class="field">
-          <div class="label">Thigh <span class="unit">cm</span> <span class="hint">(optional)</span></div>
-          <input type="number" id="thigh" step="0.5" placeholder="midway">
-        </div>
-      </div>
     </div>
   </div>
 
