@@ -1375,6 +1375,9 @@ function updateSunCalc() {
 
   if (!timeStr) {
     if (adviceEl) adviceEl.style.display = 'none';
+    renderTargetBar('targetUV', 'uv', 0);
+    renderTargetBar('targetSunTime', 'suntime', 0);
+    renderTargetBar('targetVitD', 'vitd', 0);
     return;
   }
 
@@ -2881,6 +2884,7 @@ document.getElementById('checkinDate').addEventListener('change', function() {
   document.querySelectorAll('.fluid-input').forEach(el => el.value = '');
   document.getElementById('sunCloud').value = 'clear';
   const sunAdv = document.getElementById('sunAdvice'); if (sunAdv) sunAdv.style.display = 'none';
+  updateSunCalc();
   updateFluidTotal();
   recalcMacros();
   // Remove extra training entries, keep first
