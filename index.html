@@ -1,0 +1,1344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Health Check-in — Andrew Potts</title>
+<style>
+  :root { --bg:#0f1117; --surface:#1a1d27; --surface2:#242736; --border:#2e3144; --text:#e4e4e7; --dim:#9ca3af; --accent:#3b82f6; --green:#22c55e; --amber:#f59e0b; --red:#ef4444; }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:20px}
+  .container{max-width:1100px;margin:0 auto}
+  h1{font-size:22px;font-weight:600;margin-bottom:4px}
+  .subtitle{color:var(--dim);font-size:13px;margin-bottom:24px}
+  .date-display{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:24px;font-size:14px;display:flex;justify-content:space-between;align-items:center}
+  .date-display input[type=date]{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-size:14px}
+
+  .section{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px}
+  .section-title{font-size:14px;font-weight:600;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+  .section-title .icon{font-size:16px}
+
+  .field{margin-bottom:16px}
+  .field:last-child{margin-bottom:0}
+  .label{font-size:12px;color:var(--dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px}
+  .label .hint{text-transform:none;letter-spacing:0;font-style:italic}
+
+  input[type=number],input[type=text],textarea,select{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:14px;font-family:inherit}
+  input[type=number]{width:120px}
+  textarea{resize:vertical;min-height:60px}
+  select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%239ca3af' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+
+  .row{display:flex;gap:12px;align-items:flex-end}
+  .row .field{flex:1}
+  .unit{color:var(--dim);font-size:12px;margin-left:4px}
+
+  .rating{display:flex;gap:6px;flex-wrap:wrap}
+  .rating label{cursor:pointer}
+  .rating input{display:none}
+  .rating span{display:inline-block;padding:6px 14px;border-radius:6px;font-size:13px;border:1px solid var(--border);background:var(--surface2);transition:all 0.15s}
+  .rating input:checked+span{border-color:var(--accent);background:rgba(59,130,246,0.15);color:var(--accent);font-weight:600}
+  .rating-green input:checked+span{border-color:var(--green);background:rgba(34,197,94,0.15);color:var(--green)}
+  .rating-amber input:checked+span{border-color:var(--amber);background:rgba(245,158,11,0.15);color:var(--amber)}
+  .rating-red input:checked+span{border-color:var(--red);background:rgba(239,68,68,0.15);color:var(--red)}
+
+  .toggle-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)}
+  .toggle-row:last-child{border-bottom:none}
+  .toggle-label{font-size:13px}
+  .toggle{position:relative;width:44px;height:24px;cursor:pointer}
+  .toggle input{display:none}
+  .toggle .slider{position:absolute;inset:0;background:var(--surface2);border:1px solid var(--border);border-radius:12px;transition:0.2s}
+  .toggle .slider:before{content:'';position:absolute;height:18px;width:18px;left:2px;bottom:2px;background:var(--dim);border-radius:50%;transition:0.2s}
+  .toggle input:checked+.slider{background:rgba(59,130,246,0.3);border-color:var(--accent)}
+  .toggle input:checked+.slider:before{transform:translateX(20px);background:var(--accent)}
+
+  .training-entry{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px}
+  .training-entry .row{margin-bottom:8px}
+  .btn-add{background:transparent;border:1px dashed var(--border);border-radius:8px;padding:10px;width:100%;color:var(--dim);cursor:pointer;font-size:13px}
+  .btn-add:hover{border-color:var(--accent);color:var(--accent)}
+
+  .measurements-toggle{color:var(--accent);font-size:13px;cursor:pointer;margin-top:8px;display:inline-block}
+  .measurements-hidden{display:none}
+  .measurements-hidden.show{display:block}
+
+  .submit-section{margin-top:24px}
+  .btn-submit{width:100%;padding:14px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer;transition:opacity 0.15s}
+  .btn-submit:hover{opacity:0.9}
+  .btn-submit:disabled{opacity:0.5;cursor:not-allowed}
+  .success{background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:10px;padding:16px;text-align:center;color:var(--green);display:none;margin-top:12px}
+  .history-btn{width:100%;padding:10px;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--dim);cursor:pointer;font-size:13px;margin-top:8px}
+  .history-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .history-panel{display:none;margin-top:12px;max-height:400px;overflow-y:auto}
+  .history-entry{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px;font-size:12px}
+  .history-entry .date{font-weight:600;font-size:13px;margin-bottom:6px;color:var(--accent)}
+  .history-entry .data-row{display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid var(--border)}
+  .history-entry .data-row:last-child{border-bottom:none}
+
+  /* Dashboard panels */
+  .section-wrap{display:flex;gap:0}
+  .section-inputs{flex:1;min-width:0}
+  .section-chart{width:320px;flex-shrink:0;background:var(--surface2);border-left:1px solid var(--border);border-radius:0 12px 12px 0;padding:16px;display:flex;flex-direction:column;justify-content:center;align-items:center}
+  .section-chart .chart-title{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--dim);margin-bottom:8px;align-self:flex-start}
+  .section-chart .chart-stat{font-size:22px;font-weight:700;margin-bottom:2px}
+  .section-chart .chart-sub{font-size:11px;color:var(--dim);margin-bottom:10px}
+  .section-chart svg{width:100%;max-height:80px}
+  .section-chart .no-data{color:var(--dim);font-size:11px;font-style:italic;text-align:center;padding:20px 0}
+  .section.has-chart{padding:0;overflow:hidden}
+  .section.has-chart .section-inputs{padding:20px}
+  .section.has-chart .section-title{padding:0}
+
+  /* Streak / counter badges */
+  .badge{display:inline-block;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600}
+  .badge-green{background:rgba(34,197,94,0.15);color:var(--green)}
+  .badge-amber{background:rgba(245,158,11,0.15);color:var(--amber)}
+  .badge-red{background:rgba(239,68,68,0.15);color:var(--red)}
+
+  @media(max-width:500px){.row{flex-direction:column;gap:8px} input[type=number]{width:100%}}
+  @media(max-width:900px){.section-chart{display:none} .section.has-chart .section-inputs{padding:20px} .container{max-width:600px}}
+
+
+  /* Fluid balance chart */
+  .fluid-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:8px}
+  @media(max-width:500px){.fluid-grid{grid-template-columns:repeat(3,1fr)}}
+  .fluid-cell{display:flex;flex-direction:column;align-items:center;gap:3px}
+  .fluid-cell .fluid-time{font-size:10px;color:var(--dim);font-weight:600;letter-spacing:0.3px}
+  .fluid-cell input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 2px;color:var(--text);font-size:13px;text-align:center}
+  .fluid-cell input:focus{border-color:var(--accent);outline:none}
+  .fluid-total-bar{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:13px}
+  .fluid-total-bar .fluid-litres{font-size:20px;font-weight:700;color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Daily Health Check-in</h1>
+  <p class="subtitle">Takes ~60 seconds. Data saves automatically.</p>
+
+  <div class="date-display">
+    <span>Check-in date:</span>
+    <input type="date" id="checkinDate">
+  </div>
+
+  <!-- VITALS -->
+  <div class="section has-chart">
+    <div class="section-wrap">
+      <div class="section-inputs">
+        <div class="section-title"><span class="icon">&#9829;</span> Vitals</div>
+        <div class="row">
+          <div class="field">
+            <div class="label">Weight <span class="unit">kg</span></div>
+            <input type="number" id="weight" step="0.1" placeholder="e.g. 115.0">
+          </div>
+          <div class="field">
+            <div class="label">Blood Pressure <span class="hint">(if measured)</span></div>
+            <div class="row">
+              <input type="number" id="bpSys" placeholder="Sys" style="width:70px">
+              <span style="color:var(--dim);padding-bottom:10px">/</span>
+              <input type="number" id="bpDia" placeholder="Dia" style="width:70px">
+            </div>
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <div class="field">
+            <div class="label">Resting HR <span class="unit">bpm</span> <span class="hint">(if known)</span></div>
+            <input type="number" id="restHR" placeholder="e.g. 72">
+          </div>
+        </div>
+      </div>
+      <div class="section-chart" id="chartVitals">
+        <div class="chart-title">Weight — last 30 entries</div>
+        <div class="chart-stat" id="chartWeightVal">—</div>
+        <div class="chart-sub" id="chartWeightDelta"></div>
+        <svg id="svgWeight" viewBox="0 0 280 70" preserveAspectRatio="none"></svg>
+        <div style="margin-top:10px;width:100%">
+          <div class="chart-title">Resting HR</div>
+          <svg id="svgHR" viewBox="0 0 280 40" preserveAspectRatio="none"></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLEEP -->
+  <div class="section has-chart">
+    <div class="section-wrap">
+      <div class="section-inputs">
+    <div class="section-title"><span class="icon">&#9790;</span> Sleep</div>
+    <div class="row">
+      <div class="field">
+        <div class="label">Hours Slept</div>
+        <input type="number" id="sleepHours" step="0.5" placeholder="e.g. 5.0">
+      </div>
+      <div class="field">
+        <div class="label">Sleep Quality</div>
+        <div class="rating">
+          <label><input type="radio" name="sleepQuality" value="1"><span>1</span></label>
+          <label><input type="radio" name="sleepQuality" value="2"><span>2</span></label>
+          <label><input type="radio" name="sleepQuality" value="3"><span>3</span></label>
+          <label><input type="radio" name="sleepQuality" value="4"><span>4</span></label>
+          <label><input type="radio" name="sleepQuality" value="5"><span>5</span></label>
+        </div>
+      </div>
+    </div>
+    <div class="field" style="margin-top:12px">
+      <div class="label">MAD worn?</div>
+      <div class="rating">
+        <label><input type="radio" name="madWorn" value="yes"><span>Yes</span></label>
+        <label><input type="radio" name="madWorn" value="no"><span>No</span></label>
+        <label><input type="radio" name="madWorn" value="partial"><span>Partial</span></label>
+      </div>
+    </div>
+      </div>
+      <div class="section-chart" id="chartSleep">
+        <div class="chart-title">Sleep — last 14 nights</div>
+        <div class="chart-stat" id="chartSleepAvg">—</div>
+        <div class="chart-sub">avg hours</div>
+        <svg id="svgSleep" viewBox="0 0 280 70" preserveAspectRatio="none"></svg>
+        <div class="chart-sub" id="chartSleepQual" style="margin-top:6px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CARDIAC / AF -->
+  <div class="section has-chart">
+    <div class="section-wrap">
+      <div class="section-inputs">
+    <div class="section-title"><span class="icon">&#9889;</span> Cardiac & AF</div>
+    <div class="field">
+      <div class="label">AF Symptoms Today</div>
+      <div class="rating">
+        <label class="rating-green"><input type="radio" name="afSymptoms" value="none"><span>None</span></label>
+        <label class="rating-amber"><input type="radio" name="afSymptoms" value="mild"><span>Mild</span></label>
+        <label class="rating-amber"><input type="radio" name="afSymptoms" value="moderate"><span>Moderate</span></label>
+        <label class="rating-red"><input type="radio" name="afSymptoms" value="episode"><span>AF Episode</span></label>
+      </div>
+    </div>
+    <div class="field">
+      <div class="label">Palpitations</div>
+      <div class="rating">
+        <label class="rating-green"><input type="radio" name="palpitations" value="none"><span>None</span></label>
+        <label class="rating-amber"><input type="radio" name="palpitations" value="occasional"><span>Occasional</span></label>
+        <label class="rating-red"><input type="radio" name="palpitations" value="frequent"><span>Frequent</span></label>
+      </div>
+    </div>
+    <div class="field">
+      <div class="label">ECG taken? <span class="hint">(saved to ECG folder?)</span></div>
+      <div class="rating">
+        <label><input type="radio" name="ecgTaken" value="no"><span>No</span></label>
+        <label><input type="radio" name="ecgTaken" value="yes-normal"><span>Yes — Normal</span></label>
+        <label class="rating-red"><input type="radio" name="ecgTaken" value="yes-abnormal"><span>Yes — Abnormal</span></label>
+      </div>
+    </div>
+      </div>
+      <div class="section-chart" id="chartCardiac">
+        <div class="chart-title">AF Symptom Streak</div>
+        <div class="chart-stat" id="chartAFStreak">—</div>
+        <div class="chart-sub" id="chartAFStreakLabel">days symptom-free</div>
+        <div style="margin-top:10px;width:100%">
+          <div class="chart-title">Last 14 days</div>
+          <div id="afDotGrid" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RA & WELLBEING -->
+  <div class="section has-chart">
+    <div class="section-wrap">
+      <div class="section-inputs">
+    <div class="section-title"><span class="icon">&#9883;</span> RA & Wellbeing</div>
+    <div class="row">
+      <div class="field">
+        <div class="label">RA Flare Status</div>
+        <div class="rating">
+          <label class="rating-green"><input type="radio" name="raFlare" value="none"><span>None</span></label>
+          <label class="rating-amber"><input type="radio" name="raFlare" value="mild"><span>Mild</span></label>
+          <label class="rating-red"><input type="radio" name="raFlare" value="flare"><span>Flare</span></label>
+        </div>
+      </div>
+      <div class="field">
+        <div class="label">Morning Stiffness <span class="unit">min</span></div>
+        <input type="number" id="morningStiffness" placeholder="e.g. 15">
+      </div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <div class="field">
+        <div class="label">Energy Level (1-10)</div>
+        <div class="rating">
+          <label class="rating-red"><input type="radio" name="energy" value="1"><span>1</span></label>
+          <label class="rating-red"><input type="radio" name="energy" value="2"><span>2</span></label>
+          <label class="rating-red"><input type="radio" name="energy" value="3"><span>3</span></label>
+          <label class="rating-amber"><input type="radio" name="energy" value="4"><span>4</span></label>
+          <label class="rating-amber"><input type="radio" name="energy" value="5"><span>5</span></label>
+          <label class="rating-amber"><input type="radio" name="energy" value="6"><span>6</span></label>
+          <label class="rating-green"><input type="radio" name="energy" value="7"><span>7</span></label>
+          <label class="rating-green"><input type="radio" name="energy" value="8"><span>8</span></label>
+          <label class="rating-green"><input type="radio" name="energy" value="9"><span>9</span></label>
+          <label class="rating-green"><input type="radio" name="energy" value="10"><span>10</span></label>
+        </div>
+      </div>
+    </div>
+    <div class="field" style="margin-top:12px">
+      <div class="label">Stress Level (1-10)</div>
+      <div class="rating">
+        <label class="rating-green"><input type="radio" name="stress" value="1"><span>1</span></label>
+        <label class="rating-green"><input type="radio" name="stress" value="2"><span>2</span></label>
+        <label class="rating-green"><input type="radio" name="stress" value="3"><span>3</span></label>
+        <label class="rating-amber"><input type="radio" name="stress" value="4"><span>4</span></label>
+        <label class="rating-amber"><input type="radio" name="stress" value="5"><span>5</span></label>
+        <label class="rating-amber"><input type="radio" name="stress" value="6"><span>6</span></label>
+        <label class="rating-red"><input type="radio" name="stress" value="7"><span>7</span></label>
+        <label class="rating-red"><input type="radio" name="stress" value="8"><span>8</span></label>
+        <label class="rating-red"><input type="radio" name="stress" value="9"><span>9</span></label>
+        <label class="rating-red"><input type="radio" name="stress" value="10"><span>10</span></label>
+      </div>
+    </div>
+    <div class="field" style="margin-top:12px">
+      <div class="label">Bowel Function</div>
+      <div class="rating">
+        <label class="rating-green"><input type="radio" name="bowel" value="normal"><span>Normal</span></label>
+        <label class="rating-amber"><input type="radio" name="bowel" value="constipated"><span>Constipated</span></label>
+        <label class="rating-amber"><input type="radio" name="bowel" value="loose"><span>Loose</span></label>
+        <label><input type="radio" name="bowel" value="none"><span>None today</span></label>
+      </div>
+    </div>
+      </div>
+      <div class="section-chart" id="chartWellbeing">
+        <div class="chart-title">Energy & Stress — last 14 days</div>
+        <svg id="svgWellbeing" viewBox="0 0 280 80" preserveAspectRatio="none"></svg>
+        <div style="display:flex;gap:16px;margin-top:6px;font-size:11px">
+          <span style="color:var(--green)">&#9679; Energy</span>
+          <span style="color:var(--red)">&#9679; Stress</span>
+        </div>
+        <div style="margin-top:10px;width:100%">
+          <div class="chart-title">RA Flare Status</div>
+          <div id="raDotGrid" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRAINING -->
+  <div class="section">
+    <div class="section-title"><span class="icon">&#9917;</span> Training</div>
+    <div id="trainingEntries">
+      <div class="training-entry" id="training1">
+        <div class="row">
+          <div class="field">
+            <div class="label">Type</div>
+            <select class="trainingType">
+              <option value="">— Select —</option>
+              <option value="bjj">BJJ</option>
+              <option value="boxing">Boxing</option>
+              <option value="mma">Carioti MMA</option>
+              <option value="weights">Weights</option>
+              <option value="walking">Walking</option>
+              <option value="zone2">Zone 2 Cardio</option>
+              <option value="mobility">Mobility/Yoga</option>
+              <option value="rest">Rest Day</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="field">
+            <div class="label">Duration <span class="unit">min</span></div>
+            <input type="number" class="trainingDuration" placeholder="e.g. 60">
+          </div>
+        </div>
+        <div class="field">
+          <div class="label">Perceived Intensity (RPE 1-10)</div>
+          <div class="rating">
+            <label class="rating-green"><input type="radio" name="rpe1" value="1"><span>1</span></label>
+            <label class="rating-green"><input type="radio" name="rpe1" value="2"><span>2</span></label>
+            <label class="rating-green"><input type="radio" name="rpe1" value="3"><span>3</span></label>
+            <label class="rating-green"><input type="radio" name="rpe1" value="4"><span>4</span></label>
+            <label class="rating-amber"><input type="radio" name="rpe1" value="5"><span>5</span></label>
+            <label class="rating-amber"><input type="radio" name="rpe1" value="6"><span>6</span></label>
+            <label class="rating-amber"><input type="radio" name="rpe1" value="7"><span>7</span></label>
+            <label class="rating-red"><input type="radio" name="rpe1" value="8"><span>8</span></label>
+            <label class="rating-red"><input type="radio" name="rpe1" value="9"><span>9</span></label>
+            <label class="rating-red"><input type="radio" name="rpe1" value="10"><span>10</span></label>
+          </div>
+        </div>
+      </div>
+    </div>
+    <button class="btn-add" onclick="addTraining()">+ Add another session</button>
+  </div>
+
+  <!-- NUTRITION -->
+  <div class="section has-chart">
+    <div class="section-wrap">
+      <div class="section-inputs">
+    <div class="section-title"><span class="icon">&#127860;</span> Nutrition</div>
+
+    <!-- Running totals bar -->
+    <div id="macroTotals" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;justify-content:space-between;font-size:13px">
+      <span><strong id="totalCal">0</strong> <span style="color:var(--dim)">kcal</span></span>
+      <span><strong id="totalPro">0</strong><span style="color:var(--dim)">g P</span></span>
+      <span><strong id="totalCarb">0</strong><span style="color:var(--dim)">g C</span></span>
+      <span><strong id="totalFat">0</strong><span style="color:var(--dim)">g F</span></span>
+    </div>
+
+    <!-- Food entries -->
+    <div id="foodEntries"></div>
+
+    <button class="btn-add" onclick="addFoodEntry()" style="margin-bottom:12px">+ Add food item</button>
+
+    <!-- FLUID BALANCE CHART -->
+    <div class="field">
+      <div class="label">💧 Fluid Balance <span class="hint">— tap each hour and enter mL</span></div>
+      <div id="fluidGrid" class="fluid-grid"></div>
+      <div class="fluid-total-bar">
+        <span style="color:var(--dim)">Daily total</span>
+        <span><span class="fluid-litres" id="fluidLitres">0.0</span> <span style="color:var(--dim);font-size:12px">L &nbsp;·&nbsp; <span id="fluidMl">0</span> mL</span></span>
+      </div>
+      <input type="hidden" id="waterIntake">
+    </div>
+    <div class="field">
+      <div class="label">Food Quality <span class="hint">(overall)</span></div>
+      <div class="rating">
+        <label class="rating-red"><input type="radio" name="foodQuality" value="poor"><span>Poor</span></label>
+        <label class="rating-amber"><input type="radio" name="foodQuality" value="ok"><span>OK</span></label>
+        <label class="rating-green"><input type="radio" name="foodQuality" value="good"><span>Good</span></label>
+        <label class="rating-green"><input type="radio" name="foodQuality" value="great"><span>Great</span></label>
+      </div>
+    </div>
+      </div>
+      <div class="section-chart" id="chartNutrition">
+        <div class="chart-title">Daily Calories — last 14 days</div>
+        <div class="chart-stat" id="chartCalAvg">—</div>
+        <div class="chart-sub">avg kcal/day</div>
+        <svg id="svgCalories" viewBox="0 0 280 70" preserveAspectRatio="none"></svg>
+        <div style="margin-top:10px;width:100%">
+          <div class="chart-title">Avg Protein</div>
+          <div style="display:flex;align-items:baseline;gap:6px">
+            <span class="chart-stat" id="chartProAvg" style="font-size:18px">—</span>
+            <span class="chart-sub">g/day</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPLIANCE -->
+  <div class="section">
+    <div class="section-title"><span class="icon">&#9745;</span> Daily Compliance</div>
+    <div class="toggle-row">
+      <span class="toggle-label">All supplements taken</span>
+      <label class="toggle"><input type="checkbox" id="suppsTaken"><span class="slider"></span></label>
+    </div>
+    <div class="toggle-row">
+      <span class="toggle-label">Fermented food/probiotic consumed</span>
+      <label class="toggle"><input type="checkbox" id="probioticTaken"><span class="slider"></span></label>
+    </div>
+    <div class="toggle-row">
+      <span class="toggle-label">Electrolytes taken (pre/post training)</span>
+      <label class="toggle"><input type="checkbox" id="electrolytesTaken"><span class="slider"></span></label>
+    </div>
+    <div class="toggle-row">
+      <span class="toggle-label">Coloxyl taken</span>
+      <label class="toggle"><input type="checkbox" id="coloxylTaken"><span class="slider"></span></label>
+    </div>
+    <div class="toggle-row">
+      <span class="toggle-label">Vitamin K2 source today <span style="color:var(--dim);font-size:11px">(fermented milk, eggs, natto, cheese, or supplement)</span></span>
+      <label class="toggle"><input type="checkbox" id="k2Taken"><span class="slider"></span></label>
+    </div>
+  </div>
+
+  <!-- BODY MEASUREMENTS (auto-expands on Mondays) -->
+  <div class="section" id="measurementsSection">
+    <div class="section-title"><span class="icon">&#128207;</span> Body Measurements <span class="hint" style="font-weight:normal;font-size:12px;color:var(--dim)" id="measureFreqHint">— weekly/as needed</span></div>
+    <div id="weeklyPrompt" style="background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.25);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--accent);display:none">
+      It's measurement day! Grab the tape measure and jump on the scales.
+    </div>
+    <span class="measurements-toggle" onclick="toggleMeasurements()" id="measureToggle">Show measurement fields</span>
+    <div class="measurements-hidden" id="measurementsPanel">
+      <div style="font-size:11px;color:var(--dim);margin:12px 0 8px;text-transform:uppercase;letter-spacing:1px;font-weight:600">From Watch / Scale</div>
+      <div class="row">
+        <div class="field">
+          <div class="label">Fat Mass <span class="unit">kg</span></div>
+          <input type="number" id="fatMass" step="0.1" placeholder="from watch/scale">
+        </div>
+        <div class="field">
+          <div class="label">Skeletal Muscle <span class="unit">kg</span></div>
+          <input type="number" id="skeletalMuscle" step="0.1" placeholder="from watch/scale">
+        </div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div class="field">
+          <div class="label">Body Fat % <span class="hint">(watch/scale)</span></div>
+          <input type="number" id="bodyFat" step="0.1" placeholder="e.g. 28.5">
+        </div>
+        <div class="field">
+          <div class="label">Body Water % <span class="hint">(if available)</span></div>
+          <input type="number" id="bodyWater" step="0.1" placeholder="e.g. 52.0">
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--dim);margin:16px 0 8px;text-transform:uppercase;letter-spacing:1px;font-weight:600">Tape Measurements</div>
+      <div class="row">
+        <div class="field">
+          <div class="label">Waist <span class="unit">cm</span></div>
+          <input type="number" id="waist" step="0.5" placeholder="at navel">
+        </div>
+        <div class="field">
+          <div class="label">Hip <span class="unit">cm</span></div>
+          <input type="number" id="hip" step="0.5" placeholder="widest point">
+        </div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div class="field">
+          <div class="label">Neck <span class="unit">cm</span></div>
+          <input type="number" id="neck" step="0.5" placeholder="thickest part">
+        </div>
+        <div class="field">
+          <div class="label">Chest <span class="unit">cm</span> <span class="hint">(optional)</span></div>
+          <input type="number" id="chest" step="0.5" placeholder="at nipple line">
+        </div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div class="field">
+          <div class="label">Upper Arm <span class="unit">cm</span> <span class="hint">(optional)</span></div>
+          <input type="number" id="upperArm" step="0.5" placeholder="flexed, widest">
+        </div>
+        <div class="field">
+          <div class="label">Thigh <span class="unit">cm</span> <span class="hint">(optional)</span></div>
+          <input type="number" id="thigh" step="0.5" placeholder="midway">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NOTES -->
+  <div class="section">
+    <div class="section-title"><span class="icon">&#9997;</span> Notes</div>
+    <div class="field">
+      <textarea id="notes" placeholder="Anything notable — symptoms, medication changes, GP visits, how you're feeling..."></textarea>
+    </div>
+  </div>
+
+  <!-- SUBMIT -->
+  <div class="submit-section">
+    <button class="btn-submit" id="submitBtn" onclick="submitCheckin()">Save Check-in</button>
+    <div class="success" id="successMsg">
+      <strong>Saved!</strong><br>
+      <span id="savedFilename"></span>
+    </div>
+    <button class="history-btn" onclick="toggleHistory()">View Previous Check-ins</button>
+    <div style="display:flex;gap:6px;margin-top:4px">
+      <button class="history-btn" onclick="exportData()" style="flex:1">⬇ Export data</button>
+      <button class="history-btn" onclick="importData()" style="flex:1">⬆ Import data</button>
+    </div>
+    <div class="history-panel" id="historyPanel"></div>
+  </div>
+</div>
+
+<script>
+// Set today's date and auto-expand measurements on Mondays
+const today = new Date();
+document.getElementById('checkinDate').value = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+
+// Auto-expand measurements on Mondays (measurement day)
+const dayOfWeek = today.getDay(); // 0=Sun, 1=Mon
+if (dayOfWeek === 1) {
+  document.getElementById('measurementsPanel').classList.add('show');
+  document.getElementById('weeklyPrompt').style.display = 'block';
+  document.getElementById('measureToggle').textContent = 'Hide measurement fields';
+  document.getElementById('measureFreqHint').textContent = '— Monday = Measurement Day!';
+}
+
+// ===== FOOD DATABASE =====
+// Each item: { name, category, servings: [{ label, cal, pro, carb, fat }] }
+const foodDB = [
+  // --- Protein ---
+  { name:'King Oscar Sardines (drained)', cat:'Protein', servings:[
+    { label:'1 can (80g)', cal:150, pro:18, carb:0, fat:9 }
+  ]},
+  { name:'XL Egg', cat:'Protein', servings:[
+    { label:'1 egg (60g)', cal:80, pro:7, carb:0.5, fat:5 },
+    { label:'2 eggs', cal:160, pro:14, carb:1, fat:10 },
+    { label:'3 eggs', cal:240, pro:21, carb:1.5, fat:15 },
+    { label:'4 eggs', cal:320, pro:28, carb:2, fat:20 }
+  ]},
+  { name:'Extra Lean Beef Mince (cooked)', cat:'Protein', servings:[
+    { label:'100g', cal:170, pro:25, carb:0, fat:8 },
+    { label:'150g', cal:255, pro:38, carb:0, fat:12 },
+    { label:'200g', cal:340, pro:50, carb:0, fat:16 },
+    { label:'250g', cal:425, pro:63, carb:0, fat:20 }
+  ]},
+  { name:'Scotch Fillet Steak (cooked)', cat:'Protein', servings:[
+    { label:'100g', cal:250, pro:25, carb:0, fat:17 },
+    { label:'150g', cal:375, pro:38, carb:0, fat:26 },
+    { label:'200g', cal:500, pro:50, carb:0, fat:34 },
+    { label:'250g', cal:625, pro:63, carb:0, fat:43 },
+    { label:'300g', cal:750, pro:75, carb:0, fat:51 }
+  ]},
+  { name:'Chicken Breast (cooked)', cat:'Protein', servings:[
+    { label:'100g', cal:165, pro:31, carb:0, fat:4 },
+    { label:'150g', cal:248, pro:47, carb:0, fat:6 },
+    { label:'200g', cal:330, pro:62, carb:0, fat:8 }
+  ]},
+  { name:'Chicken Thigh (cooked, skin on)', cat:'Protein', servings:[
+    { label:'100g', cal:229, pro:24, carb:0, fat:14 },
+    { label:'150g', cal:344, pro:36, carb:0, fat:21 },
+    { label:'200g', cal:458, pro:48, carb:0, fat:28 }
+  ]},
+  { name:'Salmon Fillet (cooked)', cat:'Protein', servings:[
+    { label:'100g', cal:208, pro:20, carb:0, fat:13 },
+    { label:'150g', cal:312, pro:30, carb:0, fat:20 }
+  ]},
+  { name:'Tuna (canned in springwater, drained)', cat:'Protein', servings:[
+    { label:'1 small can (95g)', cal:100, pro:23, carb:0, fat:1 },
+    { label:'1 large can (185g)', cal:195, pro:45, carb:0, fat:2 }
+  ]},
+  { name:'Bacon Rashers', cat:'Protein', servings:[
+    { label:'2 rashers (60g)', cal:170, pro:12, carb:0, fat:13 },
+    { label:'3 rashers (90g)', cal:255, pro:18, carb:0, fat:20 },
+    { label:'4 rashers (120g)', cal:340, pro:24, carb:0, fat:26 }
+  ]},
+  { name:'Lamb Chops (cooked)', cat:'Protein', servings:[
+    { label:'100g', cal:260, pro:25, carb:0, fat:17 },
+    { label:'200g', cal:520, pro:50, carb:0, fat:34 }
+  ]},
+  { name:'Pork Chop (cooked)', cat:'Protein', servings:[
+    { label:'100g', cal:231, pro:26, carb:0, fat:13 },
+    { label:'200g', cal:462, pro:52, carb:0, fat:26 }
+  ]},
+
+  // --- Dairy / Fermented ---
+  { name:'Fermented A2 Milk (24hr yoghurt)', cat:'Dairy', servings:[
+    { label:'1 cup (250ml)', cal:145, pro:8.5, carb:6, fat:9 },
+    { label:'½ cup (125ml)', cal:73, pro:4.3, carb:3, fat:4.5 },
+    { label:'2 cups (500ml)', cal:290, pro:17, carb:12, fat:18 }
+  ]},
+  { name:'Full Cream Milk', cat:'Dairy', servings:[
+    { label:'1 cup (250ml)', cal:160, pro:8, carb:12, fat:9 },
+    { label:'splash (50ml)', cal:32, pro:1.6, carb:2.4, fat:1.8 }
+  ]},
+  { name:'Cheddar Cheese', cat:'Dairy', servings:[
+    { label:'1 slice (21g)', cal:85, pro:5, carb:0.3, fat:7 },
+    { label:'2 slices (42g)', cal:170, pro:10, carb:0.6, fat:14 },
+    { label:'30g', cal:122, pro:7.5, carb:0.4, fat:10 }
+  ]},
+  { name:'Butter', cat:'Dairy', servings:[
+    { label:'1 tsp (5g)', cal:36, pro:0, carb:0, fat:4 },
+    { label:'1 tbsp (15g)', cal:108, pro:0, carb:0, fat:12 },
+    { label:'2 tbsp (30g)', cal:216, pro:0, carb:0, fat:24 }
+  ]},
+  { name:'Greek Yoghurt (full fat)', cat:'Dairy', servings:[
+    { label:'100g', cal:97, pro:9, carb:3.5, fat:5 },
+    { label:'170g tub', cal:165, pro:15, carb:6, fat:8.5 }
+  ]},
+  { name:'Natto (homemade/store)', cat:'Dairy', servings:[
+    { label:'50g (1 tbsp serve)', cal:100, pro:9, carb:6, fat:5 },
+    { label:'100g', cal:200, pro:18, carb:12, fat:10 }
+  ]},
+  { name:'Cream Cheese', cat:'Dairy', servings:[
+    { label:'1 tbsp (15g)', cal:51, pro:1, carb:0.5, fat:5 },
+    { label:'2 tbsp (30g)', cal:102, pro:2, carb:1, fat:10 }
+  ]},
+
+  // --- Snacks ---
+  { name:'Blackstone Pork Crackling', cat:'Snacks', servings:[
+    { label:'1 bag (75g)', cal:393, pro:54, carb:0, fat:20 },
+    { label:'½ bag (38g)', cal:197, pro:27, carb:0, fat:10 }
+  ]},
+  { name:'J. Crackleton Pork Crackle', cat:'Snacks', servings:[
+    { label:'1 bag (40g)', cal:245, pro:21, carb:0, fat:18 }
+  ]},
+  { name:'Almonds (raw)', cat:'Snacks', servings:[
+    { label:'small handful (15g)', cal:87, pro:3, carb:1, fat:7.5 },
+    { label:'30g', cal:174, pro:6, carb:2, fat:15 },
+    { label:'50g', cal:290, pro:10, carb:3, fat:25 }
+  ]},
+  { name:'Protein Bar (avg)', cat:'Snacks', servings:[
+    { label:'1 bar (60g)', cal:220, pro:20, carb:18, fat:8 }
+  ]},
+  { name:'Banana', cat:'Snacks', servings:[
+    { label:'1 medium', cal:105, pro:1, carb:27, fat:0.4 },
+    { label:'1 large', cal:135, pro:1.5, carb:34, fat:0.5 }
+  ]},
+  { name:'Apple', cat:'Snacks', servings:[
+    { label:'1 medium', cal:95, pro:0.5, carb:25, fat:0.3 }
+  ]},
+  { name:'Dark Chocolate (70%+)', cat:'Snacks', servings:[
+    { label:'2 squares (20g)', cal:110, pro:1.5, carb:8, fat:8 },
+    { label:'4 squares (40g)', cal:220, pro:3, carb:16, fat:16 }
+  ]},
+
+  // --- Carbs / Grains ---
+  { name:'White Rice (cooked)', cat:'Carbs', servings:[
+    { label:'½ cup (100g)', cal:130, pro:2.7, carb:28, fat:0.3 },
+    { label:'1 cup (200g)', cal:260, pro:5.4, carb:56, fat:0.6 }
+  ]},
+  { name:'Brown Rice (cooked)', cat:'Carbs', servings:[
+    { label:'½ cup (100g)', cal:123, pro:2.7, carb:26, fat:1 },
+    { label:'1 cup (200g)', cal:246, pro:5.4, carb:52, fat:2 }
+  ]},
+  { name:'Pasta (cooked)', cat:'Carbs', servings:[
+    { label:'1 cup (150g)', cal:220, pro:8, carb:43, fat:1.3 },
+    { label:'2 cups (300g)', cal:440, pro:16, carb:86, fat:2.6 }
+  ]},
+  { name:'Bread (white/wholemeal)', cat:'Carbs', servings:[
+    { label:'1 slice', cal:80, pro:3, carb:14, fat:1 },
+    { label:'2 slices', cal:160, pro:6, carb:28, fat:2 }
+  ]},
+  { name:'Wraps / Tortilla', cat:'Carbs', servings:[
+    { label:'1 wrap', cal:120, pro:3, carb:20, fat:3 }
+  ]},
+  { name:'Potato (cooked)', cat:'Carbs', servings:[
+    { label:'1 medium (150g)', cal:130, pro:3, carb:30, fat:0.2 },
+    { label:'1 large (250g)', cal:218, pro:5, carb:50, fat:0.3 }
+  ]},
+  { name:'Sweet Potato (cooked)', cat:'Carbs', servings:[
+    { label:'1 medium (150g)', cal:135, pro:2, carb:31, fat:0.2 },
+    { label:'200g', cal:180, pro:2.7, carb:42, fat:0.3 }
+  ]},
+  { name:'Oats (dry)', cat:'Carbs', servings:[
+    { label:'½ cup (40g)', cal:150, pro:5, carb:27, fat:3 },
+    { label:'1 cup (80g)', cal:300, pro:10, carb:54, fat:6 }
+  ]},
+
+  // --- Vegetables ---
+  { name:'Mixed Vegetables (cooked)', cat:'Veg', servings:[
+    { label:'1 cup (150g)', cal:50, pro:2.5, carb:10, fat:0.3 },
+    { label:'2 cups (300g)', cal:100, pro:5, carb:20, fat:0.6 }
+  ]},
+  { name:'Broccoli (cooked)', cat:'Veg', servings:[
+    { label:'1 cup (150g)', cal:55, pro:4, carb:11, fat:0.5 }
+  ]},
+  { name:'Salad (mixed greens)', cat:'Veg', servings:[
+    { label:'1 bowl', cal:20, pro:1.5, carb:3, fat:0.3 },
+    { label:'large bowl', cal:35, pro:2.5, carb:5, fat:0.5 }
+  ]},
+  { name:'Avocado', cat:'Veg', servings:[
+    { label:'½ avocado', cal:120, pro:1.5, carb:6, fat:11 },
+    { label:'1 whole', cal:240, pro:3, carb:12, fat:22 }
+  ]},
+  { name:'Tomato', cat:'Veg', servings:[
+    { label:'1 medium', cal:22, pro:1, carb:5, fat:0.2 }
+  ]},
+  { name:'Onion (cooked)', cat:'Veg', servings:[
+    { label:'½ onion', cal:22, pro:0.5, carb:5, fat:0.1 },
+    { label:'1 onion', cal:44, pro:1, carb:10, fat:0.2 }
+  ]},
+
+  // --- Oils / Sauces ---
+  { name:'Olive Oil', cat:'Oils', servings:[
+    { label:'1 tbsp (15ml)', cal:120, pro:0, carb:0, fat:14 },
+    { label:'2 tbsp (30ml)', cal:240, pro:0, carb:0, fat:28 }
+  ]},
+  { name:'Coconut Oil', cat:'Oils', servings:[
+    { label:'1 tbsp (15ml)', cal:121, pro:0, carb:0, fat:14 }
+  ]},
+
+  // --- Drinks ---
+  { name:'Protein Shake (whey)', cat:'Drinks', servings:[
+    { label:'1 scoop + water', cal:120, pro:25, carb:2, fat:1.5 },
+    { label:'1 scoop + milk', cal:280, pro:33, carb:14, fat:10.5 },
+    { label:'2 scoops + water', cal:240, pro:50, carb:4, fat:3 }
+  ]},
+  { name:'Coffee (black)', cat:'Drinks', servings:[
+    { label:'1 cup', cal:2, pro:0, carb:0, fat:0 }
+  ]},
+  { name:'Coffee (with milk)', cat:'Drinks', servings:[
+    { label:'flat white', cal:120, pro:6, carb:9, fat:6 },
+    { label:'long black + splash', cal:15, pro:0.8, carb:1.2, fat:0.5 }
+  ]},
+  { name:'Beer (full strength)', cat:'Drinks', servings:[
+    { label:'1 stubby (375ml)', cal:145, pro:1, carb:11, fat:0 },
+    { label:'1 schooner (425ml)', cal:165, pro:1, carb:12.5, fat:0 }
+  ]},
+  { name:'Beer (mid strength)', cat:'Drinks', servings:[
+    { label:'1 stubby (375ml)', cal:110, pro:0.8, carb:8, fat:0 }
+  ]},
+  { name:'Red Wine', cat:'Drinks', servings:[
+    { label:'1 glass (150ml)', cal:125, pro:0, carb:4, fat:0 },
+    { label:'2 glasses', cal:250, pro:0, carb:8, fat:0 }
+  ]},
+
+  // --- Custom / Quick entry ---
+  { name:'Custom food (enter manually)', cat:'Other', servings:[
+    { label:'manual entry', cal:0, pro:0, carb:0, fat:0 }
+  ]}
+];
+
+// Group foods by category for the dropdown
+const foodCategories = [...new Set(foodDB.map(f=>f.cat))];
+let foodEntryCount = 0;
+
+function addFoodEntry() {
+  foodEntryCount++;
+  const container = document.getElementById('foodEntries');
+  const entry = document.createElement('div');
+  entry.className = 'training-entry';
+  entry.id = 'food_'+foodEntryCount;
+  entry.setAttribute('data-idx', foodEntryCount);
+
+  let optionsHTML = '<option value="">— Select food —</option>';
+  foodCategories.forEach(cat => {
+    optionsHTML += `<optgroup label="${cat}">`;
+    foodDB.filter(f=>f.cat===cat).forEach((f,i) => {
+      const dbIdx = foodDB.indexOf(f);
+      optionsHTML += `<option value="${dbIdx}">${f.name}</option>`;
+    });
+    optionsHTML += '</optgroup>';
+  });
+
+  entry.innerHTML = `
+    <div class="row">
+      <div class="field" style="flex:2">
+        <select class="foodSelect" onchange="onFoodSelect(this)" style="font-size:13px">${optionsHTML}</select>
+      </div>
+      <div class="field" style="flex:1">
+        <select class="servingSelect" onchange="recalcMacros()" disabled style="font-size:13px"><option>—</option></select>
+      </div>
+      <div class="field" style="flex:0 0 40px;display:flex;align-items:center">
+        <input type="number" class="foodQty" value="1" min="1" max="20" style="width:48px;text-align:center;padding:8px 4px" onchange="recalcMacros()">
+      </div>
+      <button onclick="this.parentElement.remove();recalcMacros()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:18px;padding:0 4px;flex:0 0 24px" title="Remove">&#10005;</button>
+    </div>
+    <div class="foodMacroLine" style="font-size:11px;color:var(--dim);padding:4px 0 0 2px;display:none"></div>
+    <div class="customFields" style="display:none;margin-top:8px">
+      <div class="row">
+        <div class="field"><div class="label" style="font-size:10px">Name</div><input type="text" class="customName" placeholder="Food name" style="font-size:12px;padding:6px 8px"></div>
+        <div class="field"><div class="label" style="font-size:10px">Cal</div><input type="number" class="customCal" placeholder="kcal" style="font-size:12px;padding:6px 8px;width:70px" onchange="recalcMacros()"></div>
+        <div class="field"><div class="label" style="font-size:10px">Pro</div><input type="number" class="customPro" placeholder="g" style="font-size:12px;padding:6px 8px;width:55px" onchange="recalcMacros()"></div>
+        <div class="field"><div class="label" style="font-size:10px">Carb</div><input type="number" class="customCarb" placeholder="g" style="font-size:12px;padding:6px 8px;width:55px" onchange="recalcMacros()"></div>
+        <div class="field"><div class="label" style="font-size:10px">Fat</div><input type="number" class="customFat" placeholder="g" style="font-size:12px;padding:6px 8px;width:55px" onchange="recalcMacros()"></div>
+      </div>
+    </div>
+  `;
+  container.appendChild(entry);
+}
+
+function onFoodSelect(sel) {
+  const entry = sel.closest('.training-entry');
+  const servingSel = entry.querySelector('.servingSelect');
+  const customFields = entry.querySelector('.customFields');
+  const idx = parseInt(sel.value);
+
+  if (isNaN(idx)) { servingSel.innerHTML='<option>—</option>'; servingSel.disabled=true; customFields.style.display='none'; recalcMacros(); return; }
+
+  const food = foodDB[idx];
+  if (food.name.startsWith('Custom')) {
+    servingSel.innerHTML='<option>manual</option>';
+    servingSel.disabled=true;
+    customFields.style.display='block';
+  } else {
+    customFields.style.display='none';
+    servingSel.disabled=false;
+    servingSel.innerHTML = food.servings.map((s,i) => `<option value="${i}">${s.label}</option>`).join('');
+  }
+  recalcMacros();
+}
+
+function recalcMacros() {
+  let tCal=0, tPro=0, tCarb=0, tFat=0;
+  document.querySelectorAll('#foodEntries .training-entry').forEach(entry => {
+    const foodSel = entry.querySelector('.foodSelect');
+    const servSel = entry.querySelector('.servingSelect');
+    const qty = parseInt(entry.querySelector('.foodQty').value) || 1;
+    const macroLine = entry.querySelector('.foodMacroLine');
+    const idx = parseInt(foodSel.value);
+
+    if (isNaN(idx)) { macroLine.style.display='none'; return; }
+
+    const food = foodDB[idx];
+    let cal=0, pro=0, carb=0, fat=0;
+
+    if (food.name.startsWith('Custom')) {
+      cal = parseInt(entry.querySelector('.customCal').value)||0;
+      pro = parseInt(entry.querySelector('.customPro').value)||0;
+      carb = parseInt(entry.querySelector('.customCarb').value)||0;
+      fat = parseInt(entry.querySelector('.customFat').value)||0;
+    } else {
+      const sIdx = parseInt(servSel.value)||0;
+      const s = food.servings[sIdx];
+      cal=s.cal; pro=s.pro; carb=s.carb; fat=s.fat;
+    }
+
+    cal*=qty; pro*=qty; carb*=qty; fat*=qty;
+    tCal+=cal; tPro+=pro; tCarb+=carb; tFat+=fat;
+
+    macroLine.style.display='block';
+    macroLine.textContent = `${cal} kcal | P:${pro}g  C:${carb}g  F:${fat}g` + (qty>1?` (x${qty})`:'');
+  });
+
+  document.getElementById('totalCal').textContent = Math.round(tCal);
+  document.getElementById('totalPro').textContent = Math.round(tPro);
+  document.getElementById('totalCarb').textContent = Math.round(tCarb);
+  document.getElementById('totalFat').textContent = Math.round(tFat);
+
+  // Color code calories
+  const calEl = document.getElementById('totalCal');
+  calEl.style.color = tCal===0?'var(--text)': tCal<1500?'var(--amber)': tCal>3000?'var(--red)':'var(--green)';
+}
+
+// Add first food entry on load
+addFoodEntry();
+
+let trainingCount = 1;
+
+function addTraining() {
+  trainingCount++;
+  const container = document.getElementById('trainingEntries');
+  const entry = document.createElement('div');
+  entry.className = 'training-entry';
+  entry.innerHTML = `
+    <div class="row">
+      <div class="field">
+        <div class="label">Type</div>
+        <select class="trainingType">
+          <option value="">— Select —</option>
+          <option value="bjj">BJJ</option>
+          <option value="boxing">Boxing</option>
+          <option value="mma">Carioti MMA</option>
+          <option value="weights">Weights</option>
+          <option value="walking">Walking</option>
+          <option value="zone2">Zone 2 Cardio</option>
+          <option value="mobility">Mobility/Yoga</option>
+          <option value="rest">Rest Day</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="field">
+        <div class="label">Duration <span class="unit">min</span></div>
+        <input type="number" class="trainingDuration" placeholder="e.g. 60">
+      </div>
+    </div>
+    <div class="field">
+      <div class="label">Perceived Intensity (RPE 1-10)</div>
+      <div class="rating">
+        ${[1,2,3,4,5,6,7,8,9,10].map(n => {
+          const cls = n<=4?'rating-green':n<=7?'rating-amber':'rating-red';
+          return `<label class="${cls}"><input type="radio" name="rpe${trainingCount}" value="${n}"><span>${n}</span></label>`;
+        }).join('')}
+      </div>
+    </div>
+  `;
+  container.appendChild(entry);
+}
+
+function toggleMeasurements() {
+  const panel = document.getElementById('measurementsPanel');
+  const link = document.querySelector('.measurements-toggle');
+  panel.classList.toggle('show');
+  link.textContent = panel.classList.contains('show') ? 'Hide measurement fields' : 'Show measurement fields';
+}
+
+function getRadioValue(name) {
+  const el = document.querySelector(`input[name="${name}"]:checked`);
+  return el ? el.value : null;
+}
+
+function getTrainingData() {
+  const entries = [];
+  document.querySelectorAll('.training-entry').forEach((entry, i) => {
+    const type = entry.querySelector('.trainingType').value;
+    const duration = entry.querySelector('.trainingDuration').value;
+    const rpe = getRadioValue(`rpe${i+1}`);
+    if (type || duration) {
+      entries.push({ type: type||null, duration: duration?parseInt(duration):null, rpe: rpe?parseInt(rpe):null });
+    }
+  });
+  return entries;
+}
+
+function getFoodLog() {
+  const items = [];
+  document.querySelectorAll('#foodEntries .training-entry').forEach(entry => {
+    const foodSel = entry.querySelector('.foodSelect');
+    const servSel = entry.querySelector('.servingSelect');
+    const qty = parseInt(entry.querySelector('.foodQty').value) || 1;
+    const idx = parseInt(foodSel.value);
+    if (isNaN(idx)) return;
+    const food = foodDB[idx];
+    let item;
+    if (food.name.startsWith('Custom')) {
+      item = {
+        name: entry.querySelector('.customName').value || 'Custom',
+        serving: 'manual',
+        qty: qty,
+        cal: (parseInt(entry.querySelector('.customCal').value)||0)*qty,
+        pro: (parseInt(entry.querySelector('.customPro').value)||0)*qty,
+        carb: (parseInt(entry.querySelector('.customCarb').value)||0)*qty,
+        fat: (parseInt(entry.querySelector('.customFat').value)||0)*qty
+      };
+    } else {
+      const sIdx = parseInt(servSel.value)||0;
+      const s = food.servings[sIdx];
+      item = { name: food.name, serving: s.label, qty: qty, cal: s.cal*qty, pro: s.pro*qty, carb: s.carb*qty, fat: s.fat*qty };
+    }
+    items.push(item);
+  });
+  return items;
+}
+
+function collectData() {
+  return {
+    date: document.getElementById('checkinDate').value,
+    timestamp: new Date().toISOString(),
+    vitals: {
+      weight: parseFloat(document.getElementById('weight').value) || null,
+      bp_systolic: parseInt(document.getElementById('bpSys').value) || null,
+      bp_diastolic: parseInt(document.getElementById('bpDia').value) || null,
+      resting_hr: parseInt(document.getElementById('restHR').value) || null
+    },
+    sleep: {
+      hours: parseFloat(document.getElementById('sleepHours').value) || null,
+      quality: getRadioValue('sleepQuality') ? parseInt(getRadioValue('sleepQuality')) : null,
+      mad_worn: getRadioValue('madWorn')
+    },
+    cardiac: {
+      af_symptoms: getRadioValue('afSymptoms'),
+      palpitations: getRadioValue('palpitations'),
+      ecg_taken: getRadioValue('ecgTaken')
+    },
+    wellbeing: {
+      ra_flare: getRadioValue('raFlare'),
+      morning_stiffness_min: parseInt(document.getElementById('morningStiffness').value) || null,
+      energy: getRadioValue('energy') ? parseInt(getRadioValue('energy')) : null,
+      stress: getRadioValue('stress') ? parseInt(getRadioValue('stress')) : null,
+      bowel: getRadioValue('bowel')
+    },
+    training: getTrainingData(),
+    nutrition: {
+      food_log: getFoodLog(),
+      totals: {
+        calories: parseInt(document.getElementById('totalCal').textContent) || 0,
+        protein_g: parseInt(document.getElementById('totalPro').textContent) || 0,
+        carbs_g: parseInt(document.getElementById('totalCarb').textContent) || 0,
+        fat_g: parseInt(document.getElementById('totalFat').textContent) || 0
+      },
+      water_litres: parseFloat(document.getElementById('waterIntake').value) || null,
+      fluid_balance: getFluidBalance(),
+      food_quality: getRadioValue('foodQuality')
+    },
+    compliance: {
+      supplements_taken: document.getElementById('suppsTaken').checked,
+      probiotic_taken: document.getElementById('probioticTaken').checked,
+      electrolytes_taken: document.getElementById('electrolytesTaken').checked,
+      coloxyl_taken: document.getElementById('coloxylTaken').checked,
+      k2_source_taken: document.getElementById('k2Taken').checked
+    },
+    measurements: {
+      fat_mass_kg: parseFloat(document.getElementById('fatMass').value) || null,
+      skeletal_muscle_kg: parseFloat(document.getElementById('skeletalMuscle').value) || null,
+      body_fat_pct: parseFloat(document.getElementById('bodyFat').value) || null,
+      body_water_pct: parseFloat(document.getElementById('bodyWater').value) || null,
+      waist_cm: parseFloat(document.getElementById('waist').value) || null,
+      hip_cm: parseFloat(document.getElementById('hip').value) || null,
+      neck_cm: parseFloat(document.getElementById('neck').value) || null,
+      chest_cm: parseFloat(document.getElementById('chest').value) || null,
+      upper_arm_cm: parseFloat(document.getElementById('upperArm').value) || null,
+      thigh_cm: parseFloat(document.getElementById('thigh').value) || null
+    },
+    notes: document.getElementById('notes').value || null
+  };
+}
+
+function submitCheckin() {
+  const data = collectData();
+  if (!data.date) { alert('Please set the check-in date'); return; }
+
+  const storageKey = 'healthCheckins';
+  let allCheckins = JSON.parse(localStorage.getItem(storageKey) || '[]');
+  allCheckins = allCheckins.filter(c => c.date !== data.date);
+  allCheckins.push(data);
+  allCheckins.sort((a,b) => a.date.localeCompare(b.date));
+  localStorage.setItem(storageKey, JSON.stringify(allCheckins));
+
+  document.getElementById('successMsg').style.display = 'block';
+  document.getElementById('savedFilename').textContent = `Saved! (${allCheckins.length} total check-in${allCheckins.length !== 1 ? 's' : ''})`;
+  document.getElementById('submitBtn').disabled = true;
+  document.getElementById('submitBtn').textContent = '✓ Saved!';
+
+  renderDashboards();
+
+  setTimeout(() => {
+    document.getElementById('submitBtn').disabled = false;
+    document.getElementById('submitBtn').textContent = 'Save Check-in';
+  }, 3000);
+}
+
+function toggleHistory() {
+  const panel = document.getElementById('historyPanel');
+  if (panel.style.display === 'block') { panel.style.display = 'none'; return; }
+
+  const allCheckins = JSON.parse(localStorage.getItem('healthCheckins') || '[]');
+  if (allCheckins.length === 0) {
+    panel.innerHTML = '<div style="padding:16px;color:var(--dim);text-align:center">No previous check-ins yet</div>';
+  } else {
+    panel.innerHTML = allCheckins.reverse().map(c => `
+      <div class="history-entry">
+        <div class="date">${c.date}</div>
+        ${c.vitals.weight ? `<div class="data-row"><span>Weight</span><span>${c.vitals.weight} kg</span></div>` : ''}
+        ${c.measurements&&c.measurements.fat_mass_kg ? `<div class="data-row"><span>Fat Mass</span><span>${c.measurements.fat_mass_kg} kg</span></div>` : ''}
+        ${c.measurements&&c.measurements.skeletal_muscle_kg ? `<div class="data-row"><span>Muscle</span><span>${c.measurements.skeletal_muscle_kg} kg</span></div>` : ''}
+        ${c.measurements&&c.measurements.waist_cm ? `<div class="data-row"><span>Waist</span><span>${c.measurements.waist_cm} cm</span></div>` : ''}
+        ${c.nutrition&&c.nutrition.totals&&c.nutrition.totals.calories ? `<div class="data-row"><span>Nutrition</span><span>${c.nutrition.totals.calories} kcal | P:${c.nutrition.totals.protein_g||0}g C:${c.nutrition.totals.carbs_g||0}g F:${c.nutrition.totals.fat_g||0}g</span></div>` : (c.nutrition&&c.nutrition.calories ? `<div class="data-row"><span>Nutrition</span><span>${c.nutrition.calories} kcal | P:${c.nutrition.protein_g||'—'}g C:${c.nutrition.carbs_g||'—'}g F:${c.nutrition.fat_g||'—'}g</span></div>` : '')}
+        ${c.sleep.hours ? `<div class="data-row"><span>Sleep</span><span>${c.sleep.hours} hr (Q: ${c.sleep.quality||'—'}/5)</span></div>` : ''}
+        ${c.wellbeing.energy ? `<div class="data-row"><span>Energy</span><span>${c.wellbeing.energy}/10</span></div>` : ''}
+        ${c.cardiac.af_symptoms ? `<div class="data-row"><span>AF</span><span>${c.cardiac.af_symptoms}</span></div>` : ''}
+        ${c.wellbeing.ra_flare ? `<div class="data-row"><span>RA</span><span>${c.wellbeing.ra_flare}</span></div>` : ''}
+        ${c.training.length ? `<div class="data-row"><span>Training</span><span>${c.training.map(t=>t.type).join(', ')}</span></div>` : ''}
+        ${c.notes ? `<div class="data-row"><span>Notes</span><span>${c.notes}</span></div>` : ''}
+      </div>
+    `).join('');
+  }
+  panel.style.display = 'block';
+}
+
+// ===== DASHBOARD SPARKLINES =====
+function renderDashboards() {
+  const all = JSON.parse(localStorage.getItem('healthCheckins') || '[]');
+  if (all.length === 0) {
+    document.querySelectorAll('.section-chart').forEach(el => {
+      if (!el.querySelector('.no-data')) {
+        const nd = document.createElement('div');
+        nd.className = 'no-data';
+        nd.textContent = 'Charts appear after a few check-ins';
+        el.innerHTML = '';
+        el.appendChild(nd);
+      }
+    });
+    return;
+  }
+
+  const sorted = [...all].sort((a,b) => a.date.localeCompare(b.date));
+  const last30 = sorted.slice(-30);
+  const last14 = sorted.slice(-14);
+
+  // Helper: draw sparkline SVG
+  function sparkline(svgId, values, color, opts={}) {
+    const svg = document.getElementById(svgId);
+    if (!svg || values.length < 2) return;
+    const vb = svg.viewBox.baseVal;
+    const W = vb.width, H = vb.height;
+    const pad = 4;
+    const filtered = values.filter(v => v !== null && v !== undefined);
+    if (filtered.length < 2) return;
+
+    const min = opts.min !== undefined ? opts.min : Math.min(...filtered) * 0.95;
+    const max = opts.max !== undefined ? opts.max : Math.max(...filtered) * 1.05;
+    const range = max - min || 1;
+
+    const points = [];
+    const step = (W - pad*2) / (values.length - 1);
+    values.forEach((v, i) => {
+      if (v === null || v === undefined) return;
+      const x = pad + i * step;
+      const y = H - pad - ((v - min) / range) * (H - pad*2);
+      points.push(`${x},${y}`);
+    });
+
+    // Area fill
+    const firstX = points[0].split(',')[0];
+    const lastX = points[points.length-1].split(',')[0];
+    const areaPath = `M${points.join(' L')} L${lastX},${H} L${firstX},${H} Z`;
+
+    svg.innerHTML = `
+      <defs><linearGradient id="grad_${svgId}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${color}" stop-opacity="0.3"/>
+        <stop offset="100%" stop-color="${color}" stop-opacity="0.02"/>
+      </linearGradient></defs>
+      <path d="${areaPath}" fill="url(#grad_${svgId})" />
+      <polyline points="${points.join(' ')}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round"/>
+      <circle cx="${points[points.length-1].split(',')[0]}" cy="${points[points.length-1].split(',')[1]}" r="3" fill="${color}"/>
+    `;
+
+    // Reference lines
+    if (opts.refLine) {
+      const ry = H - pad - ((opts.refLine - min) / range) * (H - pad*2);
+      svg.innerHTML += `<line x1="0" y1="${ry}" x2="${W}" y2="${ry}" stroke="${opts.refColor||'#666'}" stroke-width="0.5" stroke-dasharray="4,3" opacity="0.5"/>`;
+    }
+  }
+
+  // Helper: bar chart
+  function barChart(svgId, values, colorFn) {
+    const svg = document.getElementById(svgId);
+    if (!svg || values.length === 0) return;
+    const vb = svg.viewBox.baseVal;
+    const W = vb.width, H = vb.height;
+    const pad = 4;
+    const max = Math.max(...values.filter(v=>v!==null)) * 1.1 || 10;
+    const barW = Math.min(16, (W - pad*2) / values.length - 2);
+    const step = (W - pad*2) / values.length;
+
+    let html = '';
+    values.forEach((v, i) => {
+      if (v === null || v === undefined) return;
+      const x = pad + i * step + (step - barW) / 2;
+      const h = (v / max) * (H - pad*2);
+      const y = H - pad - h;
+      const col = typeof colorFn === 'function' ? colorFn(v) : colorFn;
+      html += `<rect x="${x}" y="${y}" width="${barW}" height="${h}" rx="2" fill="${col}" opacity="0.8"/>`;
+    });
+    svg.innerHTML = html;
+  }
+
+  // Helper: dot grid
+  function dotGrid(containerId, entries, valueFn, colorFn) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = '';
+    entries.forEach(c => {
+      const v = valueFn(c);
+      const dot = document.createElement('div');
+      dot.style.cssText = `width:16px;height:16px;border-radius:4px;background:${colorFn(v)};title="${c.date}"`;
+      dot.title = `${c.date}: ${v||'no data'}`;
+      container.appendChild(dot);
+    });
+  }
+
+  // ----- VITALS -----
+  const weights = last30.map(c => c.vitals?.weight).filter(w => w);
+  if (weights.length > 0) {
+    const latest = weights[weights.length-1];
+    document.getElementById('chartWeightVal').textContent = latest.toFixed(1) + ' kg';
+    if (weights.length > 1) {
+      const delta = latest - weights[0];
+      const el = document.getElementById('chartWeightDelta');
+      el.textContent = (delta > 0 ? '+' : '') + delta.toFixed(1) + ' kg over ' + weights.length + ' entries';
+      el.style.color = delta > 0 ? 'var(--red)' : 'var(--green)';
+    }
+    sparkline('svgWeight', last30.map(c => c.vitals?.weight), '#3b82f6');
+  }
+  const hrs = last30.map(c => c.vitals?.resting_hr);
+  sparkline('svgHR', hrs, '#ef4444', { refLine: 100, refColor: '#ef4444' });
+
+  // ----- SLEEP -----
+  const sleepH = last14.map(c => c.sleep?.hours);
+  const sleepValid = sleepH.filter(h => h);
+  if (sleepValid.length > 0) {
+    document.getElementById('chartSleepAvg').textContent = (sleepValid.reduce((a,b)=>a+b,0)/sleepValid.length).toFixed(1);
+    barChart('svgSleep', sleepH, v => v >= 7 ? '#22c55e' : v >= 5 ? '#f59e0b' : '#ef4444');
+    const quals = last14.filter(c => c.sleep?.quality).map(c => c.sleep.quality);
+    if (quals.length) {
+      const avgQ = (quals.reduce((a,b)=>a+b,0)/quals.length).toFixed(1);
+      document.getElementById('chartSleepQual').textContent = `Avg quality: ${avgQ}/5`;
+    }
+  }
+
+  // ----- CARDIAC -----
+  let streak = 0;
+  for (let i = sorted.length-1; i >= 0; i--) {
+    if (sorted[i].cardiac?.af_symptoms === 'none' || !sorted[i].cardiac?.af_symptoms) streak++;
+    else break;
+  }
+  document.getElementById('chartAFStreak').textContent = streak;
+  document.getElementById('chartAFStreak').style.color = streak >= 7 ? 'var(--green)' : streak >= 3 ? 'var(--amber)' : 'var(--red)';
+
+  dotGrid('afDotGrid', last14, c => c.cardiac?.af_symptoms,
+    v => v === 'none' || !v ? 'var(--green)' : v === 'mild' ? 'var(--amber)' : v === 'moderate' ? 'var(--amber)' : 'var(--red)'
+  );
+
+  // ----- WELLBEING -----
+  const energy = last14.map(c => c.wellbeing?.energy);
+  const stress = last14.map(c => c.wellbeing?.stress);
+  // Draw dual sparkline
+  const svgWB = document.getElementById('svgWellbeing');
+  if (svgWB && last14.length >= 2) {
+    sparkline('svgWellbeing', energy, '#22c55e', { min: 0, max: 10 });
+    // Overlay stress line
+    const vb = svgWB.viewBox.baseVal;
+    const W = vb.width, H = vb.height, pad = 4;
+    const step = (W - pad*2) / (stress.length - 1);
+    const pts = [];
+    stress.forEach((v, i) => {
+      if (v === null || v === undefined) return;
+      const x = pad + i * step;
+      const y = H - pad - (v / 10) * (H - pad*2);
+      pts.push(`${x},${y}`);
+    });
+    if (pts.length >= 2) {
+      svgWB.innerHTML += `<polyline points="${pts.join(' ')}" fill="none" stroke="var(--red)" stroke-width="1.5" stroke-linejoin="round" opacity="0.7"/>`;
+    }
+  }
+
+  dotGrid('raDotGrid', last14, c => c.wellbeing?.ra_flare,
+    v => v === 'none' || !v ? 'var(--green)' : v === 'mild' ? 'var(--amber)' : 'var(--red)'
+  );
+
+  // ----- NUTRITION -----
+  const cals = last14.map(c => c.nutrition?.totals?.calories || c.nutrition?.calories || null);
+  const calValid = cals.filter(c => c && c > 0);
+  if (calValid.length > 0) {
+    document.getElementById('chartCalAvg').textContent = Math.round(calValid.reduce((a,b)=>a+b,0)/calValid.length);
+    barChart('svgCalories', cals, v => v >= 1500 && v <= 2500 ? '#22c55e' : v > 3000 ? '#ef4444' : '#f59e0b');
+  }
+  const pros = last14.map(c => c.nutrition?.totals?.protein_g || c.nutrition?.protein_g || null).filter(p => p && p > 0);
+  if (pros.length > 0) {
+    document.getElementById('chartProAvg').textContent = Math.round(pros.reduce((a,b)=>a+b,0)/pros.length);
+  }
+}
+
+// ===== FLUID BALANCE CHART =====
+function buildFluidGrid() {
+  const grid = document.getElementById('fluidGrid');
+  if (!grid) return;
+  let html = '';
+  for (let h = 6; h <= 22; h++) {
+    const label = String(h).padStart(2,'0') + ':00';
+    html += `<div class="fluid-cell"><span class="fluid-time">${label}</span><input type="number" class="fluid-input" data-time="${label}" placeholder="—" min="0" max="5000" inputmode="numeric" oninput="updateFluidTotal()"></div>`;
+  }
+  grid.innerHTML = html;
+}
+
+function updateFluidTotal() {
+  let total = 0;
+  document.querySelectorAll('.fluid-input').forEach(inp => { total += parseFloat(inp.value) || 0; });
+  document.getElementById('fluidLitres').textContent = (total / 1000).toFixed(1);
+  document.getElementById('fluidMl').textContent = total;
+  document.getElementById('waterIntake').value = (total / 1000).toFixed(2);
+}
+
+function getFluidBalance() {
+  const entries = [];
+  document.querySelectorAll('.fluid-input').forEach(inp => {
+    const ml = parseFloat(inp.value) || 0;
+    if (ml > 0) entries.push({ time: inp.dataset.time, ml });
+  });
+  return entries;
+}
+
+buildFluidGrid();
+
+// Render on load
+renderDashboards();
+
+// ===== DATA EXPORT/IMPORT (for cross-device sync) =====
+function exportData() {
+  const data = localStorage.getItem('healthCheckins') || '[]';
+  const blob = new Blob([data], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'health-data.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importData() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = function() {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const parsed = JSON.parse(e.target.result);
+        const incoming = Array.isArray(parsed) ? parsed : [parsed];
+        let existing = JSON.parse(localStorage.getItem('healthCheckins') || '[]');
+        incoming.forEach(c => { existing = existing.filter(x => x.date !== c.date); existing.push(c); });
+        existing.sort((a,b) => a.date.localeCompare(b.date));
+        localStorage.setItem('healthCheckins', JSON.stringify(existing));
+        renderDashboards();
+        alert('Loaded ' + incoming.length + ' check-in(s).');
+      } catch { alert('Could not read file.'); }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+</script>
+</body>
+</html>
