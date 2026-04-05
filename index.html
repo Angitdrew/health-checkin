@@ -230,6 +230,13 @@
   .proj-hs-row .proj-hs-bf{height:100%;border-radius:3px;transition:width 0.6s ease}
   .proj-hs-row .proj-hs-impact{font-size:10px;text-align:right;font-weight:600;white-space:nowrap}
   .proj-hs-note{font-size:9px;color:var(--dim);margin-top:8px;line-height:1.4}
+  .proj-hs-nm{display:grid;grid-template-columns:30px 1fr 50px 1fr 50px;align-items:center;gap:6px;padding:6px 10px;background:var(--surface2);border-radius:6px;font-size:11px;margin-bottom:4px}
+  .proj-hs-nm .proj-hs-nm-rank{font-size:16px;font-weight:800;color:var(--accent)}
+  .proj-hs-nm .proj-hs-nm-cat{font-weight:600}
+  .proj-hs-nm .proj-hs-nm-now{text-align:center;font-size:10px;padding:2px 6px;border-radius:4px}
+  .proj-hs-nm .proj-hs-nm-arrow{text-align:center;font-size:14px;color:var(--accent)}
+  .proj-hs-nm .proj-hs-nm-goal{text-align:center;font-size:10px;padding:2px 6px;border-radius:4px}
+  .proj-hs-nm .proj-hs-nm-gain{font-weight:700;text-align:right;font-size:12px}
   @media(max-width:600px){.proj-controls{flex-direction:column}.proj-metric-grid{grid-template-columns:1fr 1fr}.proj-risk-grid{grid-template-columns:1fr}.proj-hs-row{grid-template-columns:110px 40px 1fr 36px;font-size:10px}}
 </style>
 </head>
@@ -764,6 +771,12 @@
       </div>
       <div class="proj-hs-lifespan" id="projHSLifespan"></div>
       <div class="proj-hs-bioage" id="projHSBioAge"></div>
+      <div style="margin:14px 0 6px;font-size:11px;font-weight:600">Projected Trajectory — With Goal Adherence</div>
+      <canvas id="projHSChart" height="220"></canvas>
+      <div class="proj-legend" id="projHSChartLegend"></div>
+      <div style="margin:14px 0 6px;font-size:11px;font-weight:600">Key Needle Movers</div>
+      <div id="projHSNeedleMovers"></div>
+      <div style="margin:14px 0 6px;font-size:11px;font-weight:600">Current Status by Category</div>
       <div class="proj-hs-cats" id="projHSCategories"></div>
       <div class="proj-hs-note" id="projHSNote"></div>
     </div>
@@ -3593,8 +3606,182 @@ async function syncFromGitHub() {
       </div>`;
     }).join('');
 
+    // ---- TRAJECTORY CHART: week-by-week recalculation as body metrics improve ----
+    const {data: pData} = proj;
+    const trajData = pData.map((wk, i) => {
+      // Recalculate body-comp-dependent impacts at each week
+      const wkBmi = wk.bmi;
+      const wkBf = wk.bf;
+      const wkWaist = wk.waist;
+      const wkNeck = wk.neck;
+      const wkMuscle = wk.muscle;
+
+      const wkBmiImp = wkBmi > 25 ? -(Math.min((wkBmi - 25) * 0.42, 8)) : 0;
+      const wkBfImp = wkBf > 20 ? -((wkBf - 20) * 0.15) : 0.5;
+      const wkWaistImp = wkWaist > 94 ? -((wkWaist - 94) * 0.12) : 0.3;
+      const wkNeckImp = wkNeck > 43 ? -((wkNeck - 43) * 0.3) : wkNeck <= 40 ? 0.2 : 0;
+      const wkMuscleImp = wkMuscle >= 38 ? 1.0 : wkMuscle >= 33 ? 0.3 : -0.8;
+
+      // Non-body-comp impacts stay constant (sleep, exercise, RA, AF, etc.)
+      const staticImpact = totalImpact - bmiImpact - bfImpact - waistImpact - neckImpact - muscleImpact;
+      const wkTotal = staticImpact + wkBmiImp + wkBfImp + wkWaistImp + wkNeckImp + wkMuscleImp;
+
+      // Exercise improvement bonus: ramp up over time as fitness builds
+      const exBonus = Math.min(i / pData.length * 1.5, 1.5);
+
+      const wkLE = Math.round((HS_BASE_LE + wkTotal + exBonus) * 10) / 10;
+      const wkHS = Math.round((HS_BASE_HS + (wkTotal + exBonus) * 0.85) * 10) / 10;
+
+      // Bio age improves as metrics shift
+      const wkBmiScore = wkBmi <= 24.9 ? 1 : wkBmi <= 29.9 ? 0.5 : 0;
+      const wkBfScore = wkBf <= 20 ? 1 : wkBf <= 25 ? 0.5 : 0;
+      const wkWaistScore = wkWaist < 94 ? 1 : wkWaist < 102 ? 0.5 : 0;
+      const wkNeckScore = wkNeck < 40 ? 1 : wkNeck <= 43 ? 0.5 : 0;
+      const wkMuscleScore = wkMuscle >= 38 ? 1 : wkMuscle >= 33 ? 0.5 : 0;
+      // Blend: body-comp scores change, others stay as current
+      const nonBodyGreen = cats.filter(c => !['BMI','Body Fat','Waist','Neck (OSA risk)','Muscle Mass'].includes(c.cat) && c.rag.score === 1).length;
+      const nonBodyAmber = cats.filter(c => !['BMI','Body Fat','Waist','Neck (OSA risk)','Muscle Mass'].includes(c.cat) && c.rag.score === 0.5).length;
+      const nonBodyRed = cats.filter(c => !['BMI','Body Fat','Waist','Neck (OSA risk)','Muscle Mass'].includes(c.cat) && c.rag.score === 0).length;
+      const wkGreen = nonBodyGreen + [wkBmiScore, wkBfScore, wkWaistScore, wkNeckScore, wkMuscleScore].filter(s => s === 1).length;
+      const wkAmber = nonBodyAmber + [wkBmiScore, wkBfScore, wkWaistScore, wkNeckScore, wkMuscleScore].filter(s => s === 0.5).length;
+      const wkRed = nonBodyRed + [wkBmiScore, wkBfScore, wkWaistScore, wkNeckScore, wkMuscleScore].filter(s => s === 0).length;
+      const wkValid = wkGreen + wkAmber + wkRed;
+      const wkBioOffset = wkValid > 0 ? (wkRed * 3 + wkAmber * 0.5 - wkGreen * 1.2) / wkValid : 0;
+      const wkBioAge = Math.round((HS_AGE + wkBioOffset) * 10) / 10;
+
+      return { week: wk.week, le: wkLE, hs: wkHS, bioAge: wkBioAge };
+    });
+
+    // Draw trajectory chart
+    const hsCv = document.getElementById('projHSChart');
+    if (hsCv && hsCv.parentElement.offsetWidth > 0) {
+      const cx = hsCv.getContext('2d'), dpr = window.devicePixelRatio || 1;
+      const rect = hsCv.parentElement.getBoundingClientRect(), W = rect.width - 32, H = 200;
+      hsCv.width = (W + 32) * dpr; hsCv.height = (H + 40) * dpr;
+      hsCv.style.width = (W + 32) + 'px'; hsCv.style.height = (H + 40) + 'px';
+      cx.setTransform(dpr, 0, 0, dpr, 0, 0); cx.clearRect(0, 0, W + 32, H + 40);
+      const p = { top: 15, right: 18, bottom: 28, left: 42 }, cW = W + 32 - p.left - p.right, cH = H - p.top - p.bottom;
+
+      const series = [
+        { key: 'le', label: 'Lifespan (age)', color: '#3b82f6' },
+        { key: 'hs', label: 'Healthspan (age)', color: '#22c55e' },
+        { key: 'bioAge', label: 'Biological Age', color: '#f59e0b', sec: true }
+      ];
+
+      // Compute ranges
+      const priKeys = ['le', 'hs'];
+      const secKeys = ['bioAge'];
+      let priMin = Infinity, priMax = -Infinity, secMin = Infinity, secMax = -Infinity;
+      trajData.forEach(d => {
+        priKeys.forEach(k => { priMin = Math.min(priMin, d[k]); priMax = Math.max(priMax, d[k]); });
+        secKeys.forEach(k => { secMin = Math.min(secMin, d[k]); secMax = Math.max(secMax, d[k]); });
+      });
+      const priM = (priMax - priMin) * 0.15 || 2; priMin -= priM; priMax += priM;
+      const secM = (secMax - secMin) * 0.15 || 2; secMin -= secM; secMax += secM;
+
+      const tw = trajData.length - 1;
+      function xP(wk) { return p.left + (wk / tw) * cW; }
+      function yP(v, min, max) { return p.top + cH - ((v - min) / (max - min)) * cH; }
+
+      // Grid
+      cx.strokeStyle = 'rgba(71,85,105,0.3)'; cx.lineWidth = 0.5;
+      for (let i = 0; i <= 4; i++) { const y = p.top + (i / 4) * cH; cx.beginPath(); cx.moveTo(p.left, y); cx.lineTo(p.left + cW, y); cx.stroke(); }
+
+      // X labels
+      cx.fillStyle = '#94a3b8'; cx.font = '10px -apple-system,sans-serif'; cx.textAlign = 'center';
+      const step = tw <= 13 ? 1 : tw <= 26 ? 2 : 4;
+      for (let i = 0; i <= tw; i += step) cx.fillText('W' + trajData[i].week, xP(trajData[i].week), p.top + cH + 16);
+
+      // Y labels left (LE/HS)
+      cx.textAlign = 'right'; cx.fillStyle = '#3b82f6';
+      for (let i = 0; i <= 4; i++) { const v = priMin + (1 - i / 4) * (priMax - priMin); cx.fillText(Math.round(v * 10) / 10, p.left - 4, p.top + (i / 4) * cH + 4); }
+      // Y labels right (BioAge)
+      cx.textAlign = 'left'; cx.fillStyle = '#f59e0b';
+      for (let i = 0; i <= 4; i++) { const v = secMin + (1 - i / 4) * (secMax - secMin); cx.fillText(Math.round(v * 10) / 10, p.left + cW + 3, p.top + (i / 4) * cH + 4); }
+
+      // Draw lines
+      series.forEach(s => {
+        const isSec = s.sec;
+        const mn = isSec ? secMin : priMin, mx = isSec ? secMax : priMax;
+        cx.strokeStyle = s.color; cx.lineWidth = 2.5; cx.lineJoin = 'round'; cx.setLineDash([]);
+        cx.beginPath();
+        trajData.forEach((d, i) => { const x = xP(d.week), y = yP(d[s.key], mn, mx); i === 0 ? cx.moveTo(x, y) : cx.lineTo(x, y); });
+        cx.stroke();
+        // Endpoint dot + label
+        const last = trajData[tw];
+        const lx = xP(last.week), ly = yP(last[s.key], mn, mx);
+        cx.fillStyle = '#0f172a'; cx.beginPath(); cx.arc(lx, ly, 4, 0, Math.PI * 2); cx.fill();
+        cx.fillStyle = s.color; cx.beginPath(); cx.arc(lx, ly, 3, 0, Math.PI * 2); cx.fill();
+        cx.font = 'bold 10px -apple-system,sans-serif'; cx.textAlign = 'right'; cx.fillText(last[s.key], lx - 6, ly - 6);
+        // Start dot
+        const fx = xP(0), fy = yP(trajData[0][s.key], mn, mx);
+        cx.fillStyle = s.color; cx.globalAlpha = 0.5; cx.beginPath(); cx.arc(fx, fy, 3, 0, Math.PI * 2); cx.fill();
+        cx.textAlign = 'left'; cx.font = '9px -apple-system,sans-serif'; cx.fillText(trajData[0][s.key], fx + 6, fy - 4);
+        cx.globalAlpha = 1;
+      });
+
+      // Chronological age reference line
+      const caY = yP(HS_AGE, secMin, secMax);
+      if (caY >= p.top && caY <= p.top + cH) {
+        cx.strokeStyle = 'rgba(245,158,11,0.3)'; cx.setLineDash([4, 4]); cx.lineWidth = 1;
+        cx.beginPath(); cx.moveTo(p.left, caY); cx.lineTo(p.left + cW, caY); cx.stroke(); cx.setLineDash([]);
+        cx.fillStyle = '#f59e0b'; cx.globalAlpha = 0.6; cx.font = '9px -apple-system,sans-serif'; cx.textAlign = 'left';
+        cx.fillText('Chronological ' + HS_AGE, p.left + 4, caY - 4); cx.globalAlpha = 1;
+      }
+
+      // Legend
+      document.getElementById('projHSChartLegend').innerHTML = series.map(s =>
+        `<div class="proj-legend-item"><div class="proj-legend-dot" style="background:${s.color}"></div>${s.label}</div>`
+      ).join('');
+    }
+
+    // ---- NEEDLE MOVERS: rank categories by potential gain (current impact vs best-case) ----
+    const needleMovers = cats
+      .map(c => {
+        // Estimate best-case impact if this category goes green
+        let bestImpact = 0;
+        if (c.cat === 'BMI') bestImpact = 0; // BMI 25 = 0 penalty
+        else if (c.cat === 'Body Fat') bestImpact = 0.5; // <20% = +0.5
+        else if (c.cat === 'Waist') bestImpact = 0.3; // <94 = +0.3
+        else if (c.cat === 'Blood Pressure') bestImpact = 0.5;
+        else if (c.cat === 'Resting HR') bestImpact = 0.3;
+        else if (c.cat === 'Sleep') bestImpact = 1.2;
+        else if (c.cat === 'Exercise') bestImpact = 3.0;
+        else if (c.cat === 'Nutrition') bestImpact = 1.5;
+        else if (c.cat === 'Hydration') bestImpact = 0.3;
+        else if (c.cat === 'RA Activity') bestImpact = -1.0; // Best case: minimal RA
+        else if (c.cat === 'AF Status') bestImpact = -1.0; // Best case: well managed
+        else if (c.cat === 'Supplements') bestImpact = 0.3;
+        else if (c.cat === 'Neck (OSA risk)') bestImpact = 0.2;
+        else if (c.cat === 'Muscle Mass') bestImpact = 1.0;
+        else if (c.cat === 'Mental Wellbeing') bestImpact = 0.5;
+        else if (c.cat === 'Medical History') bestImpact = c.impact; // Can't change history
+        else bestImpact = c.impact;
+        const gain = Math.round((bestImpact - c.impact) * 10) / 10;
+        return { ...c, bestImpact, gain };
+      })
+      .filter(c => c.gain > 0)
+      .sort((a, b) => b.gain - a.gain)
+      .slice(0, 6);
+
+    const nmEl = document.getElementById('projHSNeedleMovers');
+    nmEl.innerHTML = needleMovers.map((c, i) => {
+      const nowColor = c.rag.color;
+      const goalColor = 'var(--green)';
+      return `<div class="proj-hs-nm">
+        <div class="proj-hs-nm-rank">#${i + 1}</div>
+        <div>
+          <div class="proj-hs-nm-cat">${c.cat}</div>
+          <div style="font-size:9px;color:var(--dim)">${c.tip.substring(0, 60)}${c.tip.length > 60 ? '…' : ''}</div>
+        </div>
+        <div class="proj-hs-nm-now" style="background:${nowColor}20;color:${nowColor}">${c.impact > 0 ? '+' : ''}${c.impact.toFixed(1)}yr</div>
+        <div class="proj-hs-nm-arrow">→</div>
+        <div class="proj-hs-nm-goal" style="background:${goalColor}20;color:${goalColor}">+${c.bestImpact.toFixed(1)}yr</div>
+      </div>`;
+    }).join('') + `<div style="font-size:10px;color:var(--accent);margin-top:6px;font-weight:600">Total potential gain: +${needleMovers.reduce((s,c) => s + c.gain, 0).toFixed(1)} years</div>`;
+
     // Note
-    document.getElementById('projHSNote').innerHTML = `RAG: <span style="color:var(--green)">&#9679;</span> optimal <span style="color:var(--amber)">&#9679;</span> suboptimal <span style="color:var(--red)">&#9679;</span> high risk. Impact = estimated years gained/lost vs population baseline (AU male LE ${HS_BASE_LE}yr). Healthspan = disease-free functional years. Based on published meta-analyses (Lancet, JAMA, AHA, ABS 2022-24). Not medical advice.`;
+    document.getElementById('projHSNote').innerHTML = `RAG: <span style="color:var(--green)">&#9679;</span> optimal <span style="color:var(--amber)">&#9679;</span> suboptimal <span style="color:var(--red)">&#9679;</span> high risk. Impact = estimated years gained/lost vs population baseline (AU male LE ${HS_BASE_LE}yr). Healthspan = disease-free functional years. Trajectory assumes ${Math.round((parseFloat(document.getElementById('projAdherence').value)||85))}% goal adherence over ${document.getElementById('projTimeframe').value} weeks. Based on published meta-analyses (Lancet, JAMA, AHA, ABS 2022-24). Not medical advice.`;
   }
 
   function projUpdate() {
