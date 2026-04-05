@@ -831,9 +831,19 @@ document.querySelectorAll('.section-title').forEach(title => {
   });
 });
 
+// Local date string helper — avoids UTC drift from toISOString()
+function localDateStr(d) {
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+// Parse YYYY-MM-DD as local date (not UTC) to avoid timezone issues
+function parseLocalDate(str) {
+  const [y, m, d] = str.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
 // Set today's date and auto-expand measurements on Mondays
 const today = new Date();
-document.getElementById('checkinDate').value = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+document.getElementById('checkinDate').value = localDateStr(today);
 
 // Monday reminder (measurement day)
 const dayOfWeek = today.getDay(); // 0=Sun, 1=Mon
@@ -1655,9 +1665,9 @@ function getGoalsForDate(dateStr) {
     return cleaned;
   }
   // Default: all default goals plus any custom goals from yesterday
-  const yesterday = new Date(dateStr);
+  const yesterday = parseLocalDate(dateStr);
   yesterday.setDate(yesterday.getDate() - 1);
-  const yStr = yesterday.toISOString().slice(0, 10);
+  const yStr = localDateStr(yesterday);
   const yGoals = stored[yStr];
   const customs = yGoals ? yGoals.filter(g => !g.auto) : [];
   return [...DEFAULT_GOALS.map(g => ({ ...g, checked: false })), ...customs.map(g => ({ ...g, checked: false }))];
@@ -1673,9 +1683,9 @@ function calcWeeklyActivityMins(dateStr) {
   const checkins = JSON.parse(localStorage.getItem('healthCheckins') || '[]');
   const days = [];
   for (let i = 6; i >= 0; i--) {
-    const d = new Date(dateStr);
+    const d = parseLocalDate(dateStr);
     d.setDate(d.getDate() - i);
-    days.push(d.toISOString().slice(0, 10));
+    days.push(localDateStr(d));
   }
   const mins = {};
   days.forEach(day => {
@@ -1728,9 +1738,9 @@ function renderGoals() {
   const stored = JSON.parse(localStorage.getItem('dailyGoals') || '{}');
   const weekDays = [];
   for (let i = 6; i >= 1; i--) {
-    const d = new Date(dateStr);
+    const d = parseLocalDate(dateStr);
     d.setDate(d.getDate() - i);
-    weekDays.push(d.toISOString().slice(0, 10));
+    weekDays.push(localDateStr(d));
   }
 
   function weeklyHits(goalId) {
@@ -1821,13 +1831,13 @@ function autoAssessGoals(goals, dateStr) {
     if (!g.auto) return;
     let result = null;
 
-    // Daily nutrition/health goals
-    if (g.auto === 'protein' && pro > 0)    result = pro >= 160;
-    if (g.auto === 'calories' && cal > 0)   result = cal >= 1800 && cal <= 2200;
-    if (g.auto === 'carbs' && carb > 0)     result = carb <= 30;
-    if (g.auto === 'water' && water > 0)    result = water >= getWaterTarget().min;
-    if (g.auto === 'sleep' && sleep > 0)    result = sleep >= 7.0;
-    if (g.auto === 'vitd' && vitD > 0)      result = vitD >= 600;
+    // Daily nutrition/health goals — when value is 0 (no data), explicitly uncheck
+    if (g.auto === 'protein')  result = pro > 0 ? pro >= 160 : false;
+    if (g.auto === 'calories') result = cal > 0 ? (cal >= 1800 && cal <= 2200) : false;
+    if (g.auto === 'carbs')    result = carb > 0 ? carb <= 30 : false;
+    if (g.auto === 'water')    result = water > 0 ? water >= getWaterTarget().min : false;
+    if (g.auto === 'sleep')    result = sleep > 0 ? sleep >= 7.0 : false;
+    if (g.auto === 'vitd')     result = vitD > 0 ? vitD >= 600 : false;
 
     // Activity-based goals: "activity:type" or "activity:type:minDuration"
     if (g.auto.startsWith('activity:')) {
@@ -1859,9 +1869,9 @@ function renderGoalsProgress(dateStr) {
   const checkins = JSON.parse(localStorage.getItem('healthCheckins') || '[]');
   const days = [];
   for (let i = 6; i >= 0; i--) {
-    const d = new Date(dateStr);
+    const d = parseLocalDate(dateStr);
     d.setDate(d.getDate() - i);
-    days.push(d.toISOString().slice(0, 10));
+    days.push(localDateStr(d));
   }
 
   // Collect goals with hits and weekly targets
@@ -1955,9 +1965,9 @@ function renderGoalsSuggestion(dateStr) {
   const stored = JSON.parse(localStorage.getItem('dailyGoals') || '{}');
   const days = [];
   for (let i = 7; i >= 1; i--) {
-    const d = new Date(dateStr);
+    const d = parseLocalDate(dateStr);
     d.setDate(d.getDate() - i);
-    days.push(d.toISOString().slice(0, 10));
+    days.push(localDateStr(d));
   }
 
   // Find goals that were missed most last week
@@ -1994,7 +2004,7 @@ function renderScrum() {
   const items = [];
 
   // Weekly activity goals behind pace
-  const dayOfWeek = new Date(dateStr).getDay(); // 0=Sun
+  const dayOfWeek = parseLocalDate(dateStr).getDay(); // 0=Sun
   const daysInWeek = dayOfWeek === 0 ? 7 : dayOfWeek;
 
   goals.forEach(g => {
@@ -2012,8 +2022,8 @@ function renderScrum() {
       const stored = JSON.parse(localStorage.getItem('dailyGoals') || '{}');
       let hits = 0;
       for (let i = 6; i >= 1; i--) {
-        const d = new Date(dateStr); d.setDate(d.getDate() - i);
-        const dg = stored[d.toISOString().slice(0, 10)] || [];
+        const d = parseLocalDate(dateStr); d.setDate(d.getDate() - i);
+        const dg = stored[localDateStr(d)] || [];
         const m = dg.find(x => x.id === g.id);
         if (m && m.checked) hits++;
       }
@@ -2027,7 +2037,7 @@ function renderScrum() {
   });
 
   // Today's unchecked goals: daily + scheduled-for-today activity goals
-  const todayDow = new Date(dateStr).getDay(); // 0=Sun
+  const todayDow = parseLocalDate(dateStr).getDay(); // 0=Sun
   const uncheckedToday = goals.filter(g => {
     if (!g.auto || g.checked || g.weeklyMins) return false;
     // If goal has specific days, only show on those days
@@ -2042,8 +2052,8 @@ function renderScrum() {
     const stored2 = JSON.parse(localStorage.getItem('dailyGoals') || '{}');
     let hits = 0;
     for (let i = 6; i >= 1; i--) {
-      const d = new Date(dateStr); d.setDate(d.getDate() - i);
-      const dg = stored2[d.toISOString().slice(0, 10)] || [];
+      const d = parseLocalDate(dateStr); d.setDate(d.getDate() - i);
+      const dg = stored2[localDateStr(d)] || [];
       const m = dg.find(x => x.id === g.id);
       if (m && m.checked) hits++;
     }
@@ -3078,7 +3088,7 @@ async function syncToGitHub() {
     } catch {}
 
     const body = {
-      message: `Sync check-in data ${new Date().toISOString().slice(0,10)}`,
+      message: `Sync check-in data ${localDateStr(new Date())}`,
       content: content
     };
     if (sha) body.sha = sha;
