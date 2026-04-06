@@ -212,16 +212,16 @@
   .proj-hs-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px}
   .proj-hs-header .proj-hs-title{font-size:13px;font-weight:600}
   .proj-hs-header .proj-hs-date{font-size:10px;color:var(--dim)}
-  .proj-hs-lifespan{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
-  .proj-hs-lbox{background:var(--surface2);border-radius:10px;padding:14px;text-align:center;position:relative;overflow:hidden}
-  .proj-hs-lbox .proj-hs-ll{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px}
-  .proj-hs-lbox .proj-hs-lyrs{font-size:28px;font-weight:800;line-height:1}
-  .proj-hs-lbox .proj-hs-lage{font-size:11px;color:var(--dim);margin-top:4px}
-  .proj-hs-lbox .proj-hs-ldelta{font-size:10px;margin-top:4px;font-weight:600}
-  .proj-hs-bioage{display:flex;align-items:center;justify-content:center;gap:14px;background:var(--surface2);border-radius:10px;padding:12px;margin-bottom:14px}
-  .proj-hs-bioage .proj-hs-ba-num{font-size:32px;font-weight:800}
-  .proj-hs-bioage .proj-hs-ba-lbl{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:0.8px}
-  .proj-hs-bioage .proj-hs-ba-diff{font-size:12px;font-weight:600}
+  .proj-hs-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px}
+  .proj-hs-grid-row-label{grid-column:1/-1;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--dim);padding:6px 0 0 4px;display:flex;align-items:center;gap:6px}
+  .proj-hs-grid-row-label::after{content:'';flex:1;height:1px;background:var(--border)}
+  .proj-hs-lbox{background:var(--surface2);border-radius:10px;padding:12px 8px;text-align:center;position:relative;overflow:hidden}
+  .proj-hs-lbox.adj{border:1px solid rgba(59,130,246,0.25)}
+  .proj-hs-lbox .proj-hs-ll{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:4px}
+  .proj-hs-lbox .proj-hs-lyrs{font-size:24px;font-weight:800;line-height:1}
+  .proj-hs-lbox .proj-hs-lage{font-size:10px;color:var(--dim);margin-top:3px}
+  .proj-hs-lbox .proj-hs-ldelta{font-size:9px;margin-top:3px;font-weight:600}
+  @media(max-width:380px){.proj-hs-grid{grid-template-columns:1fr 1fr;gap:6px}.proj-hs-lbox .proj-hs-lyrs{font-size:20px}}
   .proj-hs-cats{display:grid;grid-template-columns:1fr;gap:6px}
   .proj-hs-row{display:grid;grid-template-columns:140px 46px 1fr 40px;align-items:center;gap:8px;padding:7px 10px;background:var(--surface2);border-radius:6px;font-size:11px}
   .proj-hs-row .proj-hs-cat{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -769,8 +769,7 @@
         <div class="proj-hs-title">&#129657; Health Status Assessment</div>
         <div class="proj-hs-date" id="projHSDate"></div>
       </div>
-      <div class="proj-hs-lifespan" id="projHSLifespan"></div>
-      <div class="proj-hs-bioage" id="projHSBioAge"></div>
+      <div class="proj-hs-grid" id="projHSGrid"></div>
       <div style="margin:14px 0 6px;font-size:11px;font-weight:600">Projected Trajectory — With Goal Adherence</div>
       <canvas id="projHSChart" height="220"></canvas>
       <div class="proj-legend" id="projHSChartLegend"></div>
@@ -3573,8 +3572,8 @@ async function syncFromGitHub() {
     const bioAge = Math.round((HS_AGE + bioAgeOffset) * 10) / 10;
 
     // ---- PROJECTED VALUES (after adherence) ----
-    const {data: projData} = proj;
-    const projEnd = projData[projData.length - 1];
+    const {data: pData} = proj;
+    const projEnd = pData[pData.length - 1];
     const projBMI = projEnd.bmi;
     const projBF = projEnd.bf;
     const projWaist = projEnd.waist;
@@ -3587,49 +3586,107 @@ async function syncFromGitHub() {
     const projFutureLE = Math.round((HS_BASE_LE + projTotalImpact) * 10) / 10;
     const projFutureHS = Math.round((HS_BASE_HS + projTotalImpact * 0.85) * 10) / 10;
 
+    // ---- TRAJECTORY DATA: week-by-week recalculation as body metrics improve ----
+    // (Computed here so we can use endpoint bioAge in the 6-box grid render)
+    const trajData = pData.map((wk, i) => {
+      const wkBmi = wk.bmi, wkBf = wk.bf, wkWaist = wk.waist, wkNeck = wk.neck, wkMuscle = wk.muscle;
+      // Composite body-comp model (matches category calculations)
+      const wkBmiImp = wkBmi > 25 ? -(Math.min((wkBmi - 25) * 0.38, 6.5)) : 0;
+      const wkBfImp = wkBf > 28 ? -((wkBf - 28) * 0.08) : wkBf <= 20 ? 0.5 : 0;
+      const wkWaistImp = wkWaist > 102 ? -(Math.min((wkWaist - 102) * 0.05, 1.5)) : wkWaist < 94 ? 0.3 : 0;
+      const wkNeckImp = wkNeck > 43 ? -((wkNeck - 43) * 0.2) : wkNeck <= 40 ? 0.2 : 0;
+      const wkMuscleImp = wkMuscle >= 38 ? 1.0 : wkMuscle >= 33 ? 0.3 : -0.8;
+      const staticImpact = totalImpact - bmiImpact - bfImpact - waistImpact - neckImpact - muscleImpact;
+      const wkTotal = staticImpact + wkBmiImp + wkBfImp + wkWaistImp + wkNeckImp + wkMuscleImp;
+      const exBonus = Math.min(i / pData.length * 1.5, 1.5);
+      const wkLE = Math.round((HS_BASE_LE + wkTotal + exBonus) * 10) / 10;
+      const wkHS = Math.round((HS_BASE_HS + (wkTotal + exBonus) * 0.85) * 10) / 10;
+      // Bio age scoring
+      const wkBmiScore = wkBmi <= 24.9 ? 1 : wkBmi <= 29.9 ? 0.5 : 0;
+      const wkBfScore = wkBf <= 20 ? 1 : wkBf <= 25 ? 0.5 : 0;
+      const wkWaistScore = wkWaist < 94 ? 1 : wkWaist < 102 ? 0.5 : 0;
+      const wkNeckScore = wkNeck < 40 ? 1 : wkNeck <= 43 ? 0.5 : 0;
+      const wkMuscleScore = wkMuscle >= 38 ? 1 : wkMuscle >= 33 ? 0.5 : 0;
+      const nonBodyGreen = cats.filter(c => !['BMI','Body Fat','Waist','Neck (OSA risk)','Muscle Mass'].includes(c.cat) && c.rag.score === 1).length;
+      const nonBodyAmber = cats.filter(c => !['BMI','Body Fat','Waist','Neck (OSA risk)','Muscle Mass'].includes(c.cat) && c.rag.score === 0.5).length;
+      const nonBodyRed = cats.filter(c => !['BMI','Body Fat','Waist','Neck (OSA risk)','Muscle Mass'].includes(c.cat) && c.rag.score === 0).length;
+      const wkGreen = nonBodyGreen + [wkBmiScore, wkBfScore, wkWaistScore, wkNeckScore, wkMuscleScore].filter(s => s === 1).length;
+      const wkAmber = nonBodyAmber + [wkBmiScore, wkBfScore, wkWaistScore, wkNeckScore, wkMuscleScore].filter(s => s === 0.5).length;
+      const wkRed = nonBodyRed + [wkBmiScore, wkBfScore, wkWaistScore, wkNeckScore, wkMuscleScore].filter(s => s === 0).length;
+      const wkValid = wkGreen + wkAmber + wkRed;
+      const wkBioOffset = wkValid > 0 ? (wkRed * 3 + wkAmber * 0.5 - wkGreen * 1.2) / wkValid : 0;
+      const wkBioAge = Math.round((HS_AGE + wkBioOffset) * 10) / 10;
+      return { week: wk.week, le: wkLE, hs: wkHS, bioAge: wkBioAge };
+    });
+
+    // ---- ADJUSTED (GOALS-MET) VALUES — use trajectory endpoint for consistency ----
+    const trajEnd = trajData.length > 0 ? trajData[trajData.length - 1] : null;
+    const adjLE = trajEnd ? trajEnd.le : projFutureLE;
+    const adjHS = trajEnd ? trajEnd.hs : projFutureHS;
+    const adjBioAge = trajEnd ? trajEnd.bioAge : bioAge;
+
     // ---- RENDER ----
     document.getElementById('projHSDate').innerHTML = `Based on ${ci.length} check-in${ci.length > 1 ? 's' : ''} · Latest: ${latest.date}`;
 
-    // Lifespan boxes
-    const lsEl = document.getElementById('projHSLifespan');
+    // 6-box grid: Row 1 = Baseline, Row 2 = Goals Adjusted
+    const gridEl = document.getElementById('projHSGrid');
     const leDeltaColor = deltaLE >= 0 ? 'var(--green)' : 'var(--red)';
     const hsDeltaColor = deltaHS >= 0 ? 'var(--green)' : 'var(--red)';
-    const futLEDelta = Math.round((projFutureLE - projectedLE) * 10) / 10;
-    const futHSDelta = Math.round((projFutureHS - projectedHS) * 10) / 10;
-
-    lsEl.innerHTML = `
-      <div class="proj-hs-lbox">
-        <div class="proj-hs-ll">Projected Lifespan</div>
-        <div class="proj-hs-lyrs">${yearsLeftLE}<span style="font-size:14px;color:var(--dim)"> yrs</span></div>
-        <div class="proj-hs-lage">to age ${projectedLE}</div>
-        <div class="proj-hs-ldelta" style="color:${leDeltaColor}">${deltaLE >= 0 ? '+' : ''}${deltaLE}yr vs population avg</div>
-        ${futLEDelta > 0 ? `<div style="font-size:9px;color:var(--accent);margin-top:3px">+${futLEDelta}yr if goals met →${projFutureLE}</div>` : ''}
-      </div>
-      <div class="proj-hs-lbox">
-        <div class="proj-hs-ll">Projected Healthspan</div>
-        <div class="proj-hs-lyrs">${yearsLeftHS}<span style="font-size:14px;color:var(--dim)"> yrs</span></div>
-        <div class="proj-hs-lage">to age ${projectedHS}</div>
-        <div class="proj-hs-ldelta" style="color:${hsDeltaColor}">${deltaHS >= 0 ? '+' : ''}${deltaHS}yr vs population avg</div>
-        ${futHSDelta > 0 ? `<div style="font-size:9px;color:var(--accent);margin-top:3px">+${futHSDelta}yr if goals met →${projFutureHS}</div>` : ''}
-      </div>`;
-
-    // Biological age
-    const baEl = document.getElementById('projHSBioAge');
     const baDiff = bioAge - HS_AGE;
     const baColor = baDiff <= -2 ? 'var(--green)' : baDiff <= 2 ? 'var(--amber)' : 'var(--red)';
-    baEl.innerHTML = `
-      <div>
-        <div class="proj-hs-ba-lbl">Biological Age</div>
-        <div class="proj-hs-ba-num" style="color:${baColor}">${bioAge}</div>
+
+    // Adjusted deltas — using trajectory endpoint (adjLE/adjHS) for consistency with chart
+    const adjDeltaLE = Math.round((adjLE - HS_BASE_LE) * 10) / 10;
+    const adjDeltaHS = Math.round((adjHS - HS_BASE_HS) * 10) / 10;
+    const adjYearsLeftLE = Math.round((adjLE - HS_AGE) * 10) / 10;
+    const adjYearsLeftHS = Math.round((adjHS - HS_AGE) * 10) / 10;
+    const adjLEColor = adjDeltaLE >= 0 ? 'var(--green)' : 'var(--red)';
+    const adjHSColor = adjDeltaHS >= 0 ? 'var(--green)' : 'var(--red)';
+    const adjBaDiff = adjBioAge - HS_AGE;
+    const adjBaColor = adjBaDiff <= -2 ? 'var(--green)' : adjBaDiff <= 2 ? 'var(--amber)' : 'var(--red)';
+    const leGain = Math.round((adjLE - projectedLE) * 10) / 10;
+    const hsGain = Math.round((adjHS - projectedHS) * 10) / 10;
+    const baGain = Math.round((bioAge - adjBioAge) * 10) / 10;
+
+    gridEl.innerHTML = `
+      <div class="proj-hs-grid-row-label">Current Baseline</div>
+      <div class="proj-hs-lbox">
+        <div class="proj-hs-ll">Lifespan</div>
+        <div class="proj-hs-lyrs">${yearsLeftLE}<span style="font-size:12px;color:var(--dim)"> yrs</span></div>
+        <div class="proj-hs-lage">to age ${projectedLE}</div>
+        <div class="proj-hs-ldelta" style="color:${leDeltaColor}">${deltaLE >= 0 ? '+' : ''}${deltaLE}yr vs avg</div>
       </div>
-      <div style="text-align:center">
-        <div class="proj-hs-ba-lbl">Chronological</div>
-        <div style="font-size:22px;font-weight:700;color:var(--dim)">${HS_AGE}</div>
+      <div class="proj-hs-lbox">
+        <div class="proj-hs-ll">Healthspan</div>
+        <div class="proj-hs-lyrs">${yearsLeftHS}<span style="font-size:12px;color:var(--dim)"> yrs</span></div>
+        <div class="proj-hs-lage">to age ${projectedHS}</div>
+        <div class="proj-hs-ldelta" style="color:${hsDeltaColor}">${deltaHS >= 0 ? '+' : ''}${deltaHS}yr vs avg</div>
       </div>
-      <div style="text-align:right">
-        <div class="proj-hs-ba-lbl">${baDiff > 0 ? 'Older by' : baDiff < 0 ? 'Younger by' : 'On track'}</div>
-        <div class="proj-hs-ba-diff" style="color:${baColor}">${baDiff > 0 ? '+' : ''}${baDiff !== 0 ? baDiff + ' yrs' : '—'}</div>
-        <div style="font-size:9px;color:var(--dim);margin-top:2px">${greenCount}&#9679; ${amberCount}&#9679; ${redCount}&#9679; of ${validCount} metrics</div>
+      <div class="proj-hs-lbox">
+        <div class="proj-hs-ll">Biological Age</div>
+        <div class="proj-hs-lyrs" style="color:${baColor}">${bioAge}</div>
+        <div class="proj-hs-lage">chrono ${HS_AGE}</div>
+        <div class="proj-hs-ldelta" style="color:${baColor}">${baDiff > 0 ? '+' : ''}${baDiff.toFixed(1)}yr ${baDiff > 0 ? 'older' : baDiff < 0 ? 'younger' : ''}</div>
+      </div>
+
+      <div class="proj-hs-grid-row-label">With Goal Adherence</div>
+      <div class="proj-hs-lbox adj">
+        <div class="proj-hs-ll">Adj. Lifespan</div>
+        <div class="proj-hs-lyrs">${adjYearsLeftLE}<span style="font-size:12px;color:var(--dim)"> yrs</span></div>
+        <div class="proj-hs-lage">to age ${adjLE}</div>
+        <div class="proj-hs-ldelta" style="color:var(--accent)">${leGain > 0 ? '+' : ''}${leGain}yr gain</div>
+      </div>
+      <div class="proj-hs-lbox adj">
+        <div class="proj-hs-ll">Adj. Healthspan</div>
+        <div class="proj-hs-lyrs">${adjYearsLeftHS}<span style="font-size:12px;color:var(--dim)"> yrs</span></div>
+        <div class="proj-hs-lage">to age ${adjHS}</div>
+        <div class="proj-hs-ldelta" style="color:var(--accent)">${hsGain > 0 ? '+' : ''}${hsGain}yr gain</div>
+      </div>
+      <div class="proj-hs-lbox adj">
+        <div class="proj-hs-ll">Adj. Bio Age</div>
+        <div class="proj-hs-lyrs" style="color:${adjBaColor}">${adjBioAge}</div>
+        <div class="proj-hs-lage">chrono ${HS_AGE}</div>
+        <div class="proj-hs-ldelta" style="color:var(--accent)">${baGain > 0 ? '−' + baGain + 'yr' : baGain < 0 ? '+' + Math.abs(baGain) + 'yr' : '—'}</div>
       </div>`;
 
     // Category rows
@@ -3645,54 +3702,7 @@ async function syncFromGitHub() {
       </div>`;
     }).join('');
 
-    // ---- TRAJECTORY CHART: week-by-week recalculation as body metrics improve ----
-    const {data: pData} = proj;
-    const trajData = pData.map((wk, i) => {
-      // Recalculate body-comp-dependent impacts at each week
-      const wkBmi = wk.bmi;
-      const wkBf = wk.bf;
-      const wkWaist = wk.waist;
-      const wkNeck = wk.neck;
-      const wkMuscle = wk.muscle;
-
-      // Composite body-comp model (matches category calculations)
-      const wkBmiImp = wkBmi > 25 ? -(Math.min((wkBmi - 25) * 0.38, 6.5)) : 0;
-      const wkBfImp = wkBf > 28 ? -((wkBf - 28) * 0.08) : wkBf <= 20 ? 0.5 : 0;
-      const wkWaistImp = wkWaist > 102 ? -(Math.min((wkWaist - 102) * 0.05, 1.5)) : wkWaist < 94 ? 0.3 : 0;
-      const wkNeckImp = wkNeck > 43 ? -((wkNeck - 43) * 0.2) : wkNeck <= 40 ? 0.2 : 0;
-      const wkMuscleImp = wkMuscle >= 38 ? 1.0 : wkMuscle >= 33 ? 0.3 : -0.8;
-
-      // Non-body-comp impacts stay constant (sleep, exercise, RA, AF, etc.)
-      const staticImpact = totalImpact - bmiImpact - bfImpact - waistImpact - neckImpact - muscleImpact;
-      const wkTotal = staticImpact + wkBmiImp + wkBfImp + wkWaistImp + wkNeckImp + wkMuscleImp;
-
-      // Exercise improvement bonus: ramp up over time as fitness builds
-      const exBonus = Math.min(i / pData.length * 1.5, 1.5);
-
-      const wkLE = Math.round((HS_BASE_LE + wkTotal + exBonus) * 10) / 10;
-      const wkHS = Math.round((HS_BASE_HS + (wkTotal + exBonus) * 0.85) * 10) / 10;
-
-      // Bio age improves as metrics shift
-      const wkBmiScore = wkBmi <= 24.9 ? 1 : wkBmi <= 29.9 ? 0.5 : 0;
-      const wkBfScore = wkBf <= 20 ? 1 : wkBf <= 25 ? 0.5 : 0;
-      const wkWaistScore = wkWaist < 94 ? 1 : wkWaist < 102 ? 0.5 : 0;
-      const wkNeckScore = wkNeck < 40 ? 1 : wkNeck <= 43 ? 0.5 : 0;
-      const wkMuscleScore = wkMuscle >= 38 ? 1 : wkMuscle >= 33 ? 0.5 : 0;
-      // Blend: body-comp scores change, others stay as current
-      const nonBodyGreen = cats.filter(c => !['BMI','Body Fat','Waist','Neck (OSA risk)','Muscle Mass'].includes(c.cat) && c.rag.score === 1).length;
-      const nonBodyAmber = cats.filter(c => !['BMI','Body Fat','Waist','Neck (OSA risk)','Muscle Mass'].includes(c.cat) && c.rag.score === 0.5).length;
-      const nonBodyRed = cats.filter(c => !['BMI','Body Fat','Waist','Neck (OSA risk)','Muscle Mass'].includes(c.cat) && c.rag.score === 0).length;
-      const wkGreen = nonBodyGreen + [wkBmiScore, wkBfScore, wkWaistScore, wkNeckScore, wkMuscleScore].filter(s => s === 1).length;
-      const wkAmber = nonBodyAmber + [wkBmiScore, wkBfScore, wkWaistScore, wkNeckScore, wkMuscleScore].filter(s => s === 0.5).length;
-      const wkRed = nonBodyRed + [wkBmiScore, wkBfScore, wkWaistScore, wkNeckScore, wkMuscleScore].filter(s => s === 0).length;
-      const wkValid = wkGreen + wkAmber + wkRed;
-      const wkBioOffset = wkValid > 0 ? (wkRed * 3 + wkAmber * 0.5 - wkGreen * 1.2) / wkValid : 0;
-      const wkBioAge = Math.round((HS_AGE + wkBioOffset) * 10) / 10;
-
-      return { week: wk.week, le: wkLE, hs: wkHS, bioAge: wkBioAge };
-    });
-
-    // Draw trajectory chart
+    // Draw trajectory chart (trajData already computed above)
     const hsCv = document.getElementById('projHSChart');
     if (hsCv && hsCv.parentElement.offsetWidth > 0) {
       const cx = hsCv.getContext('2d'), dpr = window.devicePixelRatio || 1;
