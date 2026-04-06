@@ -373,58 +373,58 @@
   <!-- TRAINING -->
   <div class="section">
     <div class="section-title"><span class="icon">&#9917;</span> Activity</div>
-    <button class="btn-add" onclick="addTraining()" style="margin-bottom:8px">+ Add another session</button>
-    <div id="trainingEntries">
-      <div class="training-entry" id="training1">
-        <div class="row">
-          <div class="field">
-            <div class="label">Type</div>
-            <select class="trainingType">
-              <option value="">— Select —</option>
-              <option value="bjj">BJJ</option>
-              <option value="boxing">Boxing</option>
-              <option value="shadowboxing">Shadow Boxing</option>
-              <option value="bagwork">Bag Work</option>
-              <option value="skipping">Skipping</option>
-              <option value="mma">Carioti MMA</option>
-              <option value="weights">Weights</option>
-              <option value="airbike">Airbike</option>
-              <option value="walking">Walking</option>
-              <option value="zone2">Zone 2 Cardio</option>
-              <option value="bands">Band Work (Rehab)</option>
-              <option value="exball">Exercise Ball (Core)</option>
-              <option value="yardwork">Yard Work</option>
-              <option value="mobility">Mobility/Yoga</option>
-              <option value="sauna">Sauna</option>
-              <option value="rest">Rest Day</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
-          <div class="field">
-            <div class="label">Duration <span class="unit">min</span></div>
-            <input type="number" class="trainingDuration" placeholder="e.g. 60">
-          </div>
-          <div class="field" style="min-width:90px;flex:0 0 auto">
-            <div class="label">🔥 Burnt</div>
-            <div class="burnEstimate" style="padding:10px 0;font-size:16px;font-weight:700;color:var(--amber)">— <span style="font-size:11px;font-weight:400;color:var(--dim)">kcal</span></div>
-          </div>
+    <div class="nlog-entry-form" id="activityForm">
+      <div class="row">
+        <div class="field">
+          <div class="label">Type</div>
+          <select id="actType">
+            <option value="">— Select —</option>
+            <option value="bjj">BJJ</option>
+            <option value="boxing">Boxing</option>
+            <option value="shadowboxing">Shadow Boxing</option>
+            <option value="bagwork">Bag Work</option>
+            <option value="skipping">Skipping</option>
+            <option value="mma">Carioti MMA</option>
+            <option value="weights">Weights</option>
+            <option value="airbike">Airbike</option>
+            <option value="walking">Walking</option>
+            <option value="zone2">Zone 2 Cardio</option>
+            <option value="bands">Band Work (Rehab)</option>
+            <option value="exball">Exercise Ball (Core)</option>
+            <option value="yardwork">Yard Work</option>
+            <option value="mobility">Mobility/Yoga</option>
+            <option value="sauna">Sauna</option>
+            <option value="rest">Rest Day</option>
+            <option value="other">Other</option>
+          </select>
         </div>
         <div class="field">
-          <div class="label">Perceived Intensity (RPE 1-10)</div>
-          <div class="rating">
-            <label class="rating-green"><input type="radio" name="rpe1" value="1"><span>1</span></label>
-            <label class="rating-green"><input type="radio" name="rpe1" value="2"><span>2</span></label>
-            <label class="rating-green"><input type="radio" name="rpe1" value="3"><span>3</span></label>
-            <label class="rating-green"><input type="radio" name="rpe1" value="4"><span>4</span></label>
-            <label class="rating-amber"><input type="radio" name="rpe1" value="5"><span>5</span></label>
-            <label class="rating-amber"><input type="radio" name="rpe1" value="6"><span>6</span></label>
-            <label class="rating-amber"><input type="radio" name="rpe1" value="7"><span>7</span></label>
-            <label class="rating-red"><input type="radio" name="rpe1" value="8"><span>8</span></label>
-            <label class="rating-red"><input type="radio" name="rpe1" value="9"><span>9</span></label>
-            <label class="rating-red"><input type="radio" name="rpe1" value="10"><span>10</span></label>
-          </div>
+          <div class="label">Duration <span class="unit">min</span></div>
+          <input type="number" id="actDuration" placeholder="e.g. 60">
         </div>
       </div>
+      <div class="field">
+        <div class="label">Perceived Intensity (RPE 1-10)</div>
+        <div class="rating">
+          <label class="rating-green"><input type="radio" name="actRpe" value="1"><span>1</span></label>
+          <label class="rating-green"><input type="radio" name="actRpe" value="2"><span>2</span></label>
+          <label class="rating-green"><input type="radio" name="actRpe" value="3"><span>3</span></label>
+          <label class="rating-green"><input type="radio" name="actRpe" value="4"><span>4</span></label>
+          <label class="rating-amber"><input type="radio" name="actRpe" value="5"><span>5</span></label>
+          <label class="rating-amber"><input type="radio" name="actRpe" value="6"><span>6</span></label>
+          <label class="rating-amber"><input type="radio" name="actRpe" value="7"><span>7</span></label>
+          <label class="rating-red"><input type="radio" name="actRpe" value="8"><span>8</span></label>
+          <label class="rating-red"><input type="radio" name="actRpe" value="9"><span>9</span></label>
+          <label class="rating-red"><input type="radio" name="actRpe" value="10"><span>10</span></label>
+        </div>
+      </div>
+      <button class="btn-add" onclick="addActivityEntry()" style="margin-top:8px">+ Add to log</button>
+    </div>
+    <div id="activityList"></div>
+    <div class="nlog-summary" id="activitySummary" style="display:none">
+      <div class="ns-item"><span class="ns-val" id="actTotalMin">0</span><span class="ns-lbl">min</span></div>
+      <div class="ns-item"><span class="ns-val" id="actTotalBurn">0</span><span class="ns-lbl">kcal burnt</span></div>
+      <div class="ns-item"><span class="ns-val" id="actSessions">0</span><span class="ns-lbl">sessions</span></div>
     </div>
     <div style="margin-top:12px;margin-bottom:10px">
       <div class="target-row" id="targetWalkTraining"></div>
@@ -1579,76 +1579,70 @@ function updateFluidTotal() { updateNlogTotals(); }
 buildNlogFoodSelect();
 buildNlogCoffeeSelect();
 
-let trainingCount = 1;
+// ===== ACTIVITY LOG ENGINE =====
+const ACT_ICONS = { bjj:'🥋', boxing:'🥊', shadowboxing:'🥊', bagwork:'🥊', skipping:'🪢', mma:'🥋', weights:'🏋️', airbike:'🚴', walking:'🚶', zone2:'🏃', bands:'🩹', exball:'⚽', yardwork:'🌿', mobility:'🧘', sauna:'🧖', rest:'😴', other:'🏃' };
+const ACT_NAMES = { bjj:'BJJ', boxing:'Boxing', shadowboxing:'Shadow Boxing', bagwork:'Bag Work', skipping:'Skipping', mma:'Carioti MMA', weights:'Weights', airbike:'Airbike', walking:'Walking', zone2:'Zone 2 Cardio', bands:'Band Work (Rehab)', exball:'Exercise Ball (Core)', yardwork:'Yard Work', mobility:'Mobility/Yoga', sauna:'Sauna', rest:'Rest Day', other:'Other' };
+let activityEntries = [];
+let actIdCounter = 0;
 
-function addTraining() {
-  trainingCount++;
-  const container = document.getElementById('trainingEntries');
-  const entry = document.createElement('div');
-  entry.className = 'training-entry';
-  entry.innerHTML = `
-    <div class="row">
-      <div class="field">
-        <div class="label">Type</div>
-        <select class="trainingType">
-          <option value="">— Select —</option>
-          <option value="bjj">BJJ</option>
-          <option value="boxing">Boxing</option>
-          <option value="shadowboxing">Shadow Boxing</option>
-          <option value="bagwork">Bag Work</option>
-          <option value="skipping">Skipping</option>
-          <option value="mma">Carioti MMA</option>
-          <option value="weights">Weights</option>
-          <option value="airbike">Airbike</option>
-          <option value="walking">Walking</option>
-          <option value="zone2">Zone 2 Cardio</option>
-          <option value="bands">Band Work (Rehab)</option>
-          <option value="exball">Exercise Ball (Core)</option>
-          <option value="yardwork">Yard Work</option>
-          <option value="mobility">Mobility/Yoga</option>
-          <option value="sauna">Sauna</option>
-          <option value="rest">Rest Day</option>
-          <option value="other">Other</option>
-        </select>
-      </div>
-      <div class="field">
-        <div class="label">Duration <span class="unit">min</span></div>
-        <input type="number" class="trainingDuration" placeholder="e.g. 60">
-      </div>
-      <div class="field" style="min-width:90px;flex:0 0 auto">
-        <div class="label">🔥 Burnt</div>
-        <div class="burnEstimate" style="padding:10px 0;font-size:16px;font-weight:700;color:var(--amber)">— <span style="font-size:11px;font-weight:400;color:var(--dim)">kcal</span></div>
-      </div>
-    </div>
-    <div class="field">
-      <div class="label">Perceived Intensity (RPE 1-10)</div>
-      <div class="rating">
-        ${[1,2,3,4,5,6,7,8,9,10].map(n => {
-          const cls = n<=4?'rating-green':n<=7?'rating-amber':'rating-red';
-          return `<label class="${cls}"><input type="radio" name="rpe${trainingCount}" value="${n}"><span>${n}</span></label>`;
-        }).join('')}
-      </div>
-    </div>
-  `;
-  container.prepend(entry);
+function addActivityEntry() {
+  const type = document.getElementById('actType').value;
+  const dur = parseInt(document.getElementById('actDuration').value) || 0;
+  const rpeEl = document.querySelector('input[name="actRpe"]:checked');
+  const rpe = rpeEl ? parseInt(rpeEl.value) : 5;
+  if (!type) return;
+  if (type !== 'rest' && dur <= 0) return;
+  const base = BURN_RATES[type] || 6.0;
+  const rpeMultiplier = 1 + (rpe - 5) * 0.12;
+  const kcal = type === 'rest' ? 0 : Math.round(base * dur * rpeMultiplier);
+  actIdCounter++;
+  const name = ACT_NAMES[type] || type;
+  const desc = type === 'rest' ? 'Rest Day' : name + ' \u00b7 ' + dur + 'min \u00b7 RPE ' + rpe;
+  activityEntries.push({ id: actIdCounter, type, duration: dur, rpe, kcal, desc, icon: ACT_ICONS[type] || '🏃' });
+  document.getElementById('actType').value = '';
+  document.getElementById('actDuration').value = '';
+  if (rpeEl) rpeEl.checked = false;
+  renderActivityLog();
+}
+
+function removeActivityEntry(id) {
+  activityEntries = activityEntries.filter(e => e.id !== id);
+  renderActivityLog();
+}
+
+function renderActivityLog() {
+  const listEl = document.getElementById('activityList');
+  const summaryEl = document.getElementById('activitySummary');
+  if (activityEntries.length === 0) {
+    listEl.innerHTML = '';
+    summaryEl.style.display = 'none';
+    updateAllTargets();
+    return;
+  }
+  let html = '';
+  activityEntries.forEach(e => {
+    const kcalStr = e.type === 'rest' ? '\u2014' : '<span class="nlog-hi">' + e.kcal + '</span> kcal';
+    html += '<div class="nlog-item"><span class="nlog-icon">' + e.icon + '</span><span class="nlog-desc">' + e.desc + '</span><span class="nlog-stats">' + kcalStr + '</span><button class="nlog-del" onclick="removeActivityEntry(' + e.id + ')" title="Remove">&#10005;</button></div>';
+  });
+  listEl.innerHTML = html;
+  let tMin = 0, tBurn = 0;
+  activityEntries.forEach(e => { tMin += e.duration; tBurn += e.kcal; });
+  summaryEl.style.display = 'flex';
+  document.getElementById('actTotalMin').textContent = tMin;
+  document.getElementById('actTotalBurn').textContent = tBurn;
+  document.getElementById('actSessions').textContent = activityEntries.length;
+  updateAllTargets();
+}
+
+function addTraining() { /* legacy compat */ }
+
+function getTrainingData() {
+  return activityEntries.map(e => ({ type: e.type, duration: e.duration, rpe: e.rpe }));
 }
 
 function getRadioValue(name) {
   const el = document.querySelector(`input[name="${name}"]:checked`);
   return el ? el.value : null;
-}
-
-function getTrainingData() {
-  const entries = [];
-  document.querySelectorAll('#trainingEntries .training-entry').forEach((entry, i) => {
-    const type = entry.querySelector('.trainingType').value;
-    const duration = entry.querySelector('.trainingDuration').value;
-    const rpe = getRadioValue(`rpe${i+1}`);
-    if (type || duration) {
-      entries.push({ type: type||null, duration: duration?parseInt(duration):null, rpe: rpe?parseInt(rpe):null });
-    }
-  });
-  return entries;
 }
 
 function getFoodLog() {
@@ -2241,12 +2235,8 @@ function calcWeeklyActivityMins(dateStr) {
         });
       }
     }
-    document.querySelectorAll('.training-entry').forEach(entry => {
-      // Only count activity entries (not food entries)
-      if (!entry.querySelector('.trainingType')) return;
-      const type = entry.querySelector('.trainingType')?.value;
-      const dur = parseFloat(entry.querySelector('.trainingDuration')?.value) || 0;
-      if (type && dur > 0) mins[type] = (mins[type] || 0) + dur;
+    activityEntries.forEach(e => {
+      if (e.type && e.duration > 0) mins[e.type] = (mins[e.type] || 0) + e.duration;
     });
   }
   window._weeklyActivityMins = mins;
@@ -2346,10 +2336,8 @@ function autoAssessGoals(goals, dateStr) {
 
   // Build activity map from today's entries: { type: totalMinutes }
   const activityMap = {};
-  document.querySelectorAll('.training-entry').forEach(entry => {
-    const type = entry.querySelector('.trainingType')?.value;
-    const dur = parseFloat(entry.querySelector('.trainingDuration')?.value) || 0;
-    if (type && dur > 0) activityMap[type] = (activityMap[type] || 0) + dur;
+  activityEntries.forEach(e => {
+    if (e.type && e.duration > 0) activityMap[e.type] = (activityMap[e.type] || 0) + e.duration;
   });
 
   let changed = false;
@@ -2769,13 +2757,11 @@ const SWEAT_RATES = {
 
 function calcSweatLoss() {
   let totalL = 0;
-  document.querySelectorAll('.training-entry').forEach(entry => {
-    const type = entry.querySelector('.trainingType')?.value;
-    const dur = parseFloat(entry.querySelector('.trainingDuration')?.value) || 0;
-    if (!type || type === 'rest' || dur <= 0) return;
-    totalL += (SWEAT_RATES[type] || 0.5) * (dur / 60);
+  activityEntries.forEach(e => {
+    if (!e.type || e.type === 'rest' || e.duration <= 0) return;
+    totalL += (SWEAT_RATES[e.type] || 0.5) * (e.duration / 60);
   });
-  return Math.round(totalL * 10) / 10; // round to 1 decimal
+  return Math.round(totalL * 10) / 10;
 }
 
 function getWaterTarget() {
@@ -2791,22 +2777,7 @@ function getWaterTarget() {
 
 function calcCaloriesBurnt() {
   let total = 0;
-  document.querySelectorAll('.training-entry').forEach((entry, i) => {
-    const type = entry.querySelector('.trainingType')?.value;
-    const dur = parseFloat(entry.querySelector('.trainingDuration')?.value) || 0;
-    const rpeEl = entry.querySelector(`input[name="rpe${i+1}"]:checked`);
-    const rpe = rpeEl ? parseInt(rpeEl.value) : 5;
-    const burnEl = entry.querySelector('.burnEstimate');
-    if (!type || type === 'rest' || dur <= 0) {
-      if (burnEl) burnEl.innerHTML = '— <span style="font-size:11px;font-weight:400;color:var(--dim)">kcal</span>';
-      return;
-    }
-    const base = BURN_RATES[type] || 6.0;
-    const rpeMultiplier = 1 + (rpe - 5) * 0.12;
-    const entryBurn = Math.round(base * dur * rpeMultiplier);
-    total += entryBurn;
-    if (burnEl) burnEl.innerHTML = `${entryBurn} <span style="font-size:11px;font-weight:400;color:var(--dim)">kcal</span>`;
-  });
+  activityEntries.forEach(e => { total += e.kcal || 0; });
   return total;
 }
 
@@ -2941,11 +2912,7 @@ function updateAllTargets() {
 
   // Walking minutes from activity entries
   let walkMins = 0;
-  document.querySelectorAll('.training-entry').forEach(entry => {
-    const type = entry.querySelector('.trainingType')?.value;
-    const dur = parseFloat(entry.querySelector('.trainingDuration')?.value) || 0;
-    if (type === 'walking' && dur > 0) walkMins += dur;
-  });
+  activityEntries.forEach(e => { if (e.type === 'walking' && e.duration > 0) walkMins += e.duration; });
   renderTargetBar('targetWalkTraining', 'walk', walkMins);
 
   renderTargetBar('targetCal', 'cal', calIn);
@@ -2972,15 +2939,7 @@ function updateAllTargets() {
   updateRAGLights();
 }
 
-// Also update targets when training fields change
-document.addEventListener('change', function(e) {
-  if (e.target.classList.contains('trainingType') || e.target.classList.contains('trainingDuration') || (e.target.type === 'radio' && e.target.name.startsWith('rpe'))) {
-    updateAllTargets();
-  }
-});
-document.addEventListener('input', function(e) {
-  if (e.target.classList.contains('trainingDuration')) updateAllTargets();
-});
+// Activity targets are updated via renderActivityLog() -> updateAllTargets()
 
 document.getElementById('sleepHours').addEventListener('input', updateAllTargets);
 setTimeout(updateAllTargets, 100);
@@ -3386,17 +3345,24 @@ function loadTodayData() {
     setRadio('stress', saved.wellbeing.stress);
     setRadio('bowel', saved.wellbeing.bowel);
   }
-  // Training
+  // Training — load into activityEntries
   if (saved.training && saved.training.length > 0) {
-    saved.training.forEach((t, i) => {
-      if (i > 0) addTraining();
-      const entries = document.querySelectorAll('#trainingEntries .training-entry');
-      const entry = entries[i];
-      if (!entry) return;
-      if (t.type) entry.querySelector('.trainingType').value = t.type;
-      if (t.duration) entry.querySelector('.trainingDuration').value = t.duration;
-      if (t.rpe) setRadio('rpe' + (i+1), t.rpe);
+    activityEntries = [];
+    actIdCounter = 0;
+    saved.training.forEach(t => {
+      if (!t.type && !t.duration) return;
+      actIdCounter++;
+      const type = t.type || 'other';
+      const dur = parseInt(t.duration) || 0;
+      const rpe = parseInt(t.rpe) || 5;
+      const base = BURN_RATES[type] || 6.0;
+      const rpeMultiplier = 1 + (rpe - 5) * 0.12;
+      const kcal = type === 'rest' ? 0 : Math.round(base * dur * rpeMultiplier);
+      const name = ACT_NAMES[type] || type;
+      const desc = type === 'rest' ? 'Rest Day' : name + ' \u00b7 ' + dur + 'min \u00b7 RPE ' + rpe;
+      activityEntries.push({ id: actIdCounter, type, duration: dur, rpe, kcal, desc, icon: ACT_ICONS[type] || '🏃' });
     });
+    renderActivityLog();
   }
   // Nutrition — unified log (new format)
   if (saved.nutrition && saved.nutrition.log && saved.nutrition.log.length > 0) {
@@ -3538,16 +3504,14 @@ document.getElementById('checkinDate').addEventListener('change', function() {
   sunEntryCount = 1;
   const sunAdv = document.getElementById('sunAdvice'); if (sunAdv) sunAdv.style.display = 'none';
   updateSunCalc();
-  // Remove extra training entries, keep first
-  const trainingEntries = document.querySelectorAll('#trainingEntries .training-entry');
-  trainingEntries.forEach((el, i) => { if (i > 0) el.remove(); });
-  const firstTraining = document.querySelector('#trainingEntries .training-entry');
-  if (firstTraining) {
-    firstTraining.querySelector('.trainingType').value = '';
-    firstTraining.querySelector('.trainingDuration').value = '';
-    const rpe = firstTraining.querySelector('input[type=radio]:checked');
-    if (rpe) rpe.checked = false;
-  }
+  // Clear activity log
+  activityEntries = [];
+  actIdCounter = 0;
+  document.getElementById('actType').value = '';
+  document.getElementById('actDuration').value = '';
+  const actRpe = document.querySelector('input[name="actRpe"]:checked');
+  if (actRpe) actRpe.checked = false;
+  renderActivityLog();
   loadTodayData();
   renderDashboards();
   renderDaySummary();
