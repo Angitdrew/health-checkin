@@ -127,8 +127,9 @@
   .nlog-item .nlog-desc{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .nlog-item .nlog-stats{flex:0 0 auto;display:flex;gap:10px;font-size:11px;color:var(--dim)}
   .nlog-item .nlog-stats .nlog-hi{color:var(--text);font-weight:600}
-  .nlog-item .nlog-del{flex:0 0 20px;background:none;border:none;color:var(--dim);cursor:pointer;font-size:14px;padding:0;opacity:0;transition:opacity 0.15s}
-  .nlog-item:hover .nlog-del{opacity:1}
+  .nlog-item .nlog-edit,.nlog-item .nlog-del{flex:0 0 20px;background:none;border:none;color:var(--dim);cursor:pointer;font-size:14px;padding:0;opacity:0;transition:opacity 0.15s}
+  .nlog-item:hover .nlog-edit,.nlog-item:hover .nlog-del{opacity:1}
+  .nlog-item .nlog-edit:hover{color:var(--accent)}
   .nlog-item .nlog-del:hover{color:var(--red)}
   .nlog-item.nlog-late{border-left:2px solid var(--amber)}
 
@@ -1460,6 +1461,51 @@ function removeNlogEntry(id) {
   renderNlog();
 }
 
+function editNlogEntry(id) {
+  const entry = nlogEntries.find(e => e.id === id);
+  if (!entry) return;
+  // Remove from list
+  nlogEntries = nlogEntries.filter(e => e.id !== id);
+  renderNlog();
+  // Repopulate form
+  document.getElementById('nlogTime').value = entry.time;
+  const typeEl = document.getElementById('nlogType');
+  typeEl.value = entry.type;
+  typeEl.dispatchEvent(new Event('change'));
+  // Small delay to let conditional fields render
+  setTimeout(() => {
+    if (entry.type === 'food' && entry.raw) {
+      if (entry.raw.foodIdx != null) {
+        document.getElementById('nlogFoodSelect').value = entry.raw.foodIdx;
+        document.getElementById('nlogFoodSelect').dispatchEvent(new Event('change'));
+        setTimeout(() => {
+          if (entry.raw.servingIdx != null) document.getElementById('nlogFoodServing').value = entry.raw.servingIdx;
+          if (entry.raw.qty) document.getElementById('nlogFoodQty').value = entry.raw.qty;
+          if (entry.raw.customCal != null) {
+            document.getElementById('nlogCustomCal').value = entry.raw.customCal;
+            document.getElementById('nlogCustomPro').value = entry.raw.customPro || 0;
+            document.getElementById('nlogCustomCarb').value = entry.raw.customCarb || 0;
+            document.getElementById('nlogCustomFat').value = entry.raw.customFat || 0;
+            if (entry.raw.name) document.getElementById('nlogCustomName').value = entry.raw.name;
+          }
+        }, 50);
+      }
+    } else if (entry.type === 'coffee' && entry.raw) {
+      if (entry.raw.coffeeType) document.getElementById('nlogCoffeeType').value = entry.raw.coffeeType;
+      if (entry.raw.shots) document.getElementById('nlogCoffeeShots').value = entry.raw.shots;
+      if (entry.raw.milk) document.getElementById('nlogCoffeeMilk').value = entry.raw.milk;
+    } else if (entry.raw) {
+      if (entry.raw.ml) document.getElementById('nlogDrinkML').value = entry.raw.ml;
+      if (entry.raw.subtype) {
+        const subEl = document.getElementById('nlogDrinkSub');
+        if (subEl) subEl.value = entry.raw.subtype;
+      }
+    }
+    // Scroll form into view
+    document.getElementById('nlogEntryForm').scrollIntoView({ behavior:'smooth', block:'nearest' });
+  }, 50);
+}
+
 function renderNlog() {
   const listEl = document.getElementById('nlogList');
   const summaryEl = document.getElementById('nlogSummary');
@@ -1496,6 +1542,7 @@ function renderNlog() {
       <span class="nlog-icon">${e.icon}</span>
       <span class="nlog-desc">${e.desc}</span>
       <span class="nlog-stats">${stats}</span>
+      <button class="nlog-edit" onclick="editNlogEntry(${e.id})" title="Edit">&#9998;</button>
       <button class="nlog-del" onclick="removeNlogEntry(${e.id})" title="Remove">&#10005;</button>
     </div>`;
   });
