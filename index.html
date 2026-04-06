@@ -2897,7 +2897,22 @@ function updateRAGLights() {
     const zoneLPct = m.min / m.cap * 100;
     const zoneRPct = m.max / m.cap * 100;
     const displayVal = m.decimals ? m.val.toFixed(m.decimals) : Math.round(m.val);
-    const valStr = m.val > 0 ? `<span style="color:${fillColor(color)}">${displayVal}</span> <span style="font-size:10px;color:var(--dim)">${m.unit}</span>` : `<span style="color:var(--dim)">—</span>`;
+    let gapStr = '';
+    if (m.val > 0) {
+      if (m.invert) {
+        if (m.val > m.max) {
+          const over = m.decimals ? (m.val - m.max).toFixed(m.decimals) : Math.round(m.val - m.max);
+          gapStr = ` <span style="font-size:10px;color:var(--red)">(${over} over)</span>`;
+        }
+      } else if (m.val < m.min) {
+        const need = m.decimals ? (m.min - m.val).toFixed(m.decimals) : Math.round(m.min - m.val);
+        gapStr = ` <span style="font-size:10px;color:var(--amber)">(${need} to go)</span>`;
+      } else if (m.val > m.max) {
+        const over = m.decimals ? (m.val - m.max).toFixed(m.decimals) : Math.round(m.val - m.max);
+        gapStr = ` <span style="font-size:10px;color:var(--red)">(${over} over)</span>`;
+      }
+    }
+    const valStr = m.val > 0 ? `<span style="color:${fillColor(color)}">${displayVal}</span> <span style="font-size:10px;color:var(--dim)">${m.unit}</span>${gapStr}` : `<span style="color:var(--dim)">—</span>`;
     return `<div class="rag-row">
       <div class="rag-dot ${color}"></div>
       <span class="rag-label">${m.label}${m.note ? ` <span style="font-size:10px;color:var(--dim)">${m.note}</span>` : ''}</span>
