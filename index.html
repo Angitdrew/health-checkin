@@ -4133,7 +4133,8 @@ async function syncFromGitHub() {
   const HS_BASE_LE = 81.1; // Australian male life expectancy (ABS 2022-24)
   const HS_BASE_HS = 71.7; // Australian male HALE (AIHW Burden of Disease Study 2024, 88% of LE)
   const HS_AGE = 58; // DOB: 23 Apr 1967
-  // Known baseline values from Master Health Profile (Medical History/Master Health Profile - Andrew Potts.xlsx)
+  // LOCKED baseline values from Master Health Profile — absolute fallbacks only (never change with daily check-ins)
+  // Source: Medical History/Master Health Profile - Andrew Potts.xlsx
   const HS_PROFILE = { bpSys: 125, bpDia: 78, rhr: 78, waist: 117, hip: 120, whr: 0.975 };
 
   function projRenderHealthStatus(proj) {
@@ -4153,18 +4154,8 @@ async function syncFromGitHub() {
     const last30 = sorted.slice(0, 30);
     const hasCheckins = ci.length > 0;
 
-    // Extract latest metrics — fall back to projection baselines, then profile baselines
-    const wt = latest?.vitals?.weight || baseWt || 111;
-    const bmi = Math.round(wt / (PROJ_HEIGHT_M * PROJ_HEIGHT_M) * 10) / 10;
-    const bf = latest?.measurements?.body_fat_pct || baseBF || null;
-    const waist = latest?.measurements?.waist_cm || baseWaist || HS_PROFILE.waist;
-    const neck = latest?.measurements?.neck_cm || baseNeck || 44;
-    const muscle = latest?.measurements?.skeletal_muscle_kg || baseMuscle || null;
-    const bpSys = latest?.vitals?.bp_systolic || HS_PROFILE.bpSys;
-    const bpDia = latest?.vitals?.bp_diastolic || HS_PROFILE.bpDia;
-    const rhr = latest?.vitals?.resting_hr || HS_PROFILE.rhr;
-
-    // Search ALL check-ins for best available data if latest is missing fields
+    // Extract metrics using 7-DAY AVERAGES for stability (avoids daily fluctuations)
+    // Falls back: 7d avg → latest check-in → projection baseline → profile baseline
     function bestFromAll(field) {
       for (const c of sorted) {
         const v = field(c);
@@ -4172,17 +4163,34 @@ async function syncFromGitHub() {
       }
       return null;
     }
-    const bestBF = bf || bestFromAll(c => c.measurements?.body_fat_pct) || baseBF;
-    const bestMuscle = muscle || bestFromAll(c => c.measurements?.skeletal_muscle_kg) || baseMuscle;
-    const bestBpSys = latest?.vitals?.bp_systolic || bestFromAll(c => c.vitals?.bp_systolic) || HS_PROFILE.bpSys;
-    const bestBpDia = latest?.vitals?.bp_diastolic || bestFromAll(c => c.vitals?.bp_diastolic) || HS_PROFILE.bpDia;
-    const bestRhr = latest?.vitals?.resting_hr || bestFromAll(c => c.vitals?.resting_hr) || HS_PROFILE.rhr;
-
-    // Use best available data
-    const useBF = bestBF, useMuscle = bestMuscle, useBpSys = bestBpSys, useBpDia = bestBpDia, useRhr = bestRhr;
-
-    // Averages from recent data
     const avg = (arr, fn) => { const vals = arr.map(fn).filter(v => v != null && v > 0); return vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null; };
+
+    // Body metrics: use 7d average to smooth daily fluctuations
+    const avgWt7 = avg(last7, c => c.vitals?.weight);
+    const wt = avgWt7 || latest?.vitals?.weight || baseWt || 111;
+    const bmi = Math.round(wt / (PROJ_HEIGHT_M * PROJ_HEIGHT_M) * 10) / 10;
+
+    const avgWaist7 = avg(last7, c => c.measurements?.waist_cm);
+    const waist = avgWaist7 || latest?.measurements?.waist_cm || baseWaist || HS_PROFILE.waist;
+
+    const avgNeck7 = avg(last7, c => c.measurements?.neck_cm);
+    const neck = avgNeck7 || latest?.measurements?.neck_cm || baseNeck || 44;
+
+    // Body fat & muscle: less frequently measured, use best available from any check-in
+    const bf = latest?.measurements?.body_fat_pct || bestFromAll(c => c.measurements?.body_fat_pct) || baseBF || null;
+    const muscle = latest?.measurements?.skeletal_muscle_kg || bestFromAll(c => c.measurements?.skeletal_muscle_kg) || baseMuscle || null;
+
+    // Vitals: use 7d average for BP and RHR (day-to-day variability is normal)
+    const avgBpSys7 = avg(last7, c => c.vitals?.bp_systolic);
+    const avgBpDia7 = avg(last7, c => c.vitals?.bp_diastolic);
+    const avgRhr7 = avg(last7, c => c.vitals?.resting_hr);
+
+    const useBpSys = avgBpSys7 || latest?.vitals?.bp_systolic || bestFromAll(c => c.vitals?.bp_systolic) || HS_PROFILE.bpSys;
+    const useBpDia = avgBpDia7 || latest?.vitals?.bp_diastolic || bestFromAll(c => c.vitals?.bp_diastolic) || HS_PROFILE.bpDia;
+    const useRhr = avgRhr7 || latest?.vitals?.resting_hr || bestFromAll(c => c.vitals?.resting_hr) || HS_PROFILE.rhr;
+    const useBF = bf, useMuscle = muscle;
+
+    // Averages from recent data (avg helper already defined above)
     const avgSleep = avg(last7, c => c.sleep?.hours);
     const avgWater = avg(last7, c => c.nutrition?.water_litres);
     const avgCal = avg(last7, c => c.nutrition?.totals?.calories);
