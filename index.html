@@ -1275,6 +1275,20 @@ const foodDB = [
   ]}
 ];
 
+// ===== COFFEE TYPES (needed by nutrition log) =====
+const COFFEE_TYPES = [
+  { id: 'espresso',    name: 'Espresso',         baseML: 30,  caffeinePerShot: 63,  cal: 1 },
+  { id: 'long_black',  name: 'Long Black',       baseML: 200, caffeinePerShot: 63,  cal: 2 },
+  { id: 'short_black', name: 'Short Black',      baseML: 60,  caffeinePerShot: 63,  cal: 1 },
+  { id: 'flat_white',  name: 'Flat White',       baseML: 200, caffeinePerShot: 63,  cal: 80 },
+  { id: 'cappuccino',  name: 'Cappuccino',       baseML: 200, caffeinePerShot: 63,  cal: 80 },
+  { id: 'latte',       name: 'Latte',            baseML: 250, caffeinePerShot: 63,  cal: 100 },
+  { id: 'mocha',       name: 'Mocha',            baseML: 250, caffeinePerShot: 63,  cal: 180 },
+  { id: 'cold_brew',   name: 'Cold Brew',        baseML: 300, caffeinePerShot: 100, cal: 5 },
+  { id: 'instant',     name: 'Instant',          baseML: 250, caffeinePerShot: 50,  cal: 4 },
+  { id: 'decaf',       name: 'Decaf',            baseML: 200, caffeinePerShot: 5,   cal: 2 },
+];
+
 // ===== UNIFIED NUTRITION LOG =====
 const foodCategories = [...new Set(foodDB.map(f=>f.cat))];
 
@@ -2004,20 +2018,7 @@ function updateSunCalc() {
   if (adviceEl) { adviceEl.style.display = 'block'; adviceEl.textContent = advice; }
 }
 
-// ===== COFFEE TRACKER =====
-const COFFEE_TYPES = [
-  { id: 'espresso',    name: 'Espresso',         baseML: 30,  caffeinePerShot: 63,  cal: 1 },
-  { id: 'long_black',  name: 'Long Black',       baseML: 200, caffeinePerShot: 63,  cal: 2 },
-  { id: 'short_black', name: 'Short Black',      baseML: 60,  caffeinePerShot: 63,  cal: 1 },
-  { id: 'flat_white',  name: 'Flat White',       baseML: 200, caffeinePerShot: 63,  cal: 80 },
-  { id: 'cappuccino',  name: 'Cappuccino',       baseML: 200, caffeinePerShot: 63,  cal: 80 },
-  { id: 'latte',       name: 'Latte',            baseML: 250, caffeinePerShot: 63,  cal: 100 },
-  { id: 'mocha',       name: 'Mocha',            baseML: 250, caffeinePerShot: 63,  cal: 180 },
-  { id: 'cold_brew',   name: 'Cold Brew',        baseML: 300, caffeinePerShot: 100, cal: 5 },
-  { id: 'instant',     name: 'Instant',          baseML: 250, caffeinePerShot: 50,  cal: 4 },
-  { id: 'decaf',       name: 'Decaf',            baseML: 200, caffeinePerShot: 5,   cal: 2 },
-];
-// (Coffee entry functions replaced by unified nutrition log above)
+// (Coffee types moved to before nutrition log for initialization order)
 
 function collectData() {
   return {
