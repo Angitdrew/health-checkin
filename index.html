@@ -330,6 +330,12 @@
     <div id="ragPanel" class="rag-panel"></div>
   </div>
 
+  <!-- COACH'S NOTES -->
+  <div class="day-summary" id="coachPanel" style="display:none">
+    <div class="day-summary-title" style="cursor:pointer" onclick="document.getElementById('coachContent').style.display=document.getElementById('coachContent').style.display==='none'?'block':'none'">&#129504; Coach's Notes <span style="float:right;font-size:12px;color:var(--dim)">▸</span></div>
+    <div id="coachContent" style="display:none;padding:0 12px 12px"></div>
+  </div>
+
   <!-- SLEEP -->
   <div class="section has-chart">
     <div class="section-title"><span class="icon">&#9790;</span> Sleep</div>
@@ -417,18 +423,27 @@
         </div>
       </div>
       <div class="field">
-        <div class="label">Perceived Intensity (RPE 1-10)</div>
-        <div class="rating">
+        <div class="label">Intensity (RPE 1-10)</div>
+        <div class="rating" style="flex-wrap:wrap;gap:2px 0">
           <label class="rating-green"><input type="radio" name="actRpe" value="1" onchange="updateActivityPreview()"><span>1</span></label>
           <label class="rating-green"><input type="radio" name="actRpe" value="2" onchange="updateActivityPreview()"><span>2</span></label>
+          <span style="font-size:9px;color:var(--dim);padding:0 2px;align-self:center">▸</span>
           <label class="rating-green"><input type="radio" name="actRpe" value="3" onchange="updateActivityPreview()"><span>3</span></label>
           <label class="rating-green"><input type="radio" name="actRpe" value="4" onchange="updateActivityPreview()"><span>4</span></label>
+          <span style="font-size:9px;color:var(--dim);padding:0 2px;align-self:center">▸</span>
           <label class="rating-amber"><input type="radio" name="actRpe" value="5" onchange="updateActivityPreview()"><span>5</span></label>
           <label class="rating-amber"><input type="radio" name="actRpe" value="6" onchange="updateActivityPreview()"><span>6</span></label>
           <label class="rating-amber"><input type="radio" name="actRpe" value="7" onchange="updateActivityPreview()"><span>7</span></label>
+          <span style="font-size:9px;color:var(--dim);padding:0 2px;align-self:center">▸</span>
           <label class="rating-red"><input type="radio" name="actRpe" value="8" onchange="updateActivityPreview()"><span>8</span></label>
           <label class="rating-red"><input type="radio" name="actRpe" value="9" onchange="updateActivityPreview()"><span>9</span></label>
           <label class="rating-red"><input type="radio" name="actRpe" value="10" onchange="updateActivityPreview()"><span>10</span></label>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--dim);margin-top:4px;padding:0 2px">
+          <span>Rest/Easy</span>
+          <span style="color:var(--green)">Zone 2</span>
+          <span>Moderate</span>
+          <span style="color:var(--red)">Max effort</span>
         </div>
       </div>
       <button class="btn-add" onclick="addActivityEntry()" style="margin-top:8px">+ Add to log</button>
@@ -888,7 +903,7 @@
     </div>
     <div style="margin:-4px 0 8px 4px;font-size:11px;color:var(--dim);line-height:1.5">
       <strong style="color:var(--text);font-size:10px">Meds:</strong> Flecainide · Verapamil · Coloxyl<br>
-      <strong style="color:var(--text);font-size:10px">Supps:</strong> Vitamin D3 · Omega-3 Fish Oil · Mag Glycinate ×2 nocte · Curcumin + Boswellia (Bioglan) · Vitamin K2 (Bioglan) · Probiotic<br>
+      <strong style="color:var(--text);font-size:10px">Supps:</strong> Vitamin D3 · Omega-3 Fish Oil · Creatine 5g · Mag Glycinate ×2 nocte · Curcumin + Boswellia (Bioglan) · Vitamin K2 (Bioglan) · Probiotic<br>
       <strong style="color:var(--text);font-size:10px">Electrolytes:</strong> Sodium (LMNT/Hydralyte) · Potassium · Magnesium
     </div>
     <div class="toggle-row">
@@ -900,12 +915,12 @@
       <label class="toggle"><input type="checkbox" id="electrolytesTaken"><span class="slider"></span></label>
     </div>
     <div class="toggle-row">
-      <span class="toggle-label">Coloxyl taken</span>
-      <label class="toggle"><input type="checkbox" id="coloxylTaken"><span class="slider"></span></label>
-    </div>
-    <div class="toggle-row">
       <span class="toggle-label">Vitamin K2 source today <span style="color:var(--dim);font-size:11px">(Bioglan K2, fermented milk, eggs, natto, cheese)</span></span>
       <label class="toggle"><input type="checkbox" id="k2Taken"><span class="slider"></span></label>
+    </div>
+    <div class="toggle-row" style="align-items:center">
+      <span class="toggle-label">Cold shower <span style="color:var(--dim);font-size:11px">(min)</span></span>
+      <input type="number" id="coldShowerMins" min="0" max="30" step="0.5" placeholder="0" style="width:60px;text-align:center;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:4px 6px;font-size:13px">
     </div>
   </div>
 
@@ -2179,7 +2194,7 @@ function collectData() {
       supplements_taken: document.getElementById('suppsTaken').checked,
       probiotic_taken: document.getElementById('probioticTaken').checked,
       electrolytes_taken: document.getElementById('electrolytesTaken').checked,
-      coloxyl_taken: document.getElementById('coloxylTaken').checked,
+      cold_shower_mins: parseFloat(document.getElementById('coldShowerMins').value) || null,
       k2_source_taken: document.getElementById('k2Taken').checked
     },
     measurements: {
@@ -3050,6 +3065,144 @@ function updateRAGLights() {
   }).join('');
 }
 
+function updateCoachNotes() {
+  const panel = document.getElementById('coachPanel');
+  const content = document.getElementById('coachContent');
+  if (!panel || !content) return;
+
+  const sleep = getTotalSleep();
+  const sleepScore = parseInt(document.getElementById('sleepScore').value) || 0;
+  const hrv = parseInt(document.getElementById('restingHRV').value) || 0;
+  const energy = parseInt(document.getElementById('energyScore').value) || 0;
+  const cal = parseInt(document.getElementById('totalCal').textContent) || 0;
+  const pro = parseInt(document.getElementById('totalPro').textContent) || 0;
+  const carb = parseInt(document.getElementById('totalCarb').textContent) || 0;
+  const fat = parseInt(document.getElementById('totalFat').textContent) || 0;
+  const water = parseFloat(document.getElementById('waterIntake').value) || 0;
+  const burnt = calcCaloriesBurnt();
+  const calTarget = getCalorieTarget();
+  const wt = getWaterTarget();
+  const coldShowerMins = parseFloat(document.getElementById('coldShowerMins')?.value) || 0;
+  const supps = document.getElementById('suppsTaken')?.checked;
+  const electrolytes = document.getElementById('electrolytesTaken')?.checked;
+
+  // Determine activity types logged today
+  const actTypes = activityEntries.map(e => e.type);
+  const totalMin = activityEntries.reduce((s,e) => s + (e.duration||0), 0);
+  const hasHighIntensity = actTypes.some(t => ['bjj','boxing','mma','weights','bagwork'].includes(t));
+  const hasZone2 = activityEntries.some(e => ['zone2','walking'].includes(e.type) || (e.rpe >= 3 && e.rpe <= 4));
+  const hasRecovery = actTypes.some(t => ['mobility','bands','exball','sauna'].includes(t));
+
+  // Current hour for time-aware advice
+  const hr = new Date().getHours();
+
+  const notes = [];
+
+  // --- READINESS ---
+  if (energy > 0 || hrv > 0 || sleepScore > 0) {
+    let readiness = 'moderate';
+    const signals = [];
+    if (sleepScore >= 80) signals.push('sleep score strong');
+    else if (sleepScore > 0 && sleepScore < 60) signals.push('sleep score low');
+    if (hrv >= 40) signals.push('HRV solid');
+    else if (hrv > 0 && hrv < 25) signals.push('HRV suppressed');
+    if (energy >= 80) signals.push('energy high');
+    else if (energy > 0 && energy < 50) signals.push('energy depleted');
+
+    const goodCount = signals.filter(s => s.includes('strong') || s.includes('solid') || s.includes('high')).length;
+    const badCount = signals.filter(s => s.includes('low') || s.includes('suppressed') || s.includes('depleted')).length;
+    if (goodCount >= 2) readiness = 'high';
+    else if (badCount >= 2) readiness = 'low';
+
+    if (readiness === 'high') {
+      notes.push({ icon:'🟢', text:'Readiness is high — good day for high-intensity training (BJJ, boxing, weights).' });
+    } else if (readiness === 'low') {
+      notes.push({ icon:'🔴', text:'Recovery signals are low (' + signals.join(', ') + '). Consider Zone 2, mobility, or a rest day. Pushing hard today risks overtraining and AF triggers.' });
+    } else {
+      notes.push({ icon:'🟡', text:'Moderate readiness (' + signals.join(', ') + '). OK for planned training but listen to your body — dial back RPE if needed.' });
+    }
+  }
+
+  // --- SLEEP ---
+  if (sleep > 0 && sleep < 7) {
+    const deficit = (7 - sleep).toFixed(1);
+    notes.push({ icon:'😴', text:'Sleep deficit of ' + deficit + ' hr. Prioritise an earlier bedtime tonight. Consider a 20min nap if energy dips. Low sleep increases RA flare risk and AF susceptibility.' });
+  } else if (sleep >= 8) {
+    notes.push({ icon:'💤', text:'Excellent sleep — recovery systems had time to do their work.' });
+  }
+
+  // --- NUTRITION ---
+  if (cal > 0) {
+    const remaining = calTarget.min - cal;
+    if (remaining > 800 && hr >= 14) {
+      notes.push({ icon:'🍽', text:'You\'re ' + remaining + ' kcal short with the afternoon well underway. Plan a protein-rich meal to hit your target without blowing carbs.' });
+    } else if (cal > calTarget.max) {
+      notes.push({ icon:'⚠️', text:'Calories are above your upper target (' + calTarget.max + ' kcal). Already at ' + cal + ' kcal. Easy on portions for the rest of the day.' });
+    }
+
+    if (pro > 0 && pro < 100 && hr >= 15) {
+      notes.push({ icon:'🥩', text:'Protein is only ' + pro + 'g — you need 160g+ for muscle preservation. Prioritise protein in remaining meals (sardines, eggs, mince).' });
+    }
+
+    if (carb > 20 && carb <= 30) {
+      notes.push({ icon:'🥬', text:'Carbs at ' + carb + 'g — approaching the 30g limit. Be careful with hidden carbs in sauces and drinks.' });
+    } else if (carb > 30) {
+      notes.push({ icon:'🚫', text:'Carbs over 30g (' + carb + 'g). You\'ve likely broken ketosis. Not the end of the world — just stay strict for the rest of the day to get back on track.' });
+    }
+  }
+
+  // --- HYDRATION ---
+  if (water > 0 && water < wt.min && hr >= 12) {
+    const need = (wt.min - water).toFixed(1);
+    notes.push({ icon:'💧', text:'Hydration is ' + need + 'L behind target' + (wt.sweat > 0 ? ' (includes ' + wt.sweat + 'L sweat replacement)' : '') + '. Dehydration worsens joint stiffness and increases AF risk. Sip consistently — don\'t try to catch up all at once.' });
+  }
+
+  // --- TRAINING ---
+  if (hasHighIntensity && !hasRecovery) {
+    notes.push({ icon:'🧘', text:'High-intensity session logged but no recovery work yet. 10min bands, exercise ball, or mobility would help manage inflammation and protect your joints.' });
+  }
+
+  if (totalMin > 90 && !electrolytes) {
+    notes.push({ icon:'⚡', text:'90+ min of training today — make sure you\'ve had electrolytes. Sodium and potassium depletion on keto + hard training is a common AF trigger.' });
+  }
+
+  if (!hasZone2 && hasHighIntensity) {
+    notes.push({ icon:'🚶', text:'Consider adding a 10-20min walk today. Zone 2 between hard sessions improves recovery and is the best cardio for AF management.' });
+  }
+
+  // --- COMPLIANCE ---
+  if (coldShowerMins === 0 && hr >= 10) {
+    notes.push({ icon:'🧊', text:'Cold shower not done yet. 2min cold exposure post-training reduces inflammation and speeds recovery — especially valuable for RA.' });
+  } else if (coldShowerMins > 0 && coldShowerMins < 2) {
+    notes.push({ icon:'🧊', text:'Cold shower was ' + coldShowerMins + ' min — try to build towards 2+ min for full anti-inflammatory benefits. You\'re building the habit though.' });
+  }
+
+  if (!supps && hr >= 12) {
+    notes.push({ icon:'💊', text:'Supplements not ticked yet. Don\'t forget your D3, omega-3, creatine, and mag glycinate (the mag is nocte — save those for bedtime).' });
+  }
+
+  // --- TIME-BASED ---
+  if (hr >= 14 && cal === 0) {
+    notes.push({ icon:'🍽', text:'It\'s past 2pm and no food logged. If you\'re fasting, great — but make sure you get enough protein and calories in your eating window.' });
+  }
+
+  if (hr >= 20 && sleep === 0) {
+    notes.push({ icon:'🌙', text:'Getting late — aim for lights out by 10pm to hit 7+ hours. Mag glycinate before bed will help sleep quality.' });
+  }
+
+  // --- SHOW/HIDE ---
+  if (notes.length === 0) {
+    panel.style.display = 'none';
+    return;
+  }
+  panel.style.display = 'block';
+  content.innerHTML = notes.map(n =>
+    '<div style="display:flex;gap:8px;align-items:flex-start;margin-top:8px;font-size:12px;line-height:1.5">' +
+    '<span style="flex:0 0 20px;text-align:center">' + n.icon + '</span>' +
+    '<span style="color:var(--text)">' + n.text + '</span></div>'
+  ).join('');
+}
+
 function updateAllTargets() {
   const calIn = parseInt(document.getElementById('totalCal').textContent) || 0;
   const burnt = calcCaloriesBurnt();
@@ -3086,6 +3239,7 @@ function updateAllTargets() {
   renderTargetBar('targetWater', 'water', parseFloat(document.getElementById('waterIntake').value) || 0);
   renderTargetBar('targetSleep', 'sleep', getTotalSleep());
   updateRAGLights();
+  updateCoachNotes();
 }
 
 // Activity targets are updated via renderActivityLog() -> updateAllTargets()
@@ -3569,7 +3723,8 @@ function loadTodayData() {
     setCheck('suppsTaken', saved.compliance.supplements_taken);
     setCheck('probioticTaken', saved.compliance.probiotic_taken);
     setCheck('electrolytesTaken', saved.compliance.electrolytes_taken);
-    setCheck('coloxylTaken', saved.compliance.coloxyl_taken);
+    if (saved.compliance.cold_shower_mins) setVal('coldShowerMins', saved.compliance.cold_shower_mins);
+    else if (saved.compliance.cold_shower) setVal('coldShowerMins', 2);
     setCheck('k2Taken', saved.compliance.k2_source_taken);
   }
   // Measurements
@@ -4157,7 +4312,7 @@ async function syncFromGitHub() {
     // 12. Supplement Compliance
     const compR = compDays >= 6 ? { color: 'var(--green)', label: 'G', score: 1 } : compDays >= 4 ? { color: 'var(--amber)', label: 'A', score: 0.5 } : { color: 'var(--red)', label: 'R', score: 0 };
     const compImpact = compDays >= 6 ? 0.3 : 0;
-    cats.push({ cat: 'Supplements', val: compDays + '/7d', rag: compR, impact: compImpact, pct: compDays / 7 * 100, tip: `Vit D3, Omega-3, Mag Glycinate (×2 nocte), Curcumin+Boswellia, Vit K2, probiotics, electrolytes. Consistency matters.` });
+    cats.push({ cat: 'Supplements', val: compDays + '/7d', rag: compR, impact: compImpact, pct: compDays / 7 * 100, tip: `Vit D3, Omega-3, Creatine, Mag Glycinate (×2 nocte), Curcumin+Boswellia, Vit K2, probiotics, electrolytes. Consistency matters.` });
 
     // 13. Neck Circumference (always has data via fallback to 44cm baseline)
     const neckR = neck < 40 ? { color: 'var(--green)', label: 'G', score: 1 } : neck <= 43 ? { color: 'var(--amber)', label: 'A', score: 0.5 } : { color: 'var(--red)', label: 'R', score: 0 };
