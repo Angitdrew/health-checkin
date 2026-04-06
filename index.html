@@ -338,6 +338,10 @@
         <input type="number" id="sleepHours" step="0.5" placeholder="e.g. 5.0">
       </div>
       <div class="field">
+        <div class="label">Nap <span class="unit">min</span></div>
+        <input type="number" id="napMinutes" step="5" placeholder="e.g. 20">
+      </div>
+      <div class="field">
         <div class="label">Sleep Quality</div>
         <div class="rating">
           <label><input type="radio" name="sleepQuality" value="1"><span>1</span></label>
@@ -2680,7 +2684,7 @@ const TARGETS = {
   net:   { label:'Net Calories',unit:'kcal', min:1800, max:2200, cap:3500 },
   pro:   { label:'Protein',     unit:'g',    min:160,  max:220,  cap:300 },
   fat:   { label:'Fat',         unit:'g',    min:120,  max:160,  cap:250 },
-  carb:  { label:'Carbs',       unit:'g',    min:0,    max:30,   cap:60,  invertColor:true },
+  carb:  { label:'Carbs',       unit:'g',    min:0,    max:30,   cap:60,  invertColor:true, greenMax:20 },
   water: { label:'Water',       unit:'L',    min:3.0,  max:4.0,  cap:6.0 },
   sleep:   { label:'Sleep',       unit:'hr',   min:7.0,  max:9.0,  cap:12.0 },
   uv:      { label:'UV Index',    unit:'',     min:3,    max:6,    cap:14 },
@@ -2881,7 +2885,7 @@ function updateRAGLights() {
     { label:'Protein',           val:pro,   min:160,  max:220,  cap:300,  unit:'g' },
     { label:'Calories Consumed', val:cal,   min:1800, max:2200, cap:3500, unit:'kcal' },
     { label:'Fat',               val:fat,   min:120,  max:160,  cap:250,  unit:'g' },
-    { label:'Carbs',             val:carb,  min:0,    max:30,   cap:60,   unit:'g', invert:true },
+    { label:'Carbs',             val:carb,  min:20,   max:30,   cap:60,   unit:'g', invertCarbs:true },
     { label:'Water',             val:water, min:wt.min, max:wt.max, cap:wt.cap, unit:'L', decimals:1, note: wt.sweat > 0 ? `(+${wt.sweat}L sweat)` : '' },
     { label:'Calories Used',     val:burnt, min:200,  max:800,  cap:1200, unit:'kcal' },
     { label:'Sun (Vit D)',        val:vitD,  min:600,  max:1500, cap:3000, unit:'IU' }
@@ -2892,17 +2896,25 @@ function updateRAGLights() {
   panel.style.display = 'block';
 
   ragEl.innerHTML = metrics.map(m => {
-    const color = m.val > 0 ? ragColor(m.val, m.min, m.max, m.invert) : 'grey';
+    let color;
+    if (m.invertCarbs) {
+      color = m.val > 0 ? (m.val <= m.min ? 'green' : m.val <= m.max ? 'amber' : 'red') : 'grey';
+    } else {
+      color = m.val > 0 ? ragColor(m.val, m.min, m.max, m.invert) : 'grey';
+    }
     const fillPct = m.val > 0 ? Math.min(m.val / m.cap * 100, 100) : 0;
     const zoneLPct = m.min / m.cap * 100;
     const zoneRPct = m.max / m.cap * 100;
     const displayVal = m.decimals ? m.val.toFixed(m.decimals) : Math.round(m.val);
     let gapStr = '';
     if (m.val > 0) {
-      if (m.invert) {
+      if (m.invertCarbs) {
         if (m.val > m.max) {
-          const over = m.decimals ? (m.val - m.max).toFixed(m.decimals) : Math.round(m.val - m.max);
+          const over = Math.round(m.val - m.max);
           gapStr = ` <span style="font-size:10px;color:var(--red)">(${over} over)</span>`;
+        } else if (m.val > m.min) {
+          const left = Math.round(m.max - m.val);
+          gapStr = ` <span style="font-size:10px;color:var(--amber)">(${left} left)</span>`;
         }
       } else if (m.val < m.min) {
         const need = m.decimals ? (m.min - m.val).toFixed(m.decimals) : Math.round(m.min - m.val);
