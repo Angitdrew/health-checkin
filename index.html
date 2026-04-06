@@ -2906,7 +2906,7 @@ function updateRAGLights() {
   ragEl.innerHTML = metrics.map(m => {
     let color;
     if (m.invertCarbs) {
-      color = m.val > 0 ? (m.val <= m.min ? 'green' : m.val <= m.max ? 'amber' : 'red') : 'grey';
+      color = m.val <= m.min ? 'green' : m.val <= m.max ? 'amber' : 'red';
     } else {
       color = m.val > 0 ? ragColor(m.val, m.min, m.max, m.invert) : 'grey';
     }
@@ -2932,7 +2932,8 @@ function updateRAGLights() {
         gapStr = ` <span style="font-size:10px;color:var(--red)">(${over} over)</span>`;
       }
     }
-    const valStr = m.val > 0 ? `<span style="color:${fillColor(color)}">${displayVal}</span> <span style="font-size:10px;color:var(--dim)">${m.unit}</span>${gapStr}` : `<span style="color:var(--dim)">—</span>`;
+    const showVal = m.val > 0 || m.invertCarbs;
+    const valStr = showVal ? `<span style="color:${fillColor(color)}">${displayVal}</span> <span style="font-size:10px;color:var(--dim)">${m.unit}</span>${gapStr}` : `<span style="color:var(--dim)">—</span>`;
     return `<div class="rag-row">
       <div class="rag-dot ${color}"></div>
       <span class="rag-label">${m.label}${m.note ? ` <span style="font-size:10px;color:var(--dim)">${m.note}</span>` : ''}</span>
