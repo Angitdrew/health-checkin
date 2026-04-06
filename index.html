@@ -2145,7 +2145,7 @@ function collectData() {
 const DEFAULT_GOALS = [
   // Daily nutrition & health (auto-assessed every day)
   { id: 'g_protein',  label: 'Hit protein target (160-220g)',      auto: 'protein' },
-  { id: 'g_calories', label: 'Stay in calorie range (1800-2200)',  auto: 'calories' },
+  { id: 'g_calories', label: 'Stay in calorie range (dynamic)',  auto: 'calories' },
   { id: 'g_carbs',    label: 'Keep carbs under 30g',              auto: 'carbs' },
   { id: 'g_water',    label: 'Hit water target',                   auto: 'water' },
   { id: 'g_sleep',    label: 'Sleep 7+ hours',                    auto: 'sleep' },
@@ -2372,7 +2372,7 @@ function autoAssessGoals(goals, dateStr) {
 
     // Daily nutrition/health goals — when value is 0 (no data), explicitly uncheck
     if (g.auto === 'protein')  result = pro > 0 ? pro >= 160 : false;
-    if (g.auto === 'calories') result = cal > 0 ? (cal >= 1800 && cal <= 2200) : false;
+    if (g.auto === 'calories') { const ct = getCalorieTarget(); result = cal > 0 ? (cal >= ct.min && cal <= ct.max) : false; }
     if (g.auto === 'carbs')    result = carb > 0 ? carb <= 30 : false;
     if (g.auto === 'water')    result = water > 0 ? water >= getWaterTarget().min : false;
     if (g.auto === 'sleep')    result = sleep > 0 ? sleep >= 7.0 : false;
@@ -2680,7 +2680,7 @@ function toggleHistory() {
 
 // ===== DAILY TARGETS =====
 const TARGETS = {
-  cal:   { label:'Calories In', unit:'kcal', min:1800, max:2200, cap:3500 },
+  cal:   { label:'Calories Eaten', unit:'kcal', min:1800, max:2200, cap:3500 },
   burn:  { label:'Burnt',       unit:'kcal', min:200,  max:800,  cap:1200 },
   net:   { label:'Net Calories',unit:'kcal', min:1800, max:2200, cap:3500 },
   pro:   { label:'Protein',     unit:'g',    min:160,  max:220,  cap:300 },
@@ -2799,6 +2799,23 @@ function calcCaloriesBurnt() {
   return total;
 }
 
+// Dynamic calorie target: base rest-day range + portion of exercise burn
+// Keeps daily deficit consistent (~750-1000 kcal) regardless of training load
+// Adds back 50% of exercise calories to fuel recovery without erasing deficit
+function getCalorieTarget() {
+  const BASE_MIN = 1400;   // rest-day floor (hard deficit)
+  const BASE_MAX = 1700;   // rest-day ceiling
+  const HARD_FLOOR = 1200; // absolute minimum regardless
+  const burnt = calcCaloriesBurnt();
+  const boost = Math.round(burnt * 0.5); // eat back half of exercise
+  return {
+    min: Math.max(HARD_FLOOR, BASE_MIN + boost),
+    max: BASE_MAX + boost,
+    cap: 3500,
+    burnt: burnt
+  };
+}
+
 function renderTargetBar(containerId, key, value) {
   const el = document.getElementById(containerId);
   if (!el) return;
@@ -2891,11 +2908,11 @@ function updateRAGLights() {
   const metrics = [
     { label:'Sleep',             val:sleep, min:7,    max:9,    cap:12,   unit:'hr',   decimals:1, note: napMin > 0 ? `(+${napMin}min nap)` : '' },
     { label:'Protein',           val:pro,   min:160,  max:220,  cap:300,  unit:'g' },
-    { label:'Calories Consumed', val:cal,   min:1800, max:2200, cap:3500, unit:'kcal' },
+    { label:'Calories Eaten', val:cal,   min:getCalorieTarget().min, max:getCalorieTarget().max, cap:3500, unit:'kcal', note: burnt > 0 ? `(+${Math.round(burnt*0.5)} for training)` : '' },
     { label:'Fat',               val:fat,   min:120,  max:160,  cap:250,  unit:'g' },
     { label:'Carbs',             val:carb,  min:20,   max:30,   cap:60,   unit:'g', invertCarbs:true },
     { label:'Water',             val:water, min:wt.min, max:wt.max, cap:wt.cap, unit:'L', decimals:1, note: wt.sweat > 0 ? `(+${wt.sweat}L sweat)` : '' },
-    { label:'Calories Used',     val:burnt, min:200,  max:800,  cap:1200, unit:'kcal' },
+    { label:'Calories Burnt',     val:burnt, min:200,  max:800,  cap:1200, unit:'kcal' },
     { label:'Sun (Vit D)',        val:vitD,  min:600,  max:1500, cap:3000, unit:'IU' }
   ];
 
@@ -2958,15 +2975,19 @@ function updateAllTargets() {
   activityEntries.forEach(e => { if (e.type === 'walking' && e.duration > 0) walkMins += e.duration; });
   renderTargetBar('targetWalkTraining', 'walk', walkMins);
 
+  // Dynamically adjust calorie intake target based on exercise
+  const calTarget = getCalorieTarget();
+  TARGETS.cal.min = calTarget.min;
+  TARGETS.cal.max = calTarget.max;
+  TARGETS.cal.cap = calTarget.cap;
   renderTargetBar('targetCal', 'cal', calIn);
   renderTargetBar('targetBurn', 'burn', burnt);
   renderTargetBar('targetBurnTraining', 'burn', burnt);
 
   // Dynamically adjust net calorie target: shift green zone up by burnt amount
-  const baseMin = 1800, baseMax = 2200;
-  TARGETS.net.min = baseMin + burnt;
-  TARGETS.net.max = baseMax + burnt;
-  TARGETS.net.cap = 3500 + burnt;
+  TARGETS.net.min = calTarget.min + burnt;
+  TARGETS.net.max = calTarget.max + burnt;
+  TARGETS.net.cap = calTarget.cap + burnt;
   renderTargetBar('targetNet', 'net', calIn);
 
   renderTargetBar('targetPro', 'pro', parseInt(document.getElementById('totalPro').textContent) || 0);
@@ -3859,7 +3880,7 @@ async function syncFromGitHub() {
 
   function projRenderAssumptions(proj) {
     const el=document.getElementById('projAssumptions'); if(!el)return;
-    el.innerHTML=`<p><strong>Diet:</strong> Keto (<30g carbs), high protein (160–220g/day), 1800–2200 kcal/day.</p><p style="margin-top:6px"><strong>Exercise:</strong> BJJ 3×60min, Boxing 2×60min, Weights 1×45min, Walking 5×10+2×20min, Airbike 5×10, Bands/ExBall 5×10, Skipping 3×2, Shadow 3×4, Bag 3×6, Yard 1×60.</p><p style="margin-top:6px"><strong>Weekly burn:</strong> ~${proj.weeklyExBurn.toLocaleString()} kcal (~${proj.dailyExBurn} kcal/day). 85% fat loss partition with high protein muscle preservation.</p>`;
+    el.innerHTML=`<p><strong>Diet:</strong> Keto (<30g carbs), high protein (160–220g/day), 1400–1700 kcal/day base + 50% exercise burn.</p><p style="margin-top:6px"><strong>Exercise:</strong> BJJ 3×60min, Boxing 2×60min, Weights 1×45min, Walking 5×10+2×20min, Airbike 5×10, Bands/ExBall 5×10, Skipping 3×2, Shadow 3×4, Bag 3×6, Yard 1×60.</p><p style="margin-top:6px"><strong>Weekly burn:</strong> ~${proj.weeklyExBurn.toLocaleString()} kcal (~${proj.dailyExBurn} kcal/day). 85% fat loss partition with high protein muscle preservation.</p>`;
   }
 
   // ===== HEALTH STATUS ASSESSMENT =====
@@ -4007,7 +4028,7 @@ async function syncFromGitHub() {
     // 8. Nutrition/Diet
     const carbOK = avgCarbs != null && avgCarbs <= 30;
     const proOK = avgPro != null && avgPro >= 160;
-    const calOK = avgCal != null && avgCal >= 1800 && avgCal <= 2200;
+    const calOK = avgCal != null && avgCal >= 1400 && avgCal <= 2100;
     const nutScore = [carbOK, proOK, calOK].filter(Boolean).length;
     const nutR = nutScore === 3 ? { color: 'var(--green)', label: 'G', score: 1 } : nutScore >= 1 ? { color: 'var(--amber)', label: 'A', score: 0.5 } : { color: 'var(--red)', label: 'R', score: 0 };
     const nutImpact = nutScore === 3 ? 1.5 : nutScore >= 1 ? 0.5 : -0.5;
