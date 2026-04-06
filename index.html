@@ -377,7 +377,7 @@
       <div class="row">
         <div class="field">
           <div class="label">Type</div>
-          <select id="actType">
+          <select id="actType" onchange="updateActivityPreview()">
             <option value="">— Select —</option>
             <option value="bjj">BJJ</option>
             <option value="boxing">Boxing</option>
@@ -400,22 +400,23 @@
         </div>
         <div class="field">
           <div class="label">Duration <span class="unit">min</span></div>
-          <input type="number" id="actDuration" placeholder="e.g. 60">
+          <input type="number" id="actDuration" placeholder="e.g. 60" oninput="updateActivityPreview()">
+          <div id="actBurnPreview" style="display:none;margin-top:4px;font-size:12px;font-weight:600;color:var(--accent)"></div>
         </div>
       </div>
       <div class="field">
         <div class="label">Perceived Intensity (RPE 1-10)</div>
         <div class="rating">
-          <label class="rating-green"><input type="radio" name="actRpe" value="1"><span>1</span></label>
-          <label class="rating-green"><input type="radio" name="actRpe" value="2"><span>2</span></label>
-          <label class="rating-green"><input type="radio" name="actRpe" value="3"><span>3</span></label>
-          <label class="rating-green"><input type="radio" name="actRpe" value="4"><span>4</span></label>
-          <label class="rating-amber"><input type="radio" name="actRpe" value="5"><span>5</span></label>
-          <label class="rating-amber"><input type="radio" name="actRpe" value="6"><span>6</span></label>
-          <label class="rating-amber"><input type="radio" name="actRpe" value="7"><span>7</span></label>
-          <label class="rating-red"><input type="radio" name="actRpe" value="8"><span>8</span></label>
-          <label class="rating-red"><input type="radio" name="actRpe" value="9"><span>9</span></label>
-          <label class="rating-red"><input type="radio" name="actRpe" value="10"><span>10</span></label>
+          <label class="rating-green"><input type="radio" name="actRpe" value="1" onchange="updateActivityPreview()"><span>1</span></label>
+          <label class="rating-green"><input type="radio" name="actRpe" value="2" onchange="updateActivityPreview()"><span>2</span></label>
+          <label class="rating-green"><input type="radio" name="actRpe" value="3" onchange="updateActivityPreview()"><span>3</span></label>
+          <label class="rating-green"><input type="radio" name="actRpe" value="4" onchange="updateActivityPreview()"><span>4</span></label>
+          <label class="rating-amber"><input type="radio" name="actRpe" value="5" onchange="updateActivityPreview()"><span>5</span></label>
+          <label class="rating-amber"><input type="radio" name="actRpe" value="6" onchange="updateActivityPreview()"><span>6</span></label>
+          <label class="rating-amber"><input type="radio" name="actRpe" value="7" onchange="updateActivityPreview()"><span>7</span></label>
+          <label class="rating-red"><input type="radio" name="actRpe" value="8" onchange="updateActivityPreview()"><span>8</span></label>
+          <label class="rating-red"><input type="radio" name="actRpe" value="9" onchange="updateActivityPreview()"><span>9</span></label>
+          <label class="rating-red"><input type="radio" name="actRpe" value="10" onchange="updateActivityPreview()"><span>10</span></label>
         </div>
       </div>
       <button class="btn-add" onclick="addActivityEntry()" style="margin-top:8px">+ Add to log</button>
@@ -1602,7 +1603,22 @@ function addActivityEntry() {
   document.getElementById('actType').value = '';
   document.getElementById('actDuration').value = '';
   if (rpeEl) rpeEl.checked = false;
+  document.getElementById('actBurnPreview').style.display = 'none';
   renderActivityLog();
+}
+
+function updateActivityPreview() {
+  const el = document.getElementById('actBurnPreview');
+  const type = document.getElementById('actType').value;
+  const dur = parseInt(document.getElementById('actDuration').value) || 0;
+  if (!type || dur <= 0 || type === 'rest') { el.style.display = 'none'; return; }
+  const rpeEl = document.querySelector('input[name="actRpe"]:checked');
+  const rpe = rpeEl ? parseInt(rpeEl.value) : 5;
+  const base = BURN_RATES[type] || 6.0;
+  const rpeMultiplier = 1 + (rpe - 5) * 0.12;
+  const kcal = Math.round(base * dur * rpeMultiplier);
+  el.textContent = '~' + kcal + ' kcal burn';
+  el.style.display = 'block';
 }
 
 function removeActivityEntry(id) {
@@ -1622,7 +1638,7 @@ function renderActivityLog() {
   let html = '';
   activityEntries.forEach(e => {
     const kcalStr = e.type === 'rest' ? '\u2014' : '<span class="nlog-hi">' + e.kcal + '</span> kcal';
-    html += '<div class="nlog-item"><span class="nlog-icon">' + e.icon + '</span><span class="nlog-desc">' + e.desc + '</span><span class="nlog-stats">' + kcalStr + '</span><button class="nlog-del" onclick="removeActivityEntry(' + e.id + ')" title="Remove">&#10005;</button></div>';
+    html += '<div class="nlog-item"><span class="nlog-icon">' + e.icon + '</span><span class="nlog-desc">' + e.desc + '</span><span class="nlog-stats"><span class="nlog-hi">' + e.kcal + '</span> <span style="color:var(--dim)">kcal</span></span><button class="nlog-del" onclick="removeActivityEntry(' + e.id + ')" title="Remove">&#10005;</button></div>';
   });
   listEl.innerHTML = html;
   let tMin = 0, tBurn = 0;
