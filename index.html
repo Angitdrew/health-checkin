@@ -3461,6 +3461,29 @@ function loadTodayData() {
   if (saved.notes) document.getElementById('notes').value = saved.notes;
 }
 
+// ONE-TIME recovery: restore missing activities for 2026-04-06 (goals were checked but training entries lost)
+(function() {
+  const RK = '_activityRecovery0406';
+  if (localStorage.getItem(RK)) return; // already ran
+  const checkins = JSON.parse(localStorage.getItem('healthCheckins') || '[]');
+  const idx = checkins.findIndex(c => c.date === '2026-04-06');
+  if (idx >= 0) {
+    const existing = checkins[idx].training.map(t => t.type);
+    const missing = [];
+    if (!existing.includes('walking')) missing.push({ type:'walking', duration:10, rpe:5 });
+    if (!existing.includes('airbike')) missing.push({ type:'airbike', duration:10, rpe:5 });
+    if (!existing.includes('bands')) missing.push({ type:'bands', duration:5, rpe:3 });
+    if (!existing.includes('exball')) missing.push({ type:'exball', duration:5, rpe:3 });
+    if (!existing.includes('skipping')) missing.push({ type:'skipping', duration:2, rpe:5 });
+    if (missing.length > 0) {
+      checkins[idx].training.push(...missing);
+      localStorage.setItem('healthCheckins', JSON.stringify(checkins));
+      console.log('Recovered activities:', missing.map(m=>m.type).join(', '));
+    }
+  }
+  localStorage.setItem(RK, '1');
+})();
+
 loadTodayData();
 
 // ===== TODAY'S SUMMARY =====
