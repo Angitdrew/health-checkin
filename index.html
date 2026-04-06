@@ -355,6 +355,10 @@
         <input type="number" id="restingHRV" min="0" max="200" placeholder="e.g. 35">
       </div>
       <div class="field">
+        <div class="label">Energy Score <span class="unit">0-100</span></div>
+        <input type="number" id="energyScore" min="0" max="100" placeholder="e.g. 80">
+      </div>
+      <div class="field">
         <div class="label">MAD worn?</div>
         <div class="rating">
           <label><input type="radio" name="madWorn" value="yes"><span>Yes</span></label>
@@ -2138,6 +2142,7 @@ function collectData() {
       nap_minutes: parseInt(document.getElementById('napMinutes').value) || null,
       sleep_score: parseInt(document.getElementById('sleepScore').value) || null,
       hrv: parseInt(document.getElementById('restingHRV').value) || null,
+      energy_score: parseInt(document.getElementById('energyScore').value) || null,
       quality: parseInt(document.getElementById('sleepScore').value) ? Math.round(parseInt(document.getElementById('sleepScore').value) / 20) : null,
       mad_worn: getRadioValue('madWorn')
     },
@@ -2746,7 +2751,7 @@ function toggleHistory() {
         ${c.measurements&&c.measurements.skeletal_muscle_kg ? `<div class="data-row"><span>Muscle</span><span>${c.measurements.skeletal_muscle_kg} kg</span></div>` : ''}
         ${c.measurements&&c.measurements.waist_cm ? `<div class="data-row"><span>Waist</span><span>${c.measurements.waist_cm} cm</span></div>` : ''}
         ${c.nutrition&&c.nutrition.totals&&c.nutrition.totals.calories ? `<div class="data-row"><span>Nutrition</span><span>${c.nutrition.totals.calories} kcal | P:${c.nutrition.totals.protein_g||0}g C:${c.nutrition.totals.carbs_g||0}g F:${c.nutrition.totals.fat_g||0}g</span></div>` : (c.nutrition&&c.nutrition.calories ? `<div class="data-row"><span>Nutrition</span><span>${c.nutrition.calories} kcal | P:${c.nutrition.protein_g||'—'}g C:${c.nutrition.carbs_g||'—'}g F:${c.nutrition.fat_g||'—'}g</span></div>` : '')}
-        ${c.sleep.hours ? `<div class="data-row"><span>Sleep</span><span>${c.sleep.hours} hr${c.sleep.nap_minutes ? ' + ' + c.sleep.nap_minutes + 'min nap' : ''} ${c.sleep.sleep_score ? '(Score: ' + c.sleep.sleep_score + '/100)' : c.sleep.quality ? '(Q: ' + c.sleep.quality + '/5)' : ''}${c.sleep.hrv ? ' · HRV ' + c.sleep.hrv + 'ms' : ''}</span></div>` : ''}
+        ${c.sleep.hours ? `<div class="data-row"><span>Sleep</span><span>${c.sleep.hours} hr${c.sleep.nap_minutes ? ' + ' + c.sleep.nap_minutes + 'min nap' : ''} ${c.sleep.sleep_score ? '(Score: ' + c.sleep.sleep_score + ')' : c.sleep.quality ? '(Q: ' + c.sleep.quality + '/5)' : ''}${c.sleep.hrv ? ' · HRV ' + c.sleep.hrv + 'ms' : ''}${c.sleep.energy_score ? ' · Energy ' + c.sleep.energy_score : ''}</span></div>` : ''}
         ${c.wellbeing.energy ? `<div class="data-row"><span>Energy</span><span>${c.wellbeing.energy}/10</span></div>` : ''}
         ${c.cardiac.af_symptoms ? `<div class="data-row"><span>AF</span><span>${c.cardiac.af_symptoms}</span></div>` : ''}
         ${c.wellbeing.ra_flare ? `<div class="data-row"><span>RA</span><span>${c.wellbeing.ra_flare}</span></div>` : ''}
@@ -3089,6 +3094,7 @@ document.getElementById('sleepHours').addEventListener('input', updateAllTargets
 document.getElementById('napMinutes').addEventListener('input', updateAllTargets);
 document.getElementById('sleepScore').addEventListener('input', updateAllTargets);
 document.getElementById('restingHRV').addEventListener('input', updateAllTargets);
+document.getElementById('energyScore').addEventListener('input', updateAllTargets);
 setTimeout(updateAllTargets, 100);
 setTimeout(updateSunCalc, 150);
 
@@ -3485,6 +3491,7 @@ function loadTodayData() {
     if (saved.sleep.sleep_score) setVal('sleepScore', saved.sleep.sleep_score);
     else if (saved.sleep.quality) setVal('sleepScore', saved.sleep.quality * 20);
     if (saved.sleep.hrv) setVal('restingHRV', saved.sleep.hrv);
+    if (saved.sleep.energy_score) setVal('energyScore', saved.sleep.energy_score);
     setRadio('madWorn', saved.sleep.mad_worn);
   }
   // Cardiac
