@@ -139,6 +139,25 @@
   #chartSun .target-value{font-size:15px}
   #chartSun .target-limits{font-size:10px;margin-top:3px}
 
+  /* Skin area pills */
+  .skin-areas{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+  .skin-pill{display:flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:16px;padding:4px 10px;cursor:pointer;font-size:11px;color:var(--dim);transition:all 0.2s;user-select:none}
+  .skin-pill input{display:none}
+  .skin-pill.active{background:rgba(59,130,246,0.15);border-color:rgba(59,130,246,0.4);color:var(--text)}
+  .skin-pill .skin-pct{font-size:9px;opacity:0.7}
+
+  /* Sun exposure entries */
+  .sun-entry{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;position:relative}
+  .sun-entry .sun-entry-head{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .sun-entry .sun-entry-head .field{margin-bottom:0}
+  .sun-entry .sun-remove{position:absolute;top:6px;right:8px;background:none;border:none;color:var(--dim);cursor:pointer;font-size:16px;padding:0 4px}
+  .sun-entry .sun-remove:hover{color:var(--red)}
+  .sun-entry-summary{font-size:11px;color:var(--dim);margin-top:6px;padding-top:6px;border-top:1px solid var(--border)}
+  .sun-daily-total{background:var(--surface2);border-radius:8px;padding:10px 14px;margin-top:10px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+  .sun-daily-total .sdt-item{display:flex;flex-direction:column;align-items:center;gap:2px}
+  .sun-daily-total .sdt-val{font-size:18px;font-weight:700;color:var(--text)}
+  .sun-daily-total .sdt-lbl{font-size:9px;text-transform:uppercase;letter-spacing:0.5px;color:var(--dim)}
+
   /* Goals */
   .goal-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)}
   .goal-row:last-child{border-bottom:none}
@@ -532,27 +551,51 @@
     <div class="section-wrap">
       <div class="section-inputs">
         <div class="field">
-          <div class="label">Time outside</div>
-          <input type="time" id="sunTime" onchange="updateSunCalc()">
+          <div class="label">Skin Exposed</div>
+          <div class="skin-areas" id="skinAreas">
+            <label class="skin-pill active" data-area="face" data-bsa="0.09"><input type="checkbox" checked onchange="toggleSkinPill(this)">&#9786; Face/Head <span class="skin-pct">9%</span></label>
+            <label class="skin-pill active" data-area="arms" data-bsa="0.18"><input type="checkbox" checked onchange="toggleSkinPill(this)">&#128170; Arms <span class="skin-pct">18%</span></label>
+            <label class="skin-pill" data-area="legs" data-bsa="0.36"><input type="checkbox" onchange="toggleSkinPill(this)">&#129455; Legs <span class="skin-pct">36%</span></label>
+            <label class="skin-pill" data-area="torso" data-bsa="0.36"><input type="checkbox" onchange="toggleSkinPill(this)">&#128085; Torso <span class="skin-pct">36%</span></label>
+          </div>
         </div>
-        <div class="field">
-          <div class="label">Duration <span class="unit">min</span></div>
-          <input type="number" id="sunMinutes" placeholder="e.g. 15" oninput="updateSunCalc()">
+
+        <div id="sunEntries">
+          <div class="sun-entry" data-idx="1">
+            <div class="sun-entry-head">
+              <div class="field" style="flex:0 0 110px">
+                <div class="label">Time</div>
+                <input type="time" class="sunTime" onchange="updateSunCalc()">
+              </div>
+              <div class="field" style="flex:0 0 80px">
+                <div class="label">Min</div>
+                <input type="number" class="sunMinutes" placeholder="15" oninput="updateSunCalc()">
+              </div>
+              <div class="field" style="flex:1;min-width:100px">
+                <div class="label">Cloud</div>
+                <select class="sunCloud" onchange="updateSunCalc()">
+                  <option value="clear">Clear</option>
+                  <option value="partial">Partial</option>
+                  <option value="overcast">Overcast</option>
+                </select>
+              </div>
+            </div>
+            <div class="sun-entry-summary"></div>
+          </div>
         </div>
-        <div class="field">
-          <div class="label">Cloud Cover</div>
-          <select id="sunCloud" onchange="updateSunCalc()">
-            <option value="clear">Clear</option>
-            <option value="partial">Partial cloud</option>
-            <option value="overcast">Overcast</option>
-          </select>
+        <button onclick="addSunEntry()" style="background:none;border:1px dashed var(--border);border-radius:8px;color:var(--dim);cursor:pointer;padding:8px;width:100%;font-size:12px;margin-top:2px">&#43; Add another exposure</button>
+
+        <div class="sun-daily-total" id="sunDailyTotal" style="display:none">
+          <div class="sdt-item"><span class="sdt-val" id="sdtMinutes">0</span><span class="sdt-lbl">Total min</span></div>
+          <div class="sdt-item"><span class="sdt-val" id="sdtVitD">0</span><span class="sdt-lbl">Total IU</span></div>
+          <div class="sdt-item"><span class="sdt-val" id="sdtSessions">0</span><span class="sdt-lbl">Sessions</span></div>
         </div>
+
         <div id="sunAdvice" style="display:none"></div>
-        <div class="field">
+        <div class="field" style="margin-top:8px">
           <div class="label">Optimal Sun Window</div>
           <div id="sunWindowContent" style="font-size:13px;line-height:1.5"></div>
         </div>
-        <div class="target-row" id="targetSunAdvice"></div>
       </div>
       <div class="section-chart" id="chartSun">
         <div class="target-row" id="targetUV"></div>
@@ -1398,21 +1441,21 @@ function uvLabel(uvi) {
   return { text: 'Extreme', color: '#cc00ff' };
 }
 
-function vitDCalc(uvi, durationMin) {
+function vitDCalc(uvi, durationMin, bsaFraction) {
   // Vitamin D production for very fair Caucasian (Fitzpatrick I-II), 59yo, balding
-  // Exposed areas: face, arms, hands + scalp (~20-25% body surface)
-  // At UVI 1: ~40 IU/min base; scales roughly linearly up to ~UVI 10 then plateaus
+  // BSA fraction: proportion of body surface exposed (face+arms=0.27, full body=0.99)
+  // At UVI 1: ~40 IU/min base for ~27% BSA; scales with exposed area
   // Age 59: ~50% synthesis efficiency vs age 20 (reduced 7-dehydrocholesterol)
   // Target: 1000-1500 IU/day recommended for 50+ age group
 
   if (uvi < 0.5) return { targetMin: null, iuProduced: 0 };
+  const bsa = bsaFraction || 0.27; // default: face + arms
+  // Reference: ~7 IU/min per UVI at 0.27 BSA (Fitzpatrick II)
+  const refBSA = 0.27;
+  const baseIuPerMin = Math.min(7 * uvi, 80);
+  const iuPerMin = baseIuPerMin * (bsa / refBSA);
 
-  // IU per minute of exposure at given UV (fair skin, 15-20% body exposed)
-  // Empirical: ~7 * UVI IU/min for Fitzpatrick II with arms+face exposed
-  const iuPerMin = Math.min(7 * uvi, 80); // caps at ~80 IU/min (very high UV)
-
-  // Age adjustment: Vitamin D synthesis at age 59 is ~50% of a 20yo
-  // (skin 7-dehydrocholesterol decreases significantly with age)
+  // Age adjustment: synthesis at age 59 is ~50% of a 20yo
   const ageFactor = 0.50;
   const effectiveIU = iuPerMin * ageFactor;
 
@@ -1423,6 +1466,75 @@ function vitDCalc(uvi, durationMin) {
   const iuProduced = Math.round(effectiveIU * (durationMin || 0));
 
   return { targetMin, iuProduced, iuPerMin: effectiveIU };
+}
+
+// Skin area pill toggle
+function toggleSkinPill(cb) {
+  cb.closest('.skin-pill').classList.toggle('active', cb.checked);
+  updateSunCalc();
+}
+
+// Get total BSA fraction from checked skin pills
+function getExposedBSA() {
+  let bsa = 0;
+  document.querySelectorAll('#skinAreas .skin-pill input:checked').forEach(cb => {
+    bsa += parseFloat(cb.closest('.skin-pill').dataset.bsa) || 0;
+  });
+  return Math.max(bsa, 0.05); // min 5% (hands only)
+}
+
+// Sun exposure multi-entry management
+let sunEntryCount = 1;
+function addSunEntry() {
+  sunEntryCount++;
+  const container = document.getElementById('sunEntries');
+  const entry = document.createElement('div');
+  entry.className = 'sun-entry';
+  entry.dataset.idx = sunEntryCount;
+  entry.innerHTML = `
+    <button class="sun-remove" onclick="this.closest('.sun-entry').remove();updateSunCalc()" title="Remove">&#10005;</button>
+    <div class="sun-entry-head">
+      <div class="field" style="flex:0 0 110px">
+        <div class="label">Time</div>
+        <input type="time" class="sunTime" onchange="updateSunCalc()">
+      </div>
+      <div class="field" style="flex:0 0 80px">
+        <div class="label">Min</div>
+        <input type="number" class="sunMinutes" placeholder="15" oninput="updateSunCalc()">
+      </div>
+      <div class="field" style="flex:1;min-width:100px">
+        <div class="label">Cloud</div>
+        <select class="sunCloud" onchange="updateSunCalc()">
+          <option value="clear">Clear</option>
+          <option value="partial">Partial</option>
+          <option value="overcast">Overcast</option>
+        </select>
+      </div>
+    </div>
+    <div class="sun-entry-summary"></div>
+  `;
+  container.appendChild(entry);
+}
+
+// Collect all sun exposure entries
+function getSunEntries() {
+  const entries = [];
+  document.querySelectorAll('#sunEntries .sun-entry').forEach(entry => {
+    const time = entry.querySelector('.sunTime').value;
+    const mins = parseFloat(entry.querySelector('.sunMinutes').value) || 0;
+    const cloud = entry.querySelector('.sunCloud').value;
+    if (time || mins > 0) entries.push({ time, duration_min: mins, cloud_cover: cloud });
+  });
+  return entries;
+}
+
+// Get checked skin areas as array
+function getCheckedSkinAreas() {
+  const areas = [];
+  document.querySelectorAll('#skinAreas .skin-pill input:checked').forEach(cb => {
+    areas.push(cb.closest('.skin-pill').dataset.area);
+  });
+  return areas;
 }
 
 function calcOptimalSunWindow(dateStr, cloud) {
@@ -1496,19 +1608,24 @@ function calcOptimalSunWindow(dateStr, cloud) {
 
 function updateSunCalc() {
   const dateStr = document.getElementById('checkinDate').value;
-  const timeStr = document.getElementById('sunTime').value;
-  const cloud = document.getElementById('sunCloud').value;
-  const duration = parseFloat(document.getElementById('sunMinutes').value) || 0;
   const adviceEl = document.getElementById('sunAdvice');
+  const bsa = getExposedBSA();
+
+  // Use first entry's cloud for optimal window calc
+  const firstCloud = document.querySelector('#sunEntries .sun-entry .sunCloud');
+  const cloud = firstCloud ? firstCloud.value : 'clear';
 
   // Always calculate and show the optimal window for today's date
   const win = calcOptimalSunWindow(dateStr, cloud);
   const winEl = document.getElementById('sunWindowContent');
   if (win && winEl) {
     const fmt = t => { const [h,m] = t.split(':'); const hr = parseInt(h); return (hr>12?(hr-12):hr)+':'+m+(hr>=12?' PM':' AM'); };
+    // Recalc mins needed based on current BSA
+    const winVitD = vitDCalc(win.avgUV, 60, bsa);
+    const adjustedMins = winVitD.targetMin;
     if (win.type === 'ideal') {
       let html = `<span style="color:var(--green);font-weight:600">${fmt(win.startTime)} – ${fmt(win.endTime)}</span>`;
-      html += `<div style="font-size:11px;color:var(--dim);margin-top:4px">UV ~${win.avgUV} in this window · Need <strong style="color:var(--text)">${win.minsNeeded} min</strong> for 1000 IU</div>`;
+      html += `<div style="font-size:11px;color:var(--dim);margin-top:4px">UV ~${win.avgUV} in this window · Need <strong style="color:var(--text)">${adjustedMins} min</strong> for 1000 IU</div>`;
       html += `<div style="font-size:11px;color:var(--dim);margin-top:2px">Burn risk after <strong style="color:var(--red)">${win.burnTime} min</strong> unprotected</div>`;
       if (win.hasMorning) html += `<div style="font-size:11px;color:var(--accent);margin-top:4px">Morning window is gentler on skin</div>`;
       winEl.innerHTML = html;
@@ -1520,51 +1637,87 @@ function updateSunCalc() {
     }
   }
 
-  if (!timeStr) {
+  // Aggregate all exposure entries
+  let totalDuration = 0, totalVitD = 0, maxUVI = 0, sessionCount = 0;
+  let bestTargetMin = null;
+
+  document.querySelectorAll('#sunEntries .sun-entry').forEach(entry => {
+    const timeStr = entry.querySelector('.sunTime').value;
+    const duration = parseFloat(entry.querySelector('.sunMinutes').value) || 0;
+    const entryCloud = entry.querySelector('.sunCloud').value;
+    const summaryEl = entry.querySelector('.sun-entry-summary');
+
+    if (!timeStr && duration === 0) {
+      if (summaryEl) summaryEl.innerHTML = '';
+      return;
+    }
+
+    const uvi = timeStr ? estimateUV(dateStr, timeStr, entryCloud) : 0;
+    const vitD = vitDCalc(uvi, duration, bsa);
+
+    if (timeStr) sessionCount++;
+    totalDuration += duration;
+    totalVitD += vitD.iuProduced || 0;
+    if (uvi > maxUVI) maxUVI = uvi;
+    if (vitD.targetMin && (bestTargetMin === null || vitD.targetMin < bestTargetMin)) {
+      bestTargetMin = vitD.targetMin;
+    }
+
+    // Per-entry summary
+    if (summaryEl && timeStr) {
+      const burnTime = uvi > 0.5 ? Math.round(150 / uvi) : null;
+      let sumHTML = `UV ${uvi.toFixed(1)} · ${vitD.iuProduced} IU`;
+      if (burnTime && duration > 0) sumHTML += ` · Burn at ${burnTime} min`;
+      summaryEl.innerHTML = sumHTML;
+    }
+  });
+
+  // Daily totals display
+  const totalEl = document.getElementById('sunDailyTotal');
+  if (sessionCount > 0) {
+    totalEl.style.display = 'flex';
+    document.getElementById('sdtMinutes').textContent = Math.round(totalDuration);
+    document.getElementById('sdtVitD').textContent = totalVitD.toLocaleString();
+    document.getElementById('sdtSessions').textContent = sessionCount;
+  } else {
+    totalEl.style.display = 'none';
+  }
+
+  // Target bars use cumulative values
+  renderTargetBar('targetUV', 'uv', maxUVI || 0);
+
+  const burnTime = maxUVI > 0.5 ? Math.round(150 / maxUVI) : null;
+  if (bestTargetMin !== null) {
+    TARGETS.suntime.min = Math.max(5, bestTargetMin);
+    TARGETS.suntime.max = Math.min(burnTime || 60, Math.round(bestTargetMin * 2));
+    TARGETS.suntime.cap = Math.max(90, burnTime ? Math.round(burnTime * 1.5) : 90);
+    TARGETS.suntime.burnAt = burnTime;
+  }
+  renderTargetBar('targetSunTime', 'suntime', totalDuration);
+  renderTargetBar('targetVitD', 'vitd', totalVitD);
+  updateRAGLights();
+
+  // Advice based on best session
+  let advice = '';
+  if (sessionCount === 0) {
     if (adviceEl) adviceEl.style.display = 'none';
     renderTargetBar('targetUV', 'uv', 0);
     renderTargetBar('targetSunTime', 'suntime', 0);
     renderTargetBar('targetVitD', 'vitd', 0);
     return;
   }
-
-  const uvi = estimateUV(dateStr, timeStr, cloud);
-  const vitD = vitDCalc(uvi, duration);
-
-  // UV Index bar — green zone 3-6 (moderate, ideal for Vit D without burn risk)
-  renderTargetBar('targetUV', 'uv', uvi || 0);
-
-  // Burn time: MED for Fitzpatrick Type I-II (very fair, freckles, balding)
-  // MED ≈ 150 / UVI minutes — lower threshold than standard Type II
-  // Exposed scalp increases vulnerability
-  const burnTime = uvi > 0.5 ? Math.round(150 / uvi) : null;
-
-  // Exposure time bar — dynamically set target zone based on Vit D calc
-  if (vitD.targetMin !== null) {
-    TARGETS.suntime.min = Math.max(5, vitD.targetMin);
-    TARGETS.suntime.max = Math.min(burnTime || 60, Math.round(vitD.targetMin * 2));
-    TARGETS.suntime.cap = Math.max(90, burnTime ? Math.round(burnTime * 1.5) : 90);
-    TARGETS.suntime.burnAt = burnTime;
-  }
-  renderTargetBar('targetSunTime', 'suntime', duration);
-
-  // Vitamin D IU bar
-  renderTargetBar('targetVitD', 'vitd', vitD.iuProduced || 0);
-  updateRAGLights();
-
-  // Advice
-  let advice = '';
-  if (uvi < 3) {
-    advice = 'UV is too low for meaningful Vitamin D production. Consider supplementation (1000–2000 IU D3).';
-  } else if (uvi < 6) {
-    advice = `Moderate UV. ${vitD.targetMin} min with face & arms exposed should provide ~1000 IU. No sunscreen needed for this short exposure.`;
-  } else if (uvi < 8) {
-    advice = `High UV. Only ${vitD.targetMin} min needed for 1000 IU — apply sunscreen after this to prevent damage.`;
+  const bsaPct = Math.round(bsa * 100);
+  if (maxUVI < 3) {
+    advice = `UV is too low for meaningful Vitamin D production. Consider supplementation (1000–2000 IU D3).`;
+  } else if (maxUVI < 6) {
+    advice = `Moderate UV. ~${bestTargetMin} min with ${bsaPct}% skin exposed should provide ~1000 IU.`;
+  } else if (maxUVI < 8) {
+    advice = `High UV. Only ~${bestTargetMin} min needed for 1000 IU at ${bsaPct}% skin — apply sunscreen after.`;
   } else {
-    advice = `Very high UV! Just ${vitD.targetMin} min gives you 1000 IU. Apply SPF 30+ after and avoid prolonged exposure.`;
+    advice = `Very high UV! Just ~${bestTargetMin} min at ${bsaPct}% skin gives 1000 IU. Apply SPF 30+ after.`;
   }
-  if (duration > 0 && vitD.iuProduced >= 1000) {
-    advice += ' ✓ You\'ve likely hit your daily Vitamin D target.';
+  if (totalVitD >= 1000) {
+    advice += ' You\'ve hit your daily Vitamin D target across all sessions.';
   }
   if (adviceEl) { adviceEl.style.display = 'block'; adviceEl.textContent = advice; }
 }
@@ -1630,16 +1783,32 @@ function collectData() {
       upper_arm_cm: parseFloat(document.getElementById('upperArm').value) || null,
       thigh_cm: parseFloat(document.getElementById('thigh').value) || null
     },
-    sun_exposure: {
-      time: document.getElementById('sunTime').value || null,
-      duration_min: parseFloat(document.getElementById('sunMinutes').value) || null,
-      cloud_cover: document.getElementById('sunCloud').value || null,
-      est_uv: estimateUV(document.getElementById('checkinDate').value, document.getElementById('sunTime').value, document.getElementById('sunCloud').value),
-      est_vit_d_iu: vitDCalc(
-        estimateUV(document.getElementById('checkinDate').value, document.getElementById('sunTime').value, document.getElementById('sunCloud').value),
-        parseFloat(document.getElementById('sunMinutes').value) || 0
-      ).iuProduced
-    },
+    sun_exposure: (() => {
+      const entries = getSunEntries();
+      const bsa = getExposedBSA();
+      const skinAreas = getCheckedSkinAreas();
+      let totalVitD = 0;
+      const dateStr = document.getElementById('checkinDate').value;
+      const detailed = entries.map(e => {
+        const uvi = e.time ? estimateUV(dateStr, e.time, e.cloud_cover) : 0;
+        const vd = vitDCalc(uvi, e.duration_min, bsa);
+        totalVitD += vd.iuProduced || 0;
+        return { ...e, est_uv: uvi, est_vit_d_iu: vd.iuProduced || 0 };
+      });
+      return {
+        skin_areas: skinAreas,
+        bsa_fraction: Math.round(bsa * 100) / 100,
+        sessions: detailed,
+        total_duration_min: detailed.reduce((s, e) => s + (e.duration_min || 0), 0),
+        total_vit_d_iu: totalVitD,
+        // Legacy compat: first entry values
+        time: entries.length > 0 ? entries[0].time : null,
+        duration_min: entries.length > 0 ? entries[0].duration_min : null,
+        cloud_cover: entries.length > 0 ? entries[0].cloud_cover : null,
+        est_uv: entries.length > 0 ? (entries[0].time ? estimateUV(dateStr, entries[0].time, entries[0].cloud_cover) : 0) : 0,
+        est_vit_d_iu: totalVitD
+      };
+    })(),
     notes: document.getElementById('notes').value || null,
     goals: getGoalsForDate(document.getElementById('checkinDate').value)
   };
@@ -3003,9 +3172,36 @@ function loadTodayData() {
   // Notes
   // Sun Exposure
   if (saved.sun_exposure) {
-    if (saved.sun_exposure.time) document.getElementById('sunTime').value = saved.sun_exposure.time;
-    if (saved.sun_exposure.duration_min) document.getElementById('sunMinutes').value = saved.sun_exposure.duration_min;
-    if (saved.sun_exposure.cloud_cover) document.getElementById('sunCloud').value = saved.sun_exposure.cloud_cover;
+    // Restore skin areas
+    if (saved.sun_exposure.skin_areas && Array.isArray(saved.sun_exposure.skin_areas)) {
+      document.querySelectorAll('#skinAreas .skin-pill').forEach(pill => {
+        const area = pill.dataset.area;
+        const cb = pill.querySelector('input');
+        const isChecked = saved.sun_exposure.skin_areas.includes(area);
+        cb.checked = isChecked;
+        pill.classList.toggle('active', isChecked);
+      });
+    }
+    // Restore sessions (multi-entry) or legacy single entry
+    const sessions = saved.sun_exposure.sessions || (saved.sun_exposure.time ? [{ time: saved.sun_exposure.time, duration_min: saved.sun_exposure.duration_min, cloud_cover: saved.sun_exposure.cloud_cover }] : []);
+    if (sessions.length > 0) {
+      // Fill first entry
+      const firstEntry = document.querySelector('#sunEntries .sun-entry');
+      if (firstEntry && sessions[0]) {
+        if (sessions[0].time) firstEntry.querySelector('.sunTime').value = sessions[0].time;
+        if (sessions[0].duration_min) firstEntry.querySelector('.sunMinutes').value = sessions[0].duration_min;
+        if (sessions[0].cloud_cover) firstEntry.querySelector('.sunCloud').value = sessions[0].cloud_cover;
+      }
+      // Add remaining entries
+      for (let i = 1; i < sessions.length; i++) {
+        addSunEntry();
+        const entries = document.querySelectorAll('#sunEntries .sun-entry');
+        const entry = entries[entries.length - 1];
+        if (sessions[i].time) entry.querySelector('.sunTime').value = sessions[i].time;
+        if (sessions[i].duration_min) entry.querySelector('.sunMinutes').value = sessions[i].duration_min;
+        if (sessions[i].cloud_cover) entry.querySelector('.sunCloud').value = sessions[i].cloud_cover;
+      }
+    }
     updateSunCalc();
   }
   if (saved.notes) document.getElementById('notes').value = saved.notes;
@@ -3029,7 +3225,26 @@ document.getElementById('checkinDate').addEventListener('change', function() {
   document.querySelectorAll('input[type=checkbox]').forEach(el => el.checked = false);
   document.getElementById('foodEntries').innerHTML = '';
   document.querySelectorAll('.fluid-input').forEach(el => el.value = '');
-  document.getElementById('sunCloud').value = 'clear';
+  // Reset sun exposure entries — remove extras, reset first entry
+  const sunEntries = document.querySelectorAll('#sunEntries .sun-entry');
+  sunEntries.forEach((el, i) => { if (i > 0) el.remove(); });
+  const firstSun = document.querySelector('#sunEntries .sun-entry');
+  if (firstSun) {
+    firstSun.querySelector('.sunTime').value = '';
+    firstSun.querySelector('.sunMinutes').value = '';
+    firstSun.querySelector('.sunCloud').value = 'clear';
+    const sumEl = firstSun.querySelector('.sun-entry-summary');
+    if (sumEl) sumEl.innerHTML = '';
+  }
+  // Reset skin areas to defaults (face + arms)
+  document.querySelectorAll('#skinAreas .skin-pill').forEach(pill => {
+    const area = pill.dataset.area;
+    const cb = pill.querySelector('input');
+    const def = (area === 'face' || area === 'arms');
+    cb.checked = def;
+    pill.classList.toggle('active', def);
+  });
+  sunEntryCount = 1;
   const sunAdv = document.getElementById('sunAdvice'); if (sunAdv) sunAdv.style.display = 'none';
   updateSunCalc();
   updateFluidTotal();
