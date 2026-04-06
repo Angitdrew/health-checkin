@@ -4418,32 +4418,39 @@ async function syncFromGitHub() {
     const projBmiImpact = projBMI > 25 ? -(Math.min((projBMI - 25) * 0.175, 4.2)) : 0;
     const projBfImpact = projBF > 28 ? -((projBF - 28) * 0.075) : projBF <= 20 ? 0.3 : 0;
     const projWaistImpact = projWaist > 102 ? -(Math.min((projWaist - 102) * 0.04, 1.0)) : projWaist < 94 ? 0.2 : 0;
-    // Replace body comp impacts with projected values, keep everything else
-    const projTotalImpact = totalImpact - bmiImpact - bfImpact - waistImpact + projBmiImpact + projBfImpact + projWaistImpact;
+    // Replace body comp impacts with projected end-state values, keep everything else
+    // Use (bfImpact || 0) and (muscleImpact || 0) to handle missing check-in data safely
+    const projTotalImpact = totalImpact - bmiImpact - (bfImpact || 0) - waistImpact + projBmiImpact + projBfImpact + projWaistImpact;
     const projFutureLE = Math.round((HS_BASE_LE + projTotalImpact) * 10) / 10;
     const projFutureHS = Math.round((HS_BASE_HS + projTotalImpact * 0.85) * 10) / 10;
 
     // ---- TRAJECTORY DATA: week-by-week recalculation as body metrics improve ----
-    // (Computed here so we can use endpoint bioAge in the 6-box grid render)
+    // ANCHOR: W0 = projectedLE/projectedHS (matches 6-box "Current Baseline" exactly)
+    // Then compute body-comp DELTAS from W0 baseline to show improvement trajectory.
+    const w0 = pData[0];
+    function bodyCompImpact(bmiV, bfV, waistV, neckV, muscleV) {
+      return (bmiV > 25 ? -(Math.min((bmiV - 25) * 0.175, 4.2)) : 0)
+        + (bfV > 28 ? -((bfV - 28) * 0.075) : bfV <= 20 ? 0.3 : 0)
+        + (waistV > 102 ? -(Math.min((waistV - 102) * 0.04, 1.0)) : waistV < 94 ? 0.2 : 0)
+        + (neckV > 43 ? -((neckV - 43) * 0.15) : neckV <= 40 ? 0.15 : 0)
+        + (muscleV >= 38 ? 0.7 : muscleV >= 33 ? 0.2 : -1.5);
+    }
+    const w0BodyImpact = bodyCompImpact(w0.bmi, w0.bf, w0.waist, w0.neck, w0.muscle);
+
     const trajData = pData.map((wk, i) => {
-      const wkBmi = wk.bmi, wkBf = wk.bf, wkWaist = wk.waist, wkNeck = wk.neck, wkMuscle = wk.muscle;
-      // Composite body-comp model (MEDIAN coefficients — matches category calculations)
-      const wkBmiImp = wkBmi > 25 ? -(Math.min((wkBmi - 25) * 0.175, 4.2)) : 0;
-      const wkBfImp = wkBf > 28 ? -((wkBf - 28) * 0.075) : wkBf <= 20 ? 0.3 : 0;
-      const wkWaistImp = wkWaist > 102 ? -(Math.min((wkWaist - 102) * 0.04, 1.0)) : wkWaist < 94 ? 0.2 : 0;
-      const wkNeckImp = wkNeck > 43 ? -((wkNeck - 43) * 0.15) : wkNeck <= 40 ? 0.15 : 0;
-      const wkMuscleImp = wkMuscle >= 38 ? 0.7 : wkMuscle >= 33 ? 0.2 : -1.5;
-      const staticImpact = totalImpact - bmiImpact - bfImpact - waistImpact - neckImpact - muscleImpact;
-      const wkTotal = staticImpact + wkBmiImp + wkBfImp + wkWaistImp + wkNeckImp + wkMuscleImp;
+      const wkBodyImpact = bodyCompImpact(wk.bmi, wk.bf, wk.waist, wk.neck, wk.muscle);
+      // Delta = how much body-comp improved since W0
+      const bodyDelta = wkBodyImpact - w0BodyImpact;
       const exBonus = Math.min(i / pData.length * 1.2, 1.2); // Median exercise adaptation bonus
-      const wkLE = Math.round((HS_BASE_LE + wkTotal + exBonus) * 10) / 10;
-      const wkHS = Math.round((HS_BASE_HS + (wkTotal + exBonus) * 0.85) * 10) / 10;
+      // Anchor to projectedLE + improvements
+      const wkLE = Math.round((projectedLE + bodyDelta + exBonus) * 10) / 10;
+      const wkHS = Math.round((projectedHS + (bodyDelta + exBonus) * 0.85) * 10) / 10;
       // Bio age scoring
-      const wkBmiScore = wkBmi <= 24.9 ? 1 : wkBmi <= 29.9 ? 0.5 : 0;
-      const wkBfScore = wkBf <= 20 ? 1 : wkBf <= 25 ? 0.5 : 0;
-      const wkWaistScore = wkWaist < 94 ? 1 : wkWaist < 102 ? 0.5 : 0;
-      const wkNeckScore = wkNeck < 40 ? 1 : wkNeck <= 43 ? 0.5 : 0;
-      const wkMuscleScore = wkMuscle >= 38 ? 1 : wkMuscle >= 33 ? 0.5 : 0;
+      const wkBmiScore = wk.bmi <= 24.9 ? 1 : wk.bmi <= 29.9 ? 0.5 : 0;
+      const wkBfScore = wk.bf <= 20 ? 1 : wk.bf <= 25 ? 0.5 : 0;
+      const wkWaistScore = wk.waist < 94 ? 1 : wk.waist < 102 ? 0.5 : 0;
+      const wkNeckScore = wk.neck < 40 ? 1 : wk.neck <= 43 ? 0.5 : 0;
+      const wkMuscleScore = wk.muscle >= 38 ? 1 : wk.muscle >= 33 ? 0.5 : 0;
       const nonBodyGreen = cats.filter(c => !['BMI','Body Fat','Waist','Neck (OSA risk)','Muscle Mass'].includes(c.cat) && c.rag.score === 1).length;
       const nonBodyAmber = cats.filter(c => !['BMI','Body Fat','Waist','Neck (OSA risk)','Muscle Mass'].includes(c.cat) && c.rag.score === 0.5).length;
       const nonBodyRed = cats.filter(c => !['BMI','Body Fat','Waist','Neck (OSA risk)','Muscle Mass'].includes(c.cat) && c.rag.score === 0).length;
@@ -4486,42 +4493,42 @@ async function syncFromGitHub() {
 
     gridEl.innerHTML = `
       <div class="proj-hs-grid-row-label">Current Baseline <span style="font-size:10px;color:var(--dim);font-weight:400">(median estimates)</span></div>
-      <div class="proj-hs-lbox">
-        <div class="proj-hs-ll">Lifespan</div>
-        <div class="proj-hs-lyrs">${yearsLeftLE}<span style="font-size:12px;color:var(--dim)"> yrs</span></div>
-        <div class="proj-hs-lage">to age ${projectedLE} <span style="font-size:9px;color:var(--dim)">(${leRangeLo}\u2013${leRangeHi})</span></div>
-        <div class="proj-hs-ldelta" style="color:${leDeltaColor}">${deltaLE >= 0 ? '+' : ''}${deltaLE}yr vs avg <span style="font-size:9px;color:var(--dim)">\u00b1${totalRange}</span></div>
+      <div class="proj-hs-lbox" style="border-top:2px solid #3b82f6">
+        <div class="proj-hs-ll" style="color:#3b82f6">Lifespan</div>
+        <div class="proj-hs-lyrs" style="color:#3b82f6">${yearsLeftLE}<span style="font-size:12px;opacity:0.6"> yrs</span></div>
+        <div class="proj-hs-lage" style="color:#3b82f6;font-size:12px;font-weight:600">to age ${projectedLE} <span style="font-size:10px;font-weight:400;opacity:0.7">(${leRangeLo}\u2013${leRangeHi})</span></div>
+        <div class="proj-hs-ldelta" style="color:${leDeltaColor}">${deltaLE >= 0 ? '+' : ''}${deltaLE}yr vs avg <span style="font-size:9px;opacity:0.7">\u00b1${totalRange}</span></div>
       </div>
-      <div class="proj-hs-lbox">
-        <div class="proj-hs-ll">Healthspan</div>
-        <div class="proj-hs-lyrs">${yearsLeftHS}<span style="font-size:12px;color:var(--dim)"> yrs</span></div>
-        <div class="proj-hs-lage">to age ${projectedHS} <span style="font-size:9px;color:var(--dim)">(${hsRangeLo}\u2013${hsRangeHi})</span></div>
+      <div class="proj-hs-lbox" style="border-top:2px solid #22c55e">
+        <div class="proj-hs-ll" style="color:#22c55e">Healthspan</div>
+        <div class="proj-hs-lyrs" style="color:#22c55e">${yearsLeftHS}<span style="font-size:12px;opacity:0.6"> yrs</span></div>
+        <div class="proj-hs-lage" style="color:#22c55e;font-size:12px;font-weight:600">to age ${projectedHS} <span style="font-size:10px;font-weight:400;opacity:0.7">(${hsRangeLo}\u2013${hsRangeHi})</span></div>
         <div class="proj-hs-ldelta" style="color:${hsDeltaColor}">${deltaHS >= 0 ? '+' : ''}${deltaHS}yr vs avg</div>
       </div>
-      <div class="proj-hs-lbox">
-        <div class="proj-hs-ll">Biological Age</div>
-        <div class="proj-hs-lyrs" style="color:${baColor}">${bioAge}</div>
-        <div class="proj-hs-lage">chrono ${HS_AGE}</div>
+      <div class="proj-hs-lbox" style="border-top:2px solid #f59e0b">
+        <div class="proj-hs-ll" style="color:#f59e0b">Biological Age</div>
+        <div class="proj-hs-lyrs" style="color:#f59e0b">${bioAge}</div>
+        <div class="proj-hs-lage" style="font-size:12px">chrono ${HS_AGE}</div>
         <div class="proj-hs-ldelta" style="color:${baColor}">${baDiff > 0 ? '+' : ''}${baDiff.toFixed(1)}yr ${baDiff > 0 ? 'older' : baDiff < 0 ? 'younger' : ''}</div>
       </div>
 
       <div class="proj-hs-grid-row-label">All Goals Met</div>
-      <div class="proj-hs-lbox adj">
-        <div class="proj-hs-ll">Adj. Lifespan</div>
-        <div class="proj-hs-lyrs">${adjYearsLeftLE}<span style="font-size:12px;color:var(--dim)"> yrs</span></div>
-        <div class="proj-hs-lage">to age ${adjLE}</div>
+      <div class="proj-hs-lbox adj" style="border-top:2px solid rgba(59,130,246,0.4)">
+        <div class="proj-hs-ll" style="color:#3b82f6">Adj. Lifespan</div>
+        <div class="proj-hs-lyrs" style="color:#3b82f6">${adjYearsLeftLE}<span style="font-size:12px;opacity:0.6"> yrs</span></div>
+        <div class="proj-hs-lage" style="color:#3b82f6;font-size:12px;font-weight:600">to age ${adjLE}</div>
         <div class="proj-hs-ldelta" style="color:var(--accent)">${leGain > 0 ? '+' : ''}${leGain}yr gain</div>
       </div>
-      <div class="proj-hs-lbox adj">
-        <div class="proj-hs-ll">Adj. Healthspan</div>
-        <div class="proj-hs-lyrs">${adjYearsLeftHS}<span style="font-size:12px;color:var(--dim)"> yrs</span></div>
-        <div class="proj-hs-lage">to age ${adjHS}</div>
+      <div class="proj-hs-lbox adj" style="border-top:2px solid rgba(34,197,94,0.4)">
+        <div class="proj-hs-ll" style="color:#22c55e">Adj. Healthspan</div>
+        <div class="proj-hs-lyrs" style="color:#22c55e">${adjYearsLeftHS}<span style="font-size:12px;opacity:0.6"> yrs</span></div>
+        <div class="proj-hs-lage" style="color:#22c55e;font-size:12px;font-weight:600">to age ${adjHS}</div>
         <div class="proj-hs-ldelta" style="color:var(--accent)">${hsGain > 0 ? '+' : ''}${hsGain}yr gain</div>
       </div>
-      <div class="proj-hs-lbox adj">
-        <div class="proj-hs-ll">Adj. Bio Age</div>
-        <div class="proj-hs-lyrs" style="color:${adjBaColor}">${adjBioAge}</div>
-        <div class="proj-hs-lage">chrono ${HS_AGE}</div>
+      <div class="proj-hs-lbox adj" style="border-top:2px solid rgba(245,158,11,0.4)">
+        <div class="proj-hs-ll" style="color:#f59e0b">Adj. Bio Age</div>
+        <div class="proj-hs-lyrs" style="color:#f59e0b">${adjBioAge}</div>
+        <div class="proj-hs-lage" style="font-size:12px">chrono ${HS_AGE}</div>
         <div class="proj-hs-ldelta" style="color:var(--accent)">${baGain > 0 ? '−' + baGain + 'yr' : baGain < 0 ? '+' + Math.abs(baGain) + 'yr' : '—'}</div>
       </div>`;
 
