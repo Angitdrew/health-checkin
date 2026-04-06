@@ -53,8 +53,8 @@
 
   .training-entry{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px}
   .training-entry .row{margin-bottom:8px}
-  .btn-add{background:transparent;border:1px dashed var(--border);border-radius:8px;padding:10px;width:100%;color:var(--dim);cursor:pointer;font-size:13px}
-  .btn-add:hover{border-color:var(--accent);color:var(--accent)}
+  .btn-add{background:rgba(59,130,246,0.06);border:1.5px dashed rgba(59,130,246,0.35);border-radius:8px;padding:10px;width:100%;color:rgba(59,130,246,0.8);cursor:pointer;font-size:13px;font-weight:600;letter-spacing:0.3px;transition:all 0.2s}
+  .btn-add:hover{background:rgba(59,130,246,0.12);border-color:var(--accent);color:var(--accent)}
 
   .measurements-toggle{color:var(--accent);font-size:13px;cursor:pointer;margin-top:8px;display:inline-block}
   .measurements-hidden{display:none}
@@ -157,6 +157,21 @@
   .sun-daily-total .sdt-item{display:flex;flex-direction:column;align-items:center;gap:2px}
   .sun-daily-total .sdt-val{font-size:18px;font-weight:700;color:var(--text)}
   .sun-daily-total .sdt-lbl{font-size:9px;text-transform:uppercase;letter-spacing:0.5px;color:var(--dim)}
+
+  /* Coffee tracker */
+  .coffee-section{margin-top:14px;margin-bottom:14px}
+  .coffee-section .coffee-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .coffee-section .coffee-header .label{margin-bottom:0}
+  .coffee-entry{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:6px;position:relative}
+  .coffee-entry .coffee-row{display:flex;gap:8px;align-items:end;flex-wrap:wrap}
+  .coffee-entry .coffee-row .field{margin-bottom:0}
+  .coffee-entry .coffee-remove{position:absolute;top:6px;right:8px;background:none;border:none;color:var(--dim);cursor:pointer;font-size:16px;padding:0 4px}
+  .coffee-entry .coffee-remove:hover{color:var(--red)}
+  .coffee-entry .coffee-stats{font-size:11px;color:var(--dim);margin-top:6px;display:flex;gap:12px}
+  .coffee-entry .coffee-stats span{display:flex;align-items:center;gap:3px}
+  .coffee-total{background:var(--surface2);border-radius:8px;padding:8px 14px;margin-top:8px;display:flex;gap:16px;align-items:center;flex-wrap:wrap;font-size:12px}
+  .coffee-total .ct-val{font-weight:700;color:var(--text)}
+  .coffee-total .ct-lbl{color:var(--dim);font-size:10px}
 
   /* Goals */
   .goal-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)}
@@ -346,6 +361,7 @@
   <!-- TRAINING -->
   <div class="section">
     <div class="section-title"><span class="icon">&#9917;</span> Activity</div>
+    <button class="btn-add" onclick="addTraining()" style="margin-bottom:8px">+ Add another session</button>
     <div id="trainingEntries">
       <div class="training-entry" id="training1">
         <div class="row">
@@ -402,7 +418,6 @@
       <div class="target-row" id="targetWalkTraining"></div>
       <div class="target-row" id="targetBurnTraining"></div>
     </div>
-    <button class="btn-add" onclick="addTraining()">+ Add another session</button>
   </div>
 
   <!-- BODY MEASUREMENTS -->
@@ -495,9 +510,23 @@
     </div>
 
     <!-- Food entries -->
+    <button class="btn-add" onclick="addFoodEntry()" style="margin-bottom:8px">+ Add food item</button>
     <div id="foodEntries"></div>
 
-    <button class="btn-add" onclick="addFoodEntry()" style="margin-bottom:12px">+ Add food item</button>
+    <!-- COFFEE TRACKER -->
+    <div class="coffee-section">
+      <div class="coffee-header">
+        <div class="label">☕ Coffee</div>
+      </div>
+      <button class="btn-add" onclick="addCoffeeEntry()" style="margin-bottom:8px">+ Add coffee</button>
+      <div id="coffeeEntries"></div>
+      <div class="coffee-total" id="coffeeDailyTotal" style="display:none">
+        <span><span class="ct-val" id="ctCups">0</span> <span class="ct-lbl">cups</span></span>
+        <span><span class="ct-val" id="ctCaffeine">0</span> <span class="ct-lbl">mg caffeine</span></span>
+        <span><span class="ct-val" id="ctFluid">0</span> <span class="ct-lbl">mL net fluid</span></span>
+        <span><span class="ct-val" id="ctCal">0</span> <span class="ct-lbl">kcal</span></span>
+      </div>
+    </div>
 
     <!-- FLUID BALANCE CHART -->
     <div class="field">
@@ -560,6 +589,7 @@
           </div>
         </div>
 
+        <button class="btn-add" onclick="addSunEntry()" style="margin-bottom:8px">+ Add another exposure</button>
         <div id="sunEntries">
           <div class="sun-entry" data-idx="1">
             <div class="sun-entry-head">
@@ -583,7 +613,6 @@
             <div class="sun-entry-summary"></div>
           </div>
         </div>
-        <button onclick="addSunEntry()" style="background:none;border:1px dashed var(--border);border-radius:8px;color:var(--dim);cursor:pointer;padding:8px;width:100%;font-size:12px;margin-top:2px">&#43; Add another exposure</button>
 
         <div class="sun-daily-total" id="sunDailyTotal" style="display:none">
           <div class="sdt-item"><span class="sdt-val" id="sdtMinutes">0</span><span class="sdt-lbl">Total min</span></div>
@@ -1722,6 +1751,142 @@ function updateSunCalc() {
   if (adviceEl) { adviceEl.style.display = 'block'; adviceEl.textContent = advice; }
 }
 
+// ===== COFFEE TRACKER =====
+const COFFEE_TYPES = [
+  { id: 'espresso',    name: 'Espresso',         baseML: 30,  caffeinePerShot: 63,  cal: 1 },
+  { id: 'long_black',  name: 'Long Black',       baseML: 200, caffeinePerShot: 63,  cal: 2 },
+  { id: 'short_black', name: 'Short Black',      baseML: 60,  caffeinePerShot: 63,  cal: 1 },
+  { id: 'flat_white',  name: 'Flat White',       baseML: 200, caffeinePerShot: 63,  cal: 80 },
+  { id: 'cappuccino',  name: 'Cappuccino',       baseML: 200, caffeinePerShot: 63,  cal: 80 },
+  { id: 'latte',       name: 'Latte',            baseML: 250, caffeinePerShot: 63,  cal: 100 },
+  { id: 'mocha',       name: 'Mocha',            baseML: 250, caffeinePerShot: 63,  cal: 180 },
+  { id: 'cold_brew',   name: 'Cold Brew',        baseML: 300, caffeinePerShot: 100, cal: 5 },
+  { id: 'instant',     name: 'Instant',          baseML: 250, caffeinePerShot: 50,  cal: 4 },
+  { id: 'decaf',       name: 'Decaf',            baseML: 200, caffeinePerShot: 5,   cal: 2 },
+];
+const COFFEE_CUTOFF_HOUR = 14; // 2:00 PM — caffeine half-life ~6h, aim for clear by 8pm sleep
+let coffeeEntryCount = 0;
+
+function addCoffeeEntry() {
+  coffeeEntryCount++;
+  const container = document.getElementById('coffeeEntries');
+  const entry = document.createElement('div');
+  entry.className = 'coffee-entry';
+  entry.dataset.idx = coffeeEntryCount;
+  const typeOptions = COFFEE_TYPES.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+  // Default time to now
+  const now = new Date();
+  const nowTime = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+  entry.innerHTML = `
+    <button class="coffee-remove" onclick="this.closest('.coffee-entry').remove();updateCoffeeTotals()" title="Remove">&#10005;</button>
+    <div class="coffee-row">
+      <div class="field" style="flex:0 0 90px">
+        <div class="label">Time</div>
+        <input type="time" class="coffeeTime" value="${nowTime}" onchange="updateCoffeeTotals()">
+      </div>
+      <div class="field" style="flex:1;min-width:110px">
+        <div class="label">Type</div>
+        <select class="coffeeType" onchange="updateCoffeeTotals()">${typeOptions}</select>
+      </div>
+      <div class="field" style="flex:0 0 60px">
+        <div class="label">Shots</div>
+        <select class="coffeeShots" onchange="updateCoffeeTotals()">
+          <option value="1">1</option>
+          <option value="2" selected>2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+        </select>
+      </div>
+      <div class="field" style="flex:0 0 70px">
+        <div class="label">Milk</div>
+        <select class="coffeeMilk" onchange="updateCoffeeTotals()">
+          <option value="none">None</option>
+          <option value="full">Full</option>
+          <option value="skim">Skim</option>
+          <option value="oat">Oat</option>
+          <option value="almond">Almond</option>
+          <option value="soy">Soy</option>
+        </select>
+      </div>
+    </div>
+    <div class="coffee-stats"></div>
+  `;
+  container.appendChild(entry);
+  updateCoffeeTotals();
+}
+
+function getCoffeeData(entry) {
+  const typeId = entry.querySelector('.coffeeType').value;
+  const shots = parseInt(entry.querySelector('.coffeeShots').value) || 1;
+  const milk = entry.querySelector('.coffeeMilk').value;
+  const time = entry.querySelector('.coffeeTime').value;
+  const ct = COFFEE_TYPES.find(t => t.id === typeId) || COFFEE_TYPES[0];
+  const caffeine = ct.caffeinePerShot * shots;
+  // Milk calories adjustment
+  const milkCals = { none: 0, full: 60, skim: 35, oat: 50, almond: 15, soy: 40 };
+  const hasMilk = ['flat_white','cappuccino','latte','mocha'].includes(typeId);
+  const cal = hasMilk ? (milkCals[milk] || 0) + 5 : ct.cal * shots;
+  // Net fluid: coffee retains ~80% hydration for habitual drinkers
+  const totalML = ct.baseML + (shots > 1 ? (shots - 1) * 30 : 0);
+  const netFluid = Math.round(totalML * 0.80);
+  return { typeId, typeName: ct.name, shots, milk, time, caffeine, cal, totalML, netFluid };
+}
+
+function updateCoffeeTotals() {
+  const entries = document.querySelectorAll('#coffeeEntries .coffee-entry');
+  let totalCaffeine = 0, totalFluid = 0, totalCal = 0, count = 0;
+  let lateWarning = false;
+
+  entries.forEach(entry => {
+    const d = getCoffeeData(entry);
+    count++;
+    totalCaffeine += d.caffeine;
+    totalFluid += d.netFluid;
+    totalCal += d.cal;
+
+    // Check cutoff
+    const isLate = d.time && parseInt(d.time.split(':')[0]) >= COFFEE_CUTOFF_HOUR;
+    if (isLate) lateWarning = true;
+
+    // Per-entry stats
+    const statsEl = entry.querySelector('.coffee-stats');
+    let statsHTML = `<span>${d.caffeine}mg caffeine</span><span>${d.netFluid}mL fluid</span><span>${d.cal} kcal</span>`;
+    if (isLate) statsHTML += `<span style="color:var(--amber);font-weight:600">⚠ After 2pm cutoff</span>`;
+    statsEl.innerHTML = statsHTML;
+  });
+
+  // Daily totals
+  const totalEl = document.getElementById('coffeeDailyTotal');
+  if (count > 0) {
+    totalEl.style.display = 'flex';
+    document.getElementById('ctCups').textContent = count;
+    document.getElementById('ctCaffeine').textContent = totalCaffeine;
+    document.getElementById('ctFluid').textContent = totalFluid;
+    document.getElementById('ctCal').textContent = totalCal;
+    // Caffeine limit warning (400mg/day recommended max)
+    const cafEl = document.getElementById('ctCaffeine');
+    cafEl.style.color = totalCaffeine > 400 ? 'var(--red)' : totalCaffeine > 300 ? 'var(--amber)' : '';
+  } else {
+    totalEl.style.display = 'none';
+  }
+
+  // Add coffee fluid to daily fluid total
+  updateFluidTotal();
+  updateRAGLights();
+}
+
+function collectCoffeeData() {
+  const entries = [];
+  document.querySelectorAll('#coffeeEntries .coffee-entry').forEach(entry => {
+    const d = getCoffeeData(entry);
+    entries.push({
+      time: d.time, type: d.typeId, shots: d.shots, milk: d.milk,
+      caffeine_mg: d.caffeine, calories: d.cal, net_fluid_ml: d.netFluid
+    });
+  });
+  return entries;
+}
+
 function collectData() {
   return {
     date: document.getElementById('checkinDate').value,
@@ -1761,7 +1926,8 @@ function collectData() {
       },
       water_litres: parseFloat(document.getElementById('waterIntake').value) || null,
       fluid_balance: getFluidBalance(),
-      food_quality: getRadioValue('foodQuality')
+      food_quality: getRadioValue('foodQuality'),
+      coffee: collectCoffeeData()
     },
     compliance: {
       supplements_taken: document.getElementById('suppsTaken').checked,
@@ -3039,9 +3205,16 @@ function buildFluidGrid() {
 function updateFluidTotal() {
   let total = 0;
   document.querySelectorAll('.fluid-input').forEach(inp => { total += parseFloat(inp.value) || 0; });
-  document.getElementById('fluidLitres').textContent = (total / 1000).toFixed(1);
-  document.getElementById('fluidMl').textContent = total;
-  document.getElementById('waterIntake').value = (total / 1000).toFixed(2);
+  // Add coffee net fluid contribution
+  let coffeeFluid = 0;
+  document.querySelectorAll('#coffeeEntries .coffee-entry').forEach(entry => {
+    const d = getCoffeeData(entry);
+    coffeeFluid += d.netFluid;
+  });
+  const combined = total + coffeeFluid;
+  document.getElementById('fluidLitres').textContent = (combined / 1000).toFixed(1);
+  document.getElementById('fluidMl').textContent = combined;
+  document.getElementById('waterIntake').value = (combined / 1000).toFixed(2);
   if (typeof updateAllTargets === 'function') updateAllTargets();
 }
 
@@ -3147,6 +3320,19 @@ function loadTodayData() {
   }
   // Nutrition — food quality
   if (saved.nutrition) setRadio('foodQuality', saved.nutrition.food_quality);
+  // Coffee
+  if (saved.nutrition && saved.nutrition.coffee && saved.nutrition.coffee.length > 0) {
+    saved.nutrition.coffee.forEach(c => {
+      addCoffeeEntry();
+      const entries = document.querySelectorAll('#coffeeEntries .coffee-entry');
+      const entry = entries[entries.length - 1];
+      if (c.time) entry.querySelector('.coffeeTime').value = c.time;
+      if (c.type) entry.querySelector('.coffeeType').value = c.type;
+      if (c.shots) entry.querySelector('.coffeeShots').value = c.shots;
+      if (c.milk) entry.querySelector('.coffeeMilk').value = c.milk;
+    });
+    updateCoffeeTotals();
+  }
   // Compliance
   if (saved.compliance) {
     setCheck('suppsTaken', saved.compliance.supplements_taken);
@@ -3246,6 +3432,11 @@ document.getElementById('checkinDate').addEventListener('change', function() {
   });
   sunEntryCount = 1;
   const sunAdv = document.getElementById('sunAdvice'); if (sunAdv) sunAdv.style.display = 'none';
+  // Reset coffee entries
+  document.getElementById('coffeeEntries').innerHTML = '';
+  coffeeEntryCount = 0;
+  const coffeeTotalEl = document.getElementById('coffeeDailyTotal');
+  if (coffeeTotalEl) coffeeTotalEl.style.display = 'none';
   updateSunCalc();
   updateFluidTotal();
   recalcMacros();
