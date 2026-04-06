@@ -345,18 +345,17 @@
         <input type="number" id="napMinutes" step="5" placeholder="e.g. 20">
       </div>
       <div class="field">
-        <div class="label">Sleep Quality</div>
-        <div class="rating">
-          <label><input type="radio" name="sleepQuality" value="1"><span>1</span></label>
-          <label><input type="radio" name="sleepQuality" value="2"><span>2</span></label>
-          <label><input type="radio" name="sleepQuality" value="3"><span>3</span></label>
-          <label><input type="radio" name="sleepQuality" value="4"><span>4</span></label>
-          <label><input type="radio" name="sleepQuality" value="5"><span>5</span></label>
-        </div>
+        <div class="label">Sleep Score <span class="unit">0-100</span></div>
+        <input type="number" id="sleepScore" min="0" max="100" placeholder="e.g. 78">
       </div>
     </div>
-    <div class="field" style="margin-top:12px">
-      <div class="label">MAD worn?</div>
+    <div class="row">
+      <div class="field">
+        <div class="label">Resting HRV <span class="unit">ms</span></div>
+        <input type="number" id="restingHRV" min="0" max="200" placeholder="e.g. 35">
+      </div>
+      <div class="field">
+        <div class="label">MAD worn?</div>
       <div class="rating">
         <label><input type="radio" name="madWorn" value="yes"><span>Yes</span></label>
         <label><input type="radio" name="madWorn" value="no"><span>No</span></label>
@@ -370,6 +369,7 @@
         <div class="chart-sub">avg hours</div>
         <svg id="svgSleep" viewBox="0 0 280 70" preserveAspectRatio="none"></svg>
         <div class="chart-sub" id="chartSleepQual" style="margin-top:6px"></div>
+        <div class="chart-sub" id="chartHRVAvg" style="margin-top:4px"></div>
         <div style="width:100%;margin-top:8px">
           <div class="target-row" id="targetSleep"></div>
         </div>
@@ -621,6 +621,7 @@
       <div class="ns-item"><span class="ns-val" id="nsFluid">0</span><span class="ns-lbl">mL fluid</span></div>
       <div class="ns-item"><span class="ns-val" id="nsCaff">0</span><span class="ns-lbl">mg caff</span></div>
       <div class="ns-item"><span class="ns-val" id="nsAlc">0</span><span class="ns-lbl">std drinks</span></div>
+      <div class="ns-item"><span class="ns-val" id="nsOmega3" style="display:none">0</span><span class="ns-lbl" id="nsOmega3Lbl" style="display:none">g &omega;-3</span></div>
     </div>
     <div id="nlogCaffWarn" style="display:none;margin-top:8px;padding:8px 12px;border-radius:8px;font-size:12px;font-weight:600"></div>
     <div class="nlog-fasting" id="nlogFasting"></div>
@@ -877,8 +878,13 @@
   <div class="section">
     <div class="section-title"><span class="icon">&#9745;</span> Daily Compliance</div>
     <div class="toggle-row">
-      <span class="toggle-label">All supplements taken</span>
+      <span class="toggle-label">All meds &amp; supplements taken</span>
       <label class="toggle"><input type="checkbox" id="suppsTaken"><span class="slider"></span></label>
+    </div>
+    <div style="margin:-4px 0 8px 4px;font-size:11px;color:var(--dim);line-height:1.5">
+      <strong style="color:var(--text);font-size:10px">Meds:</strong> Flecainide · Verapamil · Coloxyl<br>
+      <strong style="color:var(--text);font-size:10px">Supps:</strong> Vitamin D3 · Omega-3 Fish Oil · Mag Glycinate ×2 nocte · Curcumin + Boswellia (Bioglan) · Vitamin K2 (Bioglan) · Probiotic<br>
+      <strong style="color:var(--text);font-size:10px">Electrolytes:</strong> Sodium (LMNT/Hydralyte) · Potassium · Magnesium
     </div>
     <div class="toggle-row">
       <span class="toggle-label">Fermented food/probiotic consumed</span>
@@ -893,7 +899,7 @@
       <label class="toggle"><input type="checkbox" id="coloxylTaken"><span class="slider"></span></label>
     </div>
     <div class="toggle-row">
-      <span class="toggle-label">Vitamin K2 source today <span style="color:var(--dim);font-size:11px">(fermented milk, eggs, natto, cheese, or supplement)</span></span>
+      <span class="toggle-label">Vitamin K2 source today <span style="color:var(--dim);font-size:11px">(Bioglan K2, fermented milk, eggs, natto, cheese)</span></span>
       <label class="toggle"><input type="checkbox" id="k2Taken"><span class="slider"></span></label>
     </div>
   </div>
@@ -1059,7 +1065,7 @@ if (dayOfWeek === 1) {
 const foodDB = [
   // --- Protein ---
   { name:'King Oscar Sardines (drained)', cat:'Protein', servings:[
-    { label:'1 can (80g)', cal:120, pro:13, carb:0, fat:8 }
+    { label:'1 can (80g)', cal:120, pro:13, carb:0, fat:8, omega3:1.5 }
   ]},
   { name:'XL Egg', cat:'Protein', servings:[
     { label:'1 egg (60g)', cal:80, pro:7, carb:0.5, fat:5 },
@@ -1091,12 +1097,12 @@ const foodDB = [
     { label:'200g', cal:458, pro:48, carb:0, fat:28 }
   ]},
   { name:'Salmon Fillet (cooked)', cat:'Protein', servings:[
-    { label:'100g', cal:208, pro:20, carb:0, fat:13 },
-    { label:'150g', cal:312, pro:30, carb:0, fat:20 }
+    { label:'100g', cal:208, pro:20, carb:0, fat:13, omega3:1.8 },
+    { label:'150g', cal:312, pro:30, carb:0, fat:20, omega3:2.7 }
   ]},
   { name:'Tuna (canned in springwater, drained)', cat:'Protein', servings:[
-    { label:'1 small can (95g)', cal:100, pro:23, carb:0, fat:1 },
-    { label:'1 large can (185g)', cal:195, pro:45, carb:0, fat:2 }
+    { label:'1 small can (95g)', cal:100, pro:23, carb:0, fat:1, omega3:0.3 },
+    { label:'1 large can (185g)', cal:195, pro:45, carb:0, fat:2, omega3:0.6 }
   ]},
   { name:'Bacon Rashers', cat:'Protein', servings:[
     { label:'2 rashers (60g)', cal:170, pro:12, carb:0, fat:13 },
@@ -1382,7 +1388,7 @@ function addNlogEntry() {
   const type = document.getElementById('nlogType').value;
   if (!type) return;
   const time = document.getElementById('nlogTime').value || '00:00';
-  let entry = { id: ++nlogIdCounter, time, type, icon: NLOG_ICONS[type]||'🍽', cal:0, pro:0, carb:0, fat:0, fluid_ml:0, caffeine_mg:0, alcohol_std:0, desc:'', raw:{} };
+  let entry = { id: ++nlogIdCounter, time, type, icon: NLOG_ICONS[type]||'🍽', cal:0, pro:0, carb:0, fat:0, omega3:0, fluid_ml:0, caffeine_mg:0, alcohol_std:0, desc:'', raw:{} };
 
   if (type === 'food') {
     const foodIdx = parseInt(document.getElementById('nlogFoodSelect').value);
@@ -1400,7 +1406,7 @@ function addNlogEntry() {
     } else {
       const sIdx = parseInt(document.getElementById('nlogFoodServing').value)||0;
       const s = food.servings[sIdx];
-      entry.cal = s.cal*qty; entry.pro = s.pro*qty; entry.carb = s.carb*qty; entry.fat = s.fat*qty;
+      entry.cal = s.cal*qty; entry.pro = s.pro*qty; entry.carb = s.carb*qty; entry.fat = s.fat*qty; entry.omega3 = (s.omega3||0)*qty;
       entry.desc = food.name + ' · ' + s.label + (qty>1 ? ` x${qty}` : '');
       entry.raw = { foodIdx, qty, servingIdx:sIdx, name:food.name, serving:s.label };
     }
@@ -1554,8 +1560,8 @@ function renderNlog() {
 
   // Summary
   summaryEl.style.display = 'flex';
-  let tCal=0, tPro=0, tCarb=0, tFat=0, tFluid=0, tCaff=0, tAlc=0;
-  nlogEntries.forEach(e => { tCal+=e.cal; tPro+=e.pro; tCarb+=e.carb; tFat+=e.fat; tFluid+=e.fluid_ml; tCaff+=e.caffeine_mg; tAlc+=e.alcohol_std; });
+  let tCal=0, tPro=0, tCarb=0, tFat=0, tFluid=0, tCaff=0, tAlc=0, tOmega3=0;
+  nlogEntries.forEach(e => { tCal+=e.cal; tPro+=e.pro; tCarb+=e.carb; tFat+=e.fat; tFluid+=e.fluid_ml; tCaff+=e.caffeine_mg; tAlc+=e.alcohol_std; tOmega3+=(e.omega3||0); });
   document.getElementById('nsCal').textContent = Math.round(tCal);
   document.getElementById('nsPro').textContent = Math.round(tPro) + 'g';
   document.getElementById('nsCarb').textContent = Math.round(tCarb) + 'g';
@@ -1563,6 +1569,9 @@ function renderNlog() {
   document.getElementById('nsFluid').textContent = Math.round(tFluid);
   document.getElementById('nsCaff').textContent = Math.round(tCaff);
   document.getElementById('nsAlc').textContent = tAlc.toFixed(1);
+  const o3El = document.getElementById('nsOmega3');
+  const o3Lbl = document.getElementById('nsOmega3Lbl');
+  if (tOmega3 > 0) { o3El.textContent = tOmega3.toFixed(1); o3El.style.display = ''; o3Lbl.style.display = ''; o3El.style.color = tOmega3 >= 2 ? 'var(--green)' : 'var(--amber)'; } else { o3El.style.display = 'none'; o3Lbl.style.display = 'none'; }
   // Color caffeine + warning banner
   const caffEl = document.getElementById('nsCaff');
   caffEl.style.color = tCaff > 400 ? 'var(--red)' : tCaff > 300 ? 'var(--amber)' : '';
@@ -2126,7 +2135,9 @@ function collectData() {
     sleep: {
       hours: parseFloat(document.getElementById('sleepHours').value) || null,
       nap_minutes: parseInt(document.getElementById('napMinutes').value) || null,
-      quality: getRadioValue('sleepQuality') ? parseInt(getRadioValue('sleepQuality')) : null,
+      sleep_score: parseInt(document.getElementById('sleepScore').value) || null,
+      hrv: parseInt(document.getElementById('restingHRV').value) || null,
+      quality: parseInt(document.getElementById('sleepScore').value) ? Math.round(parseInt(document.getElementById('sleepScore').value) / 20) : null,
       mad_worn: getRadioValue('madWorn')
     },
     cardiac: {
@@ -2145,7 +2156,7 @@ function collectData() {
     calories_burnt: calcCaloriesBurnt(),
     nutrition: {
       // Unified nutrition log
-      log: nlogEntries.map(e => ({ time:e.time, type:e.type, desc:e.desc, cal:e.cal, pro:e.pro, carb:e.carb, fat:e.fat, fluid_ml:e.fluid_ml, caffeine_mg:e.caffeine_mg, alcohol_std:e.alcohol_std, raw:e.raw })),
+      log: nlogEntries.map(e => ({ time:e.time, type:e.type, desc:e.desc, cal:e.cal, pro:e.pro, carb:e.carb, fat:e.fat, omega3:e.omega3||0, fluid_ml:e.fluid_ml, caffeine_mg:e.caffeine_mg, alcohol_std:e.alcohol_std, raw:e.raw })),
       // Legacy compat fields
       food_log: getFoodLog(),
       totals: {
@@ -2734,7 +2745,7 @@ function toggleHistory() {
         ${c.measurements&&c.measurements.skeletal_muscle_kg ? `<div class="data-row"><span>Muscle</span><span>${c.measurements.skeletal_muscle_kg} kg</span></div>` : ''}
         ${c.measurements&&c.measurements.waist_cm ? `<div class="data-row"><span>Waist</span><span>${c.measurements.waist_cm} cm</span></div>` : ''}
         ${c.nutrition&&c.nutrition.totals&&c.nutrition.totals.calories ? `<div class="data-row"><span>Nutrition</span><span>${c.nutrition.totals.calories} kcal | P:${c.nutrition.totals.protein_g||0}g C:${c.nutrition.totals.carbs_g||0}g F:${c.nutrition.totals.fat_g||0}g</span></div>` : (c.nutrition&&c.nutrition.calories ? `<div class="data-row"><span>Nutrition</span><span>${c.nutrition.calories} kcal | P:${c.nutrition.protein_g||'—'}g C:${c.nutrition.carbs_g||'—'}g F:${c.nutrition.fat_g||'—'}g</span></div>` : '')}
-        ${c.sleep.hours ? `<div class="data-row"><span>Sleep</span><span>${c.sleep.hours} hr${c.sleep.nap_minutes ? ' + ' + c.sleep.nap_minutes + 'min nap' : ''} (Q: ${c.sleep.quality||'—'}/5)</span></div>` : ''}
+        ${c.sleep.hours ? `<div class="data-row"><span>Sleep</span><span>${c.sleep.hours} hr${c.sleep.nap_minutes ? ' + ' + c.sleep.nap_minutes + 'min nap' : ''} ${c.sleep.sleep_score ? '(Score: ' + c.sleep.sleep_score + '/100)' : c.sleep.quality ? '(Q: ' + c.sleep.quality + '/5)' : ''}${c.sleep.hrv ? ' · HRV ' + c.sleep.hrv + 'ms' : ''}</span></div>` : ''}
         ${c.wellbeing.energy ? `<div class="data-row"><span>Energy</span><span>${c.wellbeing.energy}/10</span></div>` : ''}
         ${c.cardiac.af_symptoms ? `<div class="data-row"><span>AF</span><span>${c.cardiac.af_symptoms}</span></div>` : ''}
         ${c.wellbeing.ra_flare ? `<div class="data-row"><span>RA</span><span>${c.wellbeing.ra_flare}</span></div>` : ''}
@@ -3075,6 +3086,8 @@ function updateAllTargets() {
 
 document.getElementById('sleepHours').addEventListener('input', updateAllTargets);
 document.getElementById('napMinutes').addEventListener('input', updateAllTargets);
+document.getElementById('sleepScore').addEventListener('input', updateAllTargets);
+document.getElementById('restingHRV').addEventListener('input', updateAllTargets);
 setTimeout(updateAllTargets, 100);
 setTimeout(updateSunCalc, 150);
 
@@ -3365,11 +3378,17 @@ function renderDashboards() {
     const csaEl = document.getElementById('chartSleepAvg');
     if (csaEl) csaEl.textContent = (sleepValid.reduce((a,b)=>a+b,0)/sleepValid.length).toFixed(1);
     barChart('svgSleep', sleepH, v => v >= 7 ? '#22c55e' : v >= 5 ? '#f59e0b' : '#ef4444');
-    const quals = last14.filter(c => c.sleep?.quality).map(c => c.sleep.quality);
-    if (quals.length) {
-      const avgQ = (quals.reduce((a,b)=>a+b,0)/quals.length).toFixed(1);
+    const scores = last14.filter(c => c.sleep?.sleep_score || c.sleep?.quality).map(c => c.sleep.sleep_score || (c.sleep.quality * 20));
+    if (scores.length) {
+      const avgS = Math.round(scores.reduce((a,b)=>a+b,0)/scores.length);
       const csqEl = document.getElementById('chartSleepQual');
-      if (csqEl) csqEl.textContent = `Avg quality: ${avgQ}/5`;
+      if (csqEl) csqEl.textContent = `Avg score: ${avgS}/100`;
+    }
+    const hrvs = last14.filter(c => c.sleep?.hrv).map(c => c.sleep.hrv);
+    if (hrvs.length) {
+      const avgHRV = Math.round(hrvs.reduce((a,b)=>a+b,0)/hrvs.length);
+      const hrvEl = document.getElementById('chartHRVAvg');
+      if (hrvEl) hrvEl.textContent = `Avg HRV: ${avgHRV}ms`;
     }
   }
 
@@ -3462,7 +3481,9 @@ function loadTodayData() {
   if (saved.sleep) {
     setVal('sleepHours', saved.sleep.hours);
     if (saved.sleep.nap_minutes) setVal('napMinutes', saved.sleep.nap_minutes);
-    setRadio('sleepQuality', saved.sleep.quality);
+    if (saved.sleep.sleep_score) setVal('sleepScore', saved.sleep.sleep_score);
+    else if (saved.sleep.quality) setVal('sleepScore', saved.sleep.quality * 20);
+    if (saved.sleep.hrv) setVal('restingHRV', saved.sleep.hrv);
     setRadio('madWorn', saved.sleep.mad_worn);
   }
   // Cardiac
@@ -3504,7 +3525,7 @@ function loadTodayData() {
     nlogIdCounter = 0;
     saved.nutrition.log.forEach(e => {
       nlogIdCounter++;
-      nlogEntries.push({ id: nlogIdCounter, time: e.time, type: e.type, desc: e.desc, icon: NLOG_ICONS[e.type]||'🍽', cal: e.cal||0, pro: e.pro||0, carb: e.carb||0, fat: e.fat||0, fluid_ml: e.fluid_ml||0, caffeine_mg: e.caffeine_mg||0, alcohol_std: e.alcohol_std||0, raw: e.raw||{} });
+      nlogEntries.push({ id: nlogIdCounter, time: e.time, type: e.type, desc: e.desc, icon: NLOG_ICONS[e.type]||'🍽', cal: e.cal||0, pro: e.pro||0, carb: e.carb||0, fat: e.fat||0, omega3: e.omega3||0, fluid_ml: e.fluid_ml||0, caffeine_mg: e.caffeine_mg||0, alcohol_std: e.alcohol_std||0, raw: e.raw||{} });
     });
     renderNlog();
   }
@@ -4128,7 +4149,7 @@ async function syncFromGitHub() {
     // 12. Supplement Compliance
     const compR = compDays >= 6 ? { color: 'var(--green)', label: 'G', score: 1 } : compDays >= 4 ? { color: 'var(--amber)', label: 'A', score: 0.5 } : { color: 'var(--red)', label: 'R', score: 0 };
     const compImpact = compDays >= 6 ? 0.3 : 0;
-    cats.push({ cat: 'Supplements', val: compDays + '/7d', rag: compR, impact: compImpact, pct: compDays / 7 * 100, tip: `Vit D, probiotics, electrolytes, K2. Consistency matters.` });
+    cats.push({ cat: 'Supplements', val: compDays + '/7d', rag: compR, impact: compImpact, pct: compDays / 7 * 100, tip: `Vit D3, Omega-3, Mag Glycinate (×2 nocte), Curcumin+Boswellia, Vit K2, probiotics, electrolytes. Consistency matters.` });
 
     // 13. Neck Circumference (always has data via fallback to 44cm baseline)
     const neckR = neck < 40 ? { color: 'var(--green)', label: 'G', score: 1 } : neck <= 43 ? { color: 'var(--amber)', label: 'A', score: 0.5 } : { color: 'var(--red)', label: 'R', score: 0 };
