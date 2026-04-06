@@ -623,15 +623,6 @@
     <span id="totalCarb" style="display:none">0</span>
     <span id="totalFat" style="display:none">0</span>
 
-    <div class="field" style="margin-top:10px">
-      <div class="label">Food Quality <span class="hint">(overall)</span></div>
-      <div class="rating">
-        <label class="rating-red"><input type="radio" name="foodQuality" value="poor"><span>Poor</span></label>
-        <label class="rating-amber"><input type="radio" name="foodQuality" value="ok"><span>OK</span></label>
-        <label class="rating-green"><input type="radio" name="foodQuality" value="good"><span>Good</span></label>
-        <label class="rating-green"><input type="radio" name="foodQuality" value="great"><span>Great</span></label>
-      </div>
-    </div>
       </div>
       <div class="section-chart" id="chartNutrition">
         <div class="chart-title">Daily Protein — last 14 entries</div>
@@ -1059,7 +1050,7 @@ if (dayOfWeek === 1) {
 const foodDB = [
   // --- Protein ---
   { name:'King Oscar Sardines (drained)', cat:'Protein', servings:[
-    { label:'1 can (80g)', cal:150, pro:18, carb:0, fat:9 }
+    { label:'1 can (80g)', cal:120, pro:13, carb:0, fat:8 }
   ]},
   { name:'XL Egg', cat:'Protein', servings:[
     { label:'1 egg (60g)', cal:80, pro:7, carb:0.5, fat:5 },
@@ -1167,11 +1158,11 @@ const foodDB = [
     { label:'1 bar (60g)', cal:220, pro:20, carb:18, fat:8 }
   ]},
   { name:'Banana', cat:'Snacks', servings:[
-    { label:'1 medium', cal:105, pro:1, carb:27, fat:0.4 },
+    { label:'1 medium', cal:115, pro:1, carb:27, fat:0.4 },
     { label:'1 large', cal:135, pro:1.5, carb:34, fat:0.5 }
   ]},
   { name:'Apple', cat:'Snacks', servings:[
-    { label:'1 medium', cal:95, pro:0.5, carb:25, fat:0.3 }
+    { label:'1 medium', cal:105, pro:0.5, carb:25, fat:0.3 }
   ]},
   { name:'Dark Chocolate (70%+)', cat:'Snacks', servings:[
     { label:'2 squares (20g)', cal:110, pro:1.5, carb:8, fat:8 },
@@ -1217,7 +1208,7 @@ const foodDB = [
     { label:'2 cups (300g)', cal:100, pro:5, carb:20, fat:0.6 }
   ]},
   { name:'Broccoli (cooked)', cat:'Veg', servings:[
-    { label:'1 cup (150g)', cal:55, pro:4, carb:11, fat:0.5 }
+    { label:'1 cup (150g)', cal:64, pro:4, carb:11, fat:0.5 }
   ]},
   { name:'Salad (mixed greens)', cat:'Veg', servings:[
     { label:'1 bowl', cal:20, pro:1.5, carb:3, fat:0.3 },
@@ -1228,7 +1219,7 @@ const foodDB = [
     { label:'1 whole', cal:240, pro:3, carb:12, fat:22 }
   ]},
   { name:'Tomato', cat:'Veg', servings:[
-    { label:'1 medium', cal:22, pro:1, carb:5, fat:0.2 }
+    { label:'1 medium', cal:26, pro:1, carb:5, fat:0.2 }
   ]},
   { name:'Onion (cooked)', cat:'Veg', servings:[
     { label:'½ onion', cal:22, pro:0.5, carb:5, fat:0.1 },
@@ -1588,6 +1579,9 @@ function addTraining() {
           <option value="">— Select —</option>
           <option value="bjj">BJJ</option>
           <option value="boxing">Boxing</option>
+          <option value="shadowboxing">Shadow Boxing</option>
+          <option value="bagwork">Bag Work</option>
+          <option value="skipping">Skipping</option>
           <option value="mma">Carioti MMA</option>
           <option value="weights">Weights</option>
           <option value="airbike">Airbike</option>
@@ -1595,7 +1589,9 @@ function addTraining() {
           <option value="zone2">Zone 2 Cardio</option>
           <option value="bands">Band Work (Rehab)</option>
           <option value="exball">Exercise Ball (Core)</option>
+          <option value="yardwork">Yard Work</option>
           <option value="mobility">Mobility/Yoga</option>
+          <option value="sauna">Sauna</option>
           <option value="rest">Rest Day</option>
           <option value="other">Other</option>
         </select>
@@ -1619,7 +1615,7 @@ function addTraining() {
       </div>
     </div>
   `;
-  container.appendChild(entry);
+  container.prepend(entry);
 }
 
 function getRadioValue(name) {
@@ -1809,7 +1805,7 @@ function addSunEntry() {
     </div>
     <div class="sun-entry-summary"></div>
   `;
-  container.appendChild(entry);
+  container.prepend(entry);
 }
 
 // Collect all sun exposure entries
@@ -2062,7 +2058,6 @@ function collectData() {
       },
       water_litres: parseFloat(document.getElementById('waterIntake').value) || null,
       fluid_balance: getFluidBalance(),
-      food_quality: getRadioValue('foodQuality'),
       coffee: nlogEntries.filter(e=>e.type==='coffee').map(e=>({time:e.time,type:e.raw.coffeeType,shots:e.raw.shots,milk:e.raw.milk,caffeine_mg:e.caffeine_mg,calories:e.cal,net_fluid_ml:e.fluid_ml}))
     },
     compliance: {
@@ -3425,8 +3420,6 @@ function loadTodayData() {
     nlogEntries.sort((a,b)=>a.time.localeCompare(b.time));
     renderNlog();
   }
-  // Nutrition — food quality
-  if (saved.nutrition) setRadio('foodQuality', saved.nutrition.food_quality);
   // Compliance
   if (saved.compliance) {
     setCheck('suppsTaken', saved.compliance.supplements_taken);
