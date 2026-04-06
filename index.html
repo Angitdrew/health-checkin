@@ -35,7 +35,7 @@
   .rating{display:flex;gap:6px;flex-wrap:wrap}
   .rating label{cursor:pointer}
   .rating input{display:none}
-  .rating span{display:inline-block;padding:6px 14px;border-radius:6px;font-size:13px;border:1px solid var(--border);background:var(--surface2);transition:all 0.15s}
+  .rating span{display:inline-block;padding:6px 10px;border-radius:6px;font-size:13px;border:1px solid var(--border);background:var(--surface2);transition:all 0.15s;text-align:center;line-height:1.2}
   .rating input:checked+span{border-color:var(--accent);background:rgba(59,130,246,0.15);color:var(--accent);font-weight:600}
   .rating-green input:checked+span{border-color:var(--green);background:rgba(34,197,94,0.15);color:var(--green)}
   .rating-amber input:checked+span{border-color:var(--amber);background:rgba(245,158,11,0.15);color:var(--amber)}
@@ -423,27 +423,18 @@
         </div>
       </div>
       <div class="field">
-        <div class="label">Intensity (RPE 1-10)</div>
-        <div class="rating" style="flex-wrap:wrap;gap:2px 0">
-          <label class="rating-green"><input type="radio" name="actRpe" value="1" onchange="updateActivityPreview()"><span>1</span></label>
-          <label class="rating-green"><input type="radio" name="actRpe" value="2" onchange="updateActivityPreview()"><span>2</span></label>
-          <span style="font-size:9px;color:var(--dim);padding:0 2px;align-self:center">▸</span>
-          <label class="rating-green"><input type="radio" name="actRpe" value="3" onchange="updateActivityPreview()"><span>3</span></label>
-          <label class="rating-green"><input type="radio" name="actRpe" value="4" onchange="updateActivityPreview()"><span>4</span></label>
-          <span style="font-size:9px;color:var(--dim);padding:0 2px;align-self:center">▸</span>
-          <label class="rating-amber"><input type="radio" name="actRpe" value="5" onchange="updateActivityPreview()"><span>5</span></label>
-          <label class="rating-amber"><input type="radio" name="actRpe" value="6" onchange="updateActivityPreview()"><span>6</span></label>
-          <label class="rating-amber"><input type="radio" name="actRpe" value="7" onchange="updateActivityPreview()"><span>7</span></label>
-          <span style="font-size:9px;color:var(--dim);padding:0 2px;align-self:center">▸</span>
-          <label class="rating-red"><input type="radio" name="actRpe" value="8" onchange="updateActivityPreview()"><span>8</span></label>
-          <label class="rating-red"><input type="radio" name="actRpe" value="9" onchange="updateActivityPreview()"><span>9</span></label>
-          <label class="rating-red"><input type="radio" name="actRpe" value="10" onchange="updateActivityPreview()"><span>10</span></label>
-        </div>
-        <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--dim);margin-top:4px;padding:0 2px">
-          <span>Rest/Easy</span>
-          <span style="color:var(--green)">Zone 2</span>
-          <span>Moderate</span>
-          <span style="color:var(--red)">Max effort</span>
+        <div class="label">Intensity</div>
+        <div class="rating">
+          <label class="rating-green"><input type="radio" name="actRpe" value="1" onchange="updateActivityPreview()"><span>1<br><em style="font-size:7px;font-style:normal;opacity:0.6">Rest</em></span></label>
+          <label class="rating-green"><input type="radio" name="actRpe" value="2" onchange="updateActivityPreview()"><span>2<br><em style="font-size:7px;font-style:normal;opacity:0.6">Easy</em></span></label>
+          <label class="rating-green"><input type="radio" name="actRpe" value="3" onchange="updateActivityPreview()"><span>3<br><em style="font-size:7px;font-style:normal;color:var(--green)">Zone2</em></span></label>
+          <label class="rating-green"><input type="radio" name="actRpe" value="4" onchange="updateActivityPreview()"><span>4<br><em style="font-size:7px;font-style:normal;color:var(--green)">Zone2</em></span></label>
+          <label class="rating-amber"><input type="radio" name="actRpe" value="5" onchange="updateActivityPreview()"><span>5<br><em style="font-size:7px;font-style:normal;opacity:0.6">Mod</em></span></label>
+          <label class="rating-amber"><input type="radio" name="actRpe" value="6" onchange="updateActivityPreview()"><span>6<br><em style="font-size:7px;font-style:normal;opacity:0.6">Hard</em></span></label>
+          <label class="rating-amber"><input type="radio" name="actRpe" value="7" onchange="updateActivityPreview()"><span>7<br><em style="font-size:7px;font-style:normal;opacity:0.6">V.Hard</em></span></label>
+          <label class="rating-red"><input type="radio" name="actRpe" value="8" onchange="updateActivityPreview()"><span>8<br><em style="font-size:7px;font-style:normal;opacity:0.6">Severe</em></span></label>
+          <label class="rating-red"><input type="radio" name="actRpe" value="9" onchange="updateActivityPreview()"><span>9<br><em style="font-size:7px;font-style:normal;opacity:0.6">Near↑</em></span></label>
+          <label class="rating-red"><input type="radio" name="actRpe" value="10" onchange="updateActivityPreview()"><span>10<br><em style="font-size:7px;font-style:normal;opacity:0.6">Max</em></span></label>
         </div>
       </div>
       <button class="btn-add" onclick="addActivityEntry()" style="margin-top:8px">+ Add to log</button>
