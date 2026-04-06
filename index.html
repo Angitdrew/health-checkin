@@ -556,6 +556,7 @@
               <option value="juice">🧃 Juice</option>
               <option value="smoothie">🥤 Smoothie</option>
               <option value="milk">🥛 Milk</option>
+              <option value="coconut_water">🥥 Coconut Water</option>
               <option value="electrolyte">⚡ Electrolyte Drink</option>
               <option value="soft_drink">🥤 Soft Drink</option>
               <option value="alcohol">🍺 Alcohol</option>
@@ -1316,12 +1317,13 @@ const foodCategories = [...new Set(foodDB.map(f=>f.cat))];
 let nlogEntries = []; // { id, time, type, desc, icon, cal, pro, carb, fat, fluid_ml, caffeine_mg, alcohol_std, raw:{...} }
 
 // Entry type configs
-const NLOG_ICONS = { food:'🍽', water:'💧', coffee:'☕', tea:'🍵', juice:'🧃', smoothie:'🥤', milk:'🥛', electrolyte:'⚡', soft_drink:'🥤', alcohol:'🍺' };
+const NLOG_ICONS = { food:'🍽', water:'💧', coffee:'☕', tea:'🍵', juice:'🧃', smoothie:'🥤', milk:'🥛', coconut_water:'🥥', electrolyte:'⚡', soft_drink:'🥤', alcohol:'🍺' };
 const NLOG_DRINK_SUBS = {
   tea:   [{ id:'black', name:'Black Tea', caff:47, cal:2 },{ id:'green', name:'Green Tea', caff:28, cal:2 },{ id:'herbal', name:'Herbal (caffeine-free)', caff:0, cal:2 },{ id:'chai', name:'Chai Latte', caff:40, cal:80 }],
   juice: [{ id:'orange', name:'Orange', cal:45 },{ id:'apple', name:'Apple', cal:46 },{ id:'vegetable', name:'Vegetable/V8', cal:20 },{ id:'cranberry', name:'Cranberry', cal:46 }],
   smoothie: [{ id:'fruit', name:'Fruit Smoothie', cal:60, pro:2 },{ id:'protein', name:'Protein Shake', cal:50, pro:25 },{ id:'green', name:'Green Smoothie', cal:35, pro:3 }],
   milk: [{ id:'full', name:'Full Cream', cal:63, pro:3.3 },{ id:'skim', name:'Skim', cal:35, pro:3.5 },{ id:'oat', name:'Oat', cal:50, pro:1 },{ id:'almond', name:'Almond', cal:15, pro:0.5 },{ id:'soy', name:'Soy', cal:40, pro:3 }],
+  coconut_water: [{ id:'sb_fermented', name:'SB Fermented Coconut Water', cal:15, carb:2.5, sugar:1.5 },{ id:'regular', name:'Regular Coconut Water', cal:22, carb:5.5, sugar:5.0 }],
   electrolyte: [{ id:'sugar', name:'Sports Drink (Gatorade etc)', cal:25 },{ id:'zero', name:'Sugar-free (LMNT, Hydralyte)', cal:5 },{ id:'tablet', name:'Effervescent Tablet', cal:8 }],
   soft_drink: [{ id:'regular', name:'Regular', cal:42 },{ id:'diet', name:'Diet/Zero', cal:1 },{ id:'kombucha', name:'Kombucha', cal:15 }],
   alcohol: [{ id:'beer', name:'Beer (375ml)', std:1.4, cal:140, ml:375 },{ id:'wine', name:'Wine (150ml)', std:1.5, cal:120, ml:150 },{ id:'spirit', name:'Spirit + mixer', std:1.0, cal:100, ml:250 },{ id:'spirit_neat', name:'Spirit neat/rocks', std:1.0, cal:65, ml:30 }],
@@ -1375,7 +1377,7 @@ function onNlogTypeChange() {
     // Hide subtype for water (it's just water)
     document.getElementById('nlogDrinkSubWrap').style.display = type === 'water' ? 'none' : '';
     // Default volume
-    const defML = { water:250, tea:250, juice:250, smoothie:350, milk:200, electrolyte:500, soft_drink:375, alcohol:375 };
+    const defML = { water:250, tea:250, juice:250, smoothie:350, milk:200, coconut_water:330, electrolyte:500, soft_drink:375, alcohol:375 };
     document.getElementById('nlogDrinkML').value = defML[type] || 250;
   }
   if (!document.getElementById('nlogTime').value) setNlogTimeNow();
@@ -1446,13 +1448,14 @@ function addNlogEntry() {
     const calPer100 = sub.cal || 0;
     entry.cal = Math.round(calPer100 * ml / 100);
     entry.pro = Math.round((sub.pro||0) * ml / 100);
+    entry.carb = Math.round((sub.carb||0) * ml / 100 * 10) / 10;
     if (type === 'alcohol') {
       entry.alcohol_std = sub.std || 0;
       entry.fluid_ml = Math.round(ml * 0.5); // alcohol is net ~50% hydration
       entry.cal = sub.cal || 0; // alcohol cals are per-serve not per-100ml
       entry.desc = sub.name;
     } else {
-      entry.fluid_ml = type === 'soft_drink' ? Math.round(ml * 0.9) : ml; // soft drinks ~90% hydration
+      entry.fluid_ml = type === 'soft_drink' ? Math.round(ml * 0.9) : ml; // soft drinks ~90% hydration; coconut water & others = full
       entry.desc = (sub.name || type) + ' · ' + ml + 'mL';
     }
     if (sub.caff) entry.caffeine_mg = sub.caff;
