@@ -3571,6 +3571,26 @@ async function syncFromGitHub() {
     const bioAgeOffset = validCount > 0 ? Math.round(((redCount * 3 + amberCount * 0.5 - greenCount * 1.2) / validCount) * 10) / 10 : 0;
     const bioAge = Math.round((HS_AGE + bioAgeOffset) * 10) / 10;
 
+    // ---- BEST-CASE (all categories optimised) — single source of truth for both 6-box & needle movers ----
+    const bestCaseMap = {
+      'BMI': 0, 'Body Fat': 0.5, 'Waist': 0.3, 'Blood Pressure': 0.5, 'Resting HR': 0.3,
+      'Sleep': 1.2, 'Exercise': 3.5, 'Nutrition': 1.5, 'Hydration': 0.3,
+      'RA Activity': -1.0, 'AF Status': -1.0, 'Supplements': 0.3,
+      'Neck (OSA risk)': 0.2, 'Muscle Mass': 1.0, 'Mental Wellbeing': 0.5
+    };
+    const allCatsWithGains = cats.map(c => {
+      const best = bestCaseMap[c.cat] !== undefined ? bestCaseMap[c.cat] : c.impact;
+      const gain = Math.round((best - c.impact) * 10) / 10;
+      return { ...c, bestImpact: best, gain };
+    });
+    const bestTotalImpact = allCatsWithGains.reduce((s, c) => s + c.bestImpact, 0);
+    const totalPotentialGain = Math.round((bestTotalImpact - totalImpact) * 10) / 10;
+    const bestLE = Math.round((HS_BASE_LE + bestTotalImpact) * 10) / 10;
+    const bestHS = Math.round((HS_BASE_HS + bestTotalImpact * 0.85) * 10) / 10;
+    // Best-case bio age: all categories green → offset is negative (younger)
+    const bestBioOffset = cats.length > 0 ? (-1.2 * cats.length) / cats.length : 0; // all green
+    const bestBioAge = Math.round((HS_AGE + bestBioOffset) * 10) / 10;
+
     // ---- PROJECTED VALUES (after adherence) ----
     const {data: pData} = proj;
     const projEnd = pData[pData.length - 1];
@@ -3619,11 +3639,10 @@ async function syncFromGitHub() {
       return { week: wk.week, le: wkLE, hs: wkHS, bioAge: wkBioAge };
     });
 
-    // ---- ADJUSTED (GOALS-MET) VALUES — use trajectory endpoint for consistency ----
-    const trajEnd = trajData.length > 0 ? trajData[trajData.length - 1] : null;
-    const adjLE = trajEnd ? trajEnd.le : projFutureLE;
-    const adjHS = trajEnd ? trajEnd.hs : projFutureHS;
-    const adjBioAge = trajEnd ? trajEnd.bioAge : bioAge;
+    // ---- ADJUSTED (GOALS-MET) VALUES — use best-case totals for consistency with needle movers ----
+    const adjLE = bestLE;
+    const adjHS = bestHS;
+    const adjBioAge = bestBioAge;
 
     // ---- RENDER ----
     document.getElementById('projHSDate').innerHTML = `Based on ${ci.length} check-in${ci.length > 1 ? 's' : ''} · Latest: ${latest.date}`;
@@ -3635,7 +3654,7 @@ async function syncFromGitHub() {
     const baDiff = bioAge - HS_AGE;
     const baColor = baDiff <= -2 ? 'var(--green)' : baDiff <= 2 ? 'var(--amber)' : 'var(--red)';
 
-    // Adjusted deltas — using trajectory endpoint (adjLE/adjHS) for consistency with chart
+    // Adjusted deltas — using best-case totals for consistency with needle movers
     const adjDeltaLE = Math.round((adjLE - HS_BASE_LE) * 10) / 10;
     const adjDeltaHS = Math.round((adjHS - HS_BASE_HS) * 10) / 10;
     const adjYearsLeftLE = Math.round((adjLE - HS_AGE) * 10) / 10;
@@ -3669,7 +3688,7 @@ async function syncFromGitHub() {
         <div class="proj-hs-ldelta" style="color:${baColor}">${baDiff > 0 ? '+' : ''}${baDiff.toFixed(1)}yr ${baDiff > 0 ? 'older' : baDiff < 0 ? 'younger' : ''}</div>
       </div>
 
-      <div class="proj-hs-grid-row-label">With Goal Adherence</div>
+      <div class="proj-hs-grid-row-label">All Goals Met</div>
       <div class="proj-hs-lbox adj">
         <div class="proj-hs-ll">Adj. Lifespan</div>
         <div class="proj-hs-lyrs">${adjYearsLeftLE}<span style="font-size:12px;color:var(--dim)"> yrs</span></div>
@@ -3785,32 +3804,8 @@ async function syncFromGitHub() {
       ).join('');
     }
 
-    // ---- NEEDLE MOVERS: rank categories by potential gain (current impact vs best-case) ----
-    const needleMovers = cats
-      .map(c => {
-        // Estimate best-case impact if this category goes green
-        let bestImpact = 0;
-        // Best-case impacts aligned with recalibrated composite model
-        if (c.cat === 'BMI') bestImpact = 0; // BMI 25 = 0 penalty
-        else if (c.cat === 'Body Fat') bestImpact = 0.5; // <20% = +0.5
-        else if (c.cat === 'Waist') bestImpact = 0.3; // <94 = +0.3
-        else if (c.cat === 'Blood Pressure') bestImpact = 0.5; // <120 optimal
-        else if (c.cat === 'Resting HR') bestImpact = 0.3; // <60 athletic
-        else if (c.cat === 'Sleep') bestImpact = 1.2;
-        else if (c.cat === 'Exercise') bestImpact = 3.5; // 5+d vigorous
-        else if (c.cat === 'Nutrition') bestImpact = 1.5;
-        else if (c.cat === 'Hydration') bestImpact = 0.3;
-        else if (c.cat === 'RA Activity') bestImpact = -1.0; // Well-controlled RA
-        else if (c.cat === 'AF Status') bestImpact = -1.0; // Well-controlled AF
-        else if (c.cat === 'Supplements') bestImpact = 0.3;
-        else if (c.cat === 'Neck (OSA risk)') bestImpact = 0.2;
-        else if (c.cat === 'Muscle Mass') bestImpact = 1.0;
-        else if (c.cat === 'Mental Wellbeing') bestImpact = 0.5;
-        else if (c.cat === 'Medical History') bestImpact = c.impact; // Can't change history
-        else bestImpact = c.impact;
-        const gain = Math.round((bestImpact - c.impact) * 10) / 10;
-        return { ...c, bestImpact, gain };
-      })
+    // ---- NEEDLE MOVERS: rank categories by potential gain (uses same allCatsWithGains as 6-box) ----
+    const needleMovers = allCatsWithGains
       .filter(c => c.gain > 0)
       .sort((a, b) => b.gain - a.gain)
       .slice(0, 6);
@@ -3829,7 +3824,7 @@ async function syncFromGitHub() {
         <div style="text-align:center"><span style="color:var(--accent);font-size:12px">→</span><br><span style="font-size:9px;color:var(--green);font-weight:700">+${c.gain.toFixed(1)}</span></div>
         <div class="proj-hs-nm-goal" style="background:${goalColor}20;color:${goalColor}">${c.bestImpact > 0 ? '+' : ''}${c.bestImpact.toFixed(1)}yr</div>
       </div>`;
-    }).join('') + `<div style="font-size:10px;color:var(--accent);margin-top:6px;font-weight:600">Total potential gain: +${needleMovers.reduce((s,c) => s + c.gain, 0).toFixed(1)} years if all optimised</div>`;
+    }).join('') + `<div style="font-size:10px;color:var(--accent);margin-top:6px;font-weight:600">Total potential gain: +${totalPotentialGain.toFixed(1)} years if all optimised → LE ${bestLE}</div>`;
 
     // Note
     document.getElementById('projHSNote').innerHTML = `RAG: <span style="color:var(--green)">&#9679;</span> optimal <span style="color:var(--amber)">&#9679;</span> suboptimal <span style="color:var(--red)">&#9679;</span> high risk. Impact = estimated years gained/lost vs population baseline (AU male LE ${HS_BASE_LE}yr). Composite body-comp model (BMI primary, BF%/waist addons). RA/AF impacts calibrated for managed conditions. Trajectory assumes ${Math.round((parseFloat(document.getElementById('projAdherence').value)||85))}% adherence over ${document.getElementById('projTimeframe').value} weeks. Based on published meta-analyses (Lancet, JAMA, AHA, ABS 2022-24). Not medical advice.`;
