@@ -2057,6 +2057,7 @@ function collectData() {
     },
     sleep: {
       hours: parseFloat(document.getElementById('sleepHours').value) || null,
+      nap_minutes: parseInt(document.getElementById('napMinutes').value) || null,
       quality: getRadioValue('sleepQuality') ? parseInt(getRadioValue('sleepQuality')) : null,
       mad_worn: getRadioValue('madWorn')
     },
@@ -2354,7 +2355,7 @@ function autoAssessGoals(goals, dateStr) {
   const cal = parseInt(document.getElementById('totalCal').textContent) || 0;
   const carb = parseInt(document.getElementById('totalCarb').textContent) || 0;
   const water = parseFloat(document.getElementById('waterIntake').value) || 0;
-  const sleep = parseFloat(document.getElementById('sleepHours').value) || 0;
+  const sleep = getTotalSleep();
   const vitDEl = document.querySelector('#targetVitD .target-value');
   const vitD = vitDEl ? parseInt(vitDEl.textContent) || 0 : 0;
 
@@ -2665,7 +2666,7 @@ function toggleHistory() {
         ${c.measurements&&c.measurements.skeletal_muscle_kg ? `<div class="data-row"><span>Muscle</span><span>${c.measurements.skeletal_muscle_kg} kg</span></div>` : ''}
         ${c.measurements&&c.measurements.waist_cm ? `<div class="data-row"><span>Waist</span><span>${c.measurements.waist_cm} cm</span></div>` : ''}
         ${c.nutrition&&c.nutrition.totals&&c.nutrition.totals.calories ? `<div class="data-row"><span>Nutrition</span><span>${c.nutrition.totals.calories} kcal | P:${c.nutrition.totals.protein_g||0}g C:${c.nutrition.totals.carbs_g||0}g F:${c.nutrition.totals.fat_g||0}g</span></div>` : (c.nutrition&&c.nutrition.calories ? `<div class="data-row"><span>Nutrition</span><span>${c.nutrition.calories} kcal | P:${c.nutrition.protein_g||'—'}g C:${c.nutrition.carbs_g||'—'}g F:${c.nutrition.fat_g||'—'}g</span></div>` : '')}
-        ${c.sleep.hours ? `<div class="data-row"><span>Sleep</span><span>${c.sleep.hours} hr (Q: ${c.sleep.quality||'—'}/5)</span></div>` : ''}
+        ${c.sleep.hours ? `<div class="data-row"><span>Sleep</span><span>${c.sleep.hours} hr${c.sleep.nap_minutes ? ' + ' + c.sleep.nap_minutes + 'min nap' : ''} (Q: ${c.sleep.quality||'—'}/5)</span></div>` : ''}
         ${c.wellbeing.energy ? `<div class="data-row"><span>Energy</span><span>${c.wellbeing.energy}/10</span></div>` : ''}
         ${c.cardiac.af_symptoms ? `<div class="data-row"><span>AF</span><span>${c.cardiac.af_symptoms}</span></div>` : ''}
         ${c.wellbeing.ra_flare ? `<div class="data-row"><span>RA</span><span>${c.wellbeing.ra_flare}</span></div>` : ''}
@@ -2786,6 +2787,12 @@ function getWaterTarget() {
   };
 }
 
+function getTotalSleep() {
+  const overnight = parseFloat(document.getElementById('sleepHours').value) || 0;
+  const napMin = parseInt(document.getElementById('napMinutes').value) || 0;
+  return overnight + napMin / 60;
+}
+
 function calcCaloriesBurnt() {
   let total = 0;
   activityEntries.forEach(e => { total += e.kcal || 0; });
@@ -2854,7 +2861,8 @@ function updateRAGLights() {
   const panel = document.getElementById('daySummary');
   if (!ragEl || !panel) return;
 
-  const sleep = parseFloat(document.getElementById('sleepHours').value) || 0;
+  const sleep = getTotalSleep();
+  const napMin = parseInt(document.getElementById('napMinutes').value) || 0;
   const pro = parseInt(document.getElementById('totalPro').textContent) || 0;
   const cal = parseInt(document.getElementById('totalCal').textContent) || 0;
   const carb = parseInt(document.getElementById('totalCarb').textContent) || 0;
@@ -2881,7 +2889,7 @@ function updateRAGLights() {
   }
 
   const metrics = [
-    { label:'Sleep',             val:sleep, min:7,    max:9,    cap:12,   unit:'hr',   decimals:1 },
+    { label:'Sleep',             val:sleep, min:7,    max:9,    cap:12,   unit:'hr',   decimals:1, note: napMin > 0 ? `(+${napMin}min nap)` : '' },
     { label:'Protein',           val:pro,   min:160,  max:220,  cap:300,  unit:'g' },
     { label:'Calories Consumed', val:cal,   min:1800, max:2200, cap:3500, unit:'kcal' },
     { label:'Fat',               val:fat,   min:120,  max:160,  cap:250,  unit:'g' },
@@ -2969,13 +2977,14 @@ function updateAllTargets() {
   TARGETS.water.max = wt.max;
   TARGETS.water.cap = wt.cap;
   renderTargetBar('targetWater', 'water', parseFloat(document.getElementById('waterIntake').value) || 0);
-  renderTargetBar('targetSleep', 'sleep', parseFloat(document.getElementById('sleepHours').value) || 0);
+  renderTargetBar('targetSleep', 'sleep', getTotalSleep());
   updateRAGLights();
 }
 
 // Activity targets are updated via renderActivityLog() -> updateAllTargets()
 
 document.getElementById('sleepHours').addEventListener('input', updateAllTargets);
+document.getElementById('napMinutes').addEventListener('input', updateAllTargets);
 setTimeout(updateAllTargets, 100);
 setTimeout(updateSunCalc, 150);
 
@@ -3362,6 +3371,7 @@ function loadTodayData() {
   // Sleep
   if (saved.sleep) {
     setVal('sleepHours', saved.sleep.hours);
+    if (saved.sleep.nap_minutes) setVal('napMinutes', saved.sleep.nap_minutes);
     setRadio('sleepQuality', saved.sleep.quality);
     setRadio('madWorn', saved.sleep.mad_worn);
   }
