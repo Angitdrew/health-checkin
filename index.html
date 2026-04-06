@@ -614,6 +614,7 @@
       <div class="ns-item"><span class="ns-val" id="nsCaff">0</span><span class="ns-lbl">mg caff</span></div>
       <div class="ns-item"><span class="ns-val" id="nsAlc">0</span><span class="ns-lbl">std drinks</span></div>
     </div>
+    <div id="nlogCaffWarn" style="display:none;margin-top:8px;padding:8px 12px;border-radius:8px;font-size:12px;font-weight:600"></div>
     <div class="nlog-fasting" id="nlogFasting"></div>
 
     <input type="hidden" id="waterIntake" value="0">
@@ -1506,9 +1507,23 @@ function renderNlog() {
   document.getElementById('nsFluid').textContent = Math.round(tFluid);
   document.getElementById('nsCaff').textContent = Math.round(tCaff);
   document.getElementById('nsAlc').textContent = tAlc.toFixed(1);
-  // Color caffeine
+  // Color caffeine + warning banner
   const caffEl = document.getElementById('nsCaff');
   caffEl.style.color = tCaff > 400 ? 'var(--red)' : tCaff > 300 ? 'var(--amber)' : '';
+  const caffWarn = document.getElementById('nlogCaffWarn');
+  if (tCaff > 400) {
+    caffWarn.style.display = 'block';
+    caffWarn.style.background = 'rgba(239,68,68,0.12)';
+    caffWarn.style.color = 'var(--red)';
+    caffWarn.innerHTML = `⚠️ ${Math.round(tCaff)}mg caffeine — over 400mg daily limit (FDA guideline)`;
+  } else if (tCaff > 300) {
+    caffWarn.style.display = 'block';
+    caffWarn.style.background = 'rgba(245,158,11,0.12)';
+    caffWarn.style.color = 'var(--amber)';
+    caffWarn.innerHTML = `☕ ${Math.round(tCaff)}mg caffeine — approaching 400mg daily limit`;
+  } else {
+    caffWarn.style.display = 'none';
+  }
 
   // Fasting timer
   const foodEntries = nlogEntries.filter(e => e.type === 'food');
