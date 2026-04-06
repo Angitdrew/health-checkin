@@ -3461,28 +3461,6 @@ function loadTodayData() {
   if (saved.notes) document.getElementById('notes').value = saved.notes;
 }
 
-// ONE-TIME recovery: restore missing activities for 2026-04-06 (goals were checked but training entries lost)
-(function() {
-  try {
-    const checkins = JSON.parse(localStorage.getItem('healthCheckins') || '[]');
-    const idx = checkins.findIndex(c => c.date === '2026-04-06');
-    if (idx < 0) return;
-    const t = checkins[idx].training || [];
-    const has = t.map(e => e.type);
-    const add = [];
-    if (!has.includes('walking'))  add.push({ type:'walking',  duration:10, rpe:5 });
-    if (!has.includes('airbike'))  add.push({ type:'airbike',  duration:10, rpe:5 });
-    if (!has.includes('bands'))    add.push({ type:'bands',    duration:5,  rpe:3 });
-    if (!has.includes('exball'))   add.push({ type:'exball',   duration:5,  rpe:3 });
-    if (!has.includes('skipping')) add.push({ type:'skipping', duration:2,  rpe:5 });
-    if (add.length > 0) {
-      checkins[idx].training = t.concat(add);
-      localStorage.setItem('healthCheckins', JSON.stringify(checkins));
-      console.log('Recovered ' + add.length + ' activities:', add.map(m=>m.type).join(', '));
-    }
-  } catch(e) { console.warn('Recovery error:', e); }
-})();
-
 loadTodayData();
 
 // ===== TODAY'S SUMMARY =====
@@ -3700,6 +3678,28 @@ async function syncFromGitHub() {
     setSyncStatus('Syncing...', 'var(--dim)');
     try { await syncFromGitHub(); } catch {}
   }
+  // ONE-TIME recovery: restore missing activities for 2026-04-06 (runs AFTER GitHub sync)
+  try {
+    const checkins = JSON.parse(localStorage.getItem('healthCheckins') || '[]');
+    const idx = checkins.findIndex(c => c.date === '2026-04-06');
+    if (idx >= 0) {
+      const t = checkins[idx].training || [];
+      const has = t.map(e => e.type);
+      const add = [];
+      if (!has.includes('walking'))  add.push({ type:'walking',  duration:10, rpe:5 });
+      if (!has.includes('airbike'))  add.push({ type:'airbike',  duration:10, rpe:5 });
+      if (!has.includes('bands'))    add.push({ type:'bands',    duration:5,  rpe:3 });
+      if (!has.includes('exball'))   add.push({ type:'exball',   duration:5,  rpe:3 });
+      if (!has.includes('skipping')) add.push({ type:'skipping', duration:2,  rpe:5 });
+      if (add.length > 0) {
+        checkins[idx].training = t.concat(add);
+        localStorage.setItem('healthCheckins', JSON.stringify(checkins));
+        loadTodayData();
+        renderActivityLog();
+        console.log('Recovered ' + add.length + ' activities:', add.map(m=>m.type).join(', '));
+      }
+    }
+  } catch(e) { console.warn('Recovery error:', e); }
 })();
 
 // ===== PROJECTION MODULE (isolated) =====
