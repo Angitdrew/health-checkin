@@ -923,7 +923,7 @@
     <div class="section-title"><span class="icon">&#128200;</span> Goal Adherence Projection</div>
 
     <div class="proj-card">
-      <div class="proj-card-title">Baseline — edit to match your current readings</div>
+      <div class="proj-card-title">Baseline <span style="font-size:10px;color:var(--dim);font-weight:400">(locked — your starting point)</span> <button id="projResetBaselineBtn" onclick="projResetBaseline()" style="float:right;font-size:10px;padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:var(--surface2);color:var(--dim);cursor:pointer">Reset to Current</button></div>
       <div class="proj-controls" id="projBaselineControls">
         <div class="proj-fg"><label>Weight (kg)</label><input type="number" id="projStartWeight" value="112" step="0.1"></div>
         <div class="proj-fg"><label>Waist (cm)</label><input type="number" id="projStartWaist" value="118" step="0.1"></div>
@@ -3901,7 +3901,8 @@ async function syncToGitHub() {
   try {
     const syncData = JSON.stringify({
       checkins: JSON.parse(localStorage.getItem('healthCheckins') || '[]'),
-      goals: JSON.parse(localStorage.getItem('dailyGoals') || '{}')
+      goals: JSON.parse(localStorage.getItem('dailyGoals') || '{}'),
+      projBaseline: JSON.parse(localStorage.getItem('projBaseline') || 'null')
     });
     const content = btoa(unescape(encodeURIComponent(syncData)));
 
@@ -3951,14 +3952,16 @@ async function syncFromGitHub() {
     const decoded = decodeURIComponent(escape(atob(json.content.replace(/\n/g, ''))));
     const incoming = JSON.parse(decoded);
 
-    // Support old format (plain array) and new format (object with checkins + goals)
-    let remoteCheckins, remoteGoals;
+    // Support old format (plain array) and new format (object with checkins + goals + baseline)
+    let remoteCheckins, remoteGoals, remoteBaseline;
     if (Array.isArray(incoming)) {
       remoteCheckins = incoming;
       remoteGoals = {};
+      remoteBaseline = null;
     } else {
       remoteCheckins = incoming.checkins || [];
       remoteGoals = incoming.goals || {};
+      remoteBaseline = incoming.projBaseline || null;
     }
 
     // Merge checkins: remote wins for same date
@@ -3973,6 +3976,11 @@ async function syncFromGitHub() {
     const localGoals = JSON.parse(localStorage.getItem('dailyGoals') || '{}');
     Object.assign(localGoals, remoteGoals);
     localStorage.setItem('dailyGoals', JSON.stringify(localGoals));
+
+    // Restore locked baseline: remote wins if local is missing
+    if (remoteBaseline && !localStorage.getItem('projBaseline')) {
+      localStorage.setItem('projBaseline', JSON.stringify(remoteBaseline));
+    }
 
     try { renderDashboards(); } catch(err) { console.warn('renderDashboards after pull:', err); }
     try { loadTodayData(); } catch(err) { console.warn('loadTodayData after pull:', err); }
@@ -4660,22 +4668,76 @@ async function syncFromGitHub() {
     });
   });
 
-  // Input changes
+  // Input changes — also persist baseline edits to localStorage
   document.querySelectorAll('#projBaselineControls input, #projBaselineControls select').forEach(el=>{
-    el.addEventListener('input',projUpdate);
-    el.addEventListener('change',projUpdate);
+    el.addEventListener('input', () => { projSaveBaseline(); projUpdate(); });
+    el.addEventListener('change', () => { projSaveBaseline(); projUpdate(); });
   });
 
-  // Auto-populate baselines from today's data
+  // LOCKED BASELINE SYSTEM: baseline is set once and persisted to localStorage.
+  // Only updates when user explicitly clicks "Reset to Current".
+  const PROJ_BASELINE_KEY = 'projBaseline';
+
+  function projGetCurrentMetrics() {
+    // Get latest values from check-ins for reset purposes
+    const ci = JSON.parse(localStorage.getItem('healthCheckins') || '[]');
+    if (!ci.length) return null;
+    const sorted = ci.sort((a, b) => b.date.localeCompare(a.date));
+    const last7 = sorted.slice(0, 7);
+    function avg7(fn) { const v = last7.map(fn).filter(x => x != null && x > 0); return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length * 10) / 10 : null; }
+    return {
+      weight: avg7(c => c.vitals?.weight),
+      waist: avg7(c => c.measurements?.waist_cm),
+      neck: avg7(c => c.measurements?.neck_cm),
+      bf: sorted.find(c => c.measurements?.body_fat_pct > 0)?.measurements?.body_fat_pct || null,
+      muscle: sorted.find(c => c.measurements?.skeletal_muscle_kg > 0)?.measurements?.skeletal_muscle_kg || null
+    };
+  }
+
+  function projApplyBaseline(bl) {
+    if (bl.weight) document.getElementById('projStartWeight').value = bl.weight;
+    if (bl.waist) document.getElementById('projStartWaist').value = bl.waist;
+    if (bl.bf) document.getElementById('projStartBF').value = bl.bf;
+    if (bl.muscle) document.getElementById('projStartMuscle').value = bl.muscle;
+    if (bl.neck) document.getElementById('projStartNeck').value = bl.neck;
+  }
+
+  function projSaveBaseline() {
+    const bl = {
+      weight: parseFloat(document.getElementById('projStartWeight').value) || null,
+      waist: parseFloat(document.getElementById('projStartWaist').value) || null,
+      bf: parseFloat(document.getElementById('projStartBF').value) || null,
+      muscle: parseFloat(document.getElementById('projStartMuscle').value) || null,
+      neck: parseFloat(document.getElementById('projStartNeck').value) || null,
+      lockedDate: new Date().toISOString().slice(0, 10)
+    };
+    localStorage.setItem(PROJ_BASELINE_KEY, JSON.stringify(bl));
+    return bl;
+  }
+
+  function projResetBaseline() {
+    if (!confirm('Reset baseline to your current 7-day averages? This replaces your locked starting point.')) return;
+    const cur = projGetCurrentMetrics();
+    if (cur) projApplyBaseline(cur);
+    projSaveBaseline();
+    projUpdate();
+  }
+
   function projAutoBaseline() {
-    const ci=JSON.parse(localStorage.getItem('healthCheckins')||'[]');
-    if(!ci.length)return;
-    const latest=ci.sort((a,b)=>b.date.localeCompare(a.date))[0];
-    if(latest.vitals?.weight) document.getElementById('projStartWeight').value=latest.vitals.weight;
-    if(latest.measurements?.waist_cm) document.getElementById('projStartWaist').value=latest.measurements.waist_cm;
-    if(latest.measurements?.body_fat_pct) document.getElementById('projStartBF').value=latest.measurements.body_fat_pct;
-    if(latest.measurements?.skeletal_muscle_kg) document.getElementById('projStartMuscle').value=latest.measurements.skeletal_muscle_kg;
-    if(latest.measurements?.neck_cm) document.getElementById('projStartNeck').value=latest.measurements.neck_cm;
+    // Check if a locked baseline already exists in localStorage
+    const saved = localStorage.getItem(PROJ_BASELINE_KEY);
+    if (saved) {
+      // Locked baseline exists — apply it and do NOT overwrite
+      const bl = JSON.parse(saved);
+      projApplyBaseline(bl);
+      return;
+    }
+    // No baseline saved yet — seed from check-in data (first-time only), then lock it
+    const cur = projGetCurrentMetrics();
+    if (cur) {
+      projApplyBaseline(cur);
+      projSaveBaseline(); // Lock it
+    }
   }
 
   projAutoBaseline();
