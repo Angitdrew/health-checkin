@@ -108,6 +108,8 @@
   /* Fluid balance chart */
   /* Nutrition log */
   .nlog-entry-form{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px}
+  .nlog-entry-form.editing{border-color:#3b82f6}
+  .nlog-entry-form.editing select,.nlog-entry-form.editing input[type="number"],.nlog-entry-form.editing input[type="time"]{color:#3b82f6}
   .nlog-entry-form .nlog-row{display:flex;gap:8px;align-items:end;flex-wrap:wrap}
   .nlog-entry-form .nlog-row .field{margin-bottom:0}
   .nlog-ctx{margin-top:8px;display:none}
@@ -1440,6 +1442,7 @@ function addNlogEntry() {
   nlogEntries.push(entry);
   // Sort by time
   nlogEntries.sort((a,b) => a.time.localeCompare(b.time));
+  document.getElementById('nlogEntryForm').classList.remove('editing');
   renderNlog();
   resetNlogForm();
 }
@@ -1502,6 +1505,7 @@ function editNlogEntry(id) {
       }
     }
     // Scroll form into view
+    document.getElementById('nlogEntryForm').classList.add('editing');
     document.getElementById('nlogEntryForm').scrollIntoView({ behavior:'smooth', block:'nearest' });
   }, 50);
 }
@@ -1655,6 +1659,7 @@ function addActivityEntry() {
   document.getElementById('actDuration').value = '';
   if (rpeEl) rpeEl.checked = false;
   document.getElementById('actBurnPreview').style.display = 'none';
+  document.getElementById('activityForm').classList.remove('editing');
   renderActivityLog();
 }
 
@@ -1677,6 +1682,22 @@ function removeActivityEntry(id) {
   renderActivityLog();
 }
 
+function editActivityEntry(id) {
+  const entry = activityEntries.find(e => e.id === id);
+  if (!entry) return;
+  activityEntries = activityEntries.filter(e => e.id !== id);
+  renderActivityLog();
+  // Repopulate form
+  document.getElementById('actType').value = entry.type;
+  document.getElementById('actDuration').value = entry.duration || '';
+  // Set RPE radio
+  const rpeRadios = document.querySelectorAll('input[name="actRpe"]');
+  rpeRadios.forEach(r => { r.checked = parseInt(r.value) === entry.rpe; });
+  updateActivityPreview();
+  document.getElementById('activityForm').classList.add('editing');
+  document.getElementById('activityForm').scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
 function renderActivityLog() {
   const listEl = document.getElementById('activityList');
   const summaryEl = document.getElementById('activitySummary');
@@ -1689,7 +1710,7 @@ function renderActivityLog() {
   let html = '';
   activityEntries.forEach(e => {
     const kcalStr = e.type === 'rest' ? '\u2014' : '<span class="nlog-hi">' + e.kcal + '</span> kcal';
-    html += '<div class="nlog-item"><span class="nlog-icon">' + e.icon + '</span><span class="nlog-desc">' + e.desc + '</span><span class="nlog-stats"><span class="nlog-hi">' + e.kcal + '</span> <span style="color:var(--dim)">kcal</span></span><button class="nlog-del" onclick="removeActivityEntry(' + e.id + ')" title="Remove">&#10005;</button></div>';
+    html += '<div class="nlog-item"><span class="nlog-icon">' + e.icon + '</span><span class="nlog-desc">' + e.desc + '</span><span class="nlog-stats"><span class="nlog-hi">' + e.kcal + '</span> <span style="color:var(--dim)">kcal</span></span><button class="nlog-edit" onclick="editActivityEntry(' + e.id + ')" title="Edit">&#9998;</button><button class="nlog-del" onclick="removeActivityEntry(' + e.id + ')" title="Remove">&#10005;</button></div>';
   });
   listEl.innerHTML = html;
   let tMin = 0, tBurn = 0;
