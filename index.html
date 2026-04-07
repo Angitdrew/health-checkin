@@ -853,19 +853,30 @@
     <div class="section-title"><span class="icon">&#128200;</span> Goal Adherence Projection</div>
 
     <div class="proj-card">
-      <div class="proj-card-title">Baseline <span style="font-size:10px;color:var(--dim);font-weight:400">(locked — your starting point)</span> <button id="projResetBaselineBtn" onclick="projResetBaseline()" style="float:right;font-size:10px;padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:var(--surface2);color:var(--dim);cursor:pointer">Reset to Current</button></div>
+      <div class="proj-card-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span>Baseline</span>
+        <span id="projBaselineLabel" style="font-size:10px;color:var(--dim);font-weight:400">(locked — your starting point)</span>
+        <div style="margin-left:auto;display:inline-flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;font-size:10px">
+          <button id="projModeBaseline" onclick="projSetMode('baseline')" style="padding:3px 10px;border:none;cursor:pointer;font-size:10px;font-weight:600;background:var(--accent);color:#fff">From Baseline</button>
+          <button id="projModeNow" onclick="projSetMode('now')" style="padding:3px 10px;border:none;cursor:pointer;font-size:10px;font-weight:400;background:var(--surface2);color:var(--dim)">From Now</button>
+        </div>
+      </div>
       <div class="proj-controls" id="projBaselineControls">
         <div class="proj-fg"><label>Weight (kg)</label><input type="number" id="projStartWeight" value="112" step="0.1"></div>
         <div class="proj-fg"><label>Waist (cm)</label><input type="number" id="projStartWaist" value="118" step="0.1"></div>
         <div class="proj-fg"><label>Body Fat %</label><input type="number" id="projStartBF" value="32" step="0.1"></div>
         <div class="proj-fg"><label>Muscle (kg)</label><input type="number" id="projStartMuscle" value="38" step="0.1"></div>
         <div class="proj-fg"><label>Neck (cm)</label><input type="number" id="projStartNeck" value="44" step="0.1"></div>
+        <div class="proj-fg"><label>Target (kg)</label><input type="number" id="projTargetWeight" value="85" step="1" min="60" max="120"></div>
+        <div class="proj-fg"><label>Daily Cal</label><input type="number" id="projDailyCal" value="1800" step="100" min="1200" max="3000"></div>
         <div class="proj-fg"><label>Adherence %</label><input type="number" id="projAdherence" value="85" min="50" max="100" step="5"></div>
         <div class="proj-fg"><label>Timeframe</label>
           <select id="projTimeframe">
             <option value="13">3 months</option>
             <option value="26" selected>6 months</option>
             <option value="52">12 months</option>
+            <option value="104">2 years</option>
+            <option value="156">3 years</option>
           </select>
         </div>
       </div>
@@ -2825,20 +2836,21 @@ function calcCaloriesBurnt() {
   return total;
 }
 
-// Dynamic calorie target: base rest-day range + portion of exercise burn
-// Keeps daily deficit consistent (~750-1000 kcal) regardless of training load
-// Adds back 50% of exercise calories to fuel recovery without erasing deficit
+// Dynamic calorie target: reads from projection Daily Cal input (single source of truth)
+// Rest-day range is centred on the target, then adds back 50% of exercise calories
 function getCalorieTarget() {
-  const BASE_MIN = 1400;   // rest-day floor (hard deficit)
-  const BASE_MAX = 1700;   // rest-day ceiling
-  const HARD_FLOOR = 1200; // absolute minimum regardless
+  const projCal = parseFloat(document.getElementById('projDailyCal')?.value) || 1800;
+  const BASE_MIN = projCal - 200;  // range: target ± 200
+  const BASE_MAX = projCal + 200;
+  const HARD_FLOOR = 1200;
   const burnt = calcCaloriesBurnt();
   const boost = Math.round(burnt * 0.5); // eat back half of exercise
   return {
     min: Math.max(HARD_FLOOR, BASE_MIN + boost),
     max: BASE_MAX + boost,
     cap: 3500,
-    burnt: burnt
+    burnt: burnt,
+    base: projCal
   };
 }
 
@@ -3114,6 +3126,19 @@ function updateCoachNotes() {
 
   if (hr >= 20 && sleep === 0) {
     notes.push({ icon:'🌙', text:'Getting late — aim for lights out by 10pm to hit 7+ hours. Mag glycinate before bed will help sleep quality.' });
+  }
+
+  // --- WEIGHT TARGET PROGRESS ---
+  const todayWt = parseFloat(document.getElementById('weight')?.value) || 0;
+  const targetWt = parseFloat(document.getElementById('projTargetWeight')?.value) || 0;
+  if (todayWt > 0 && targetWt > 0) {
+    const toGo = Math.round((todayWt - targetWt) * 10) / 10;
+    if (toGo > 0) {
+      const projCal = calTarget.base || 1800;
+      notes.push({ icon:'⚖️', text: todayWt + 'kg today — ' + toGo + 'kg to target ' + targetWt + 'kg. Daily target: ' + projCal + ' kcal' + (burnt > 0 ? ' (+' + Math.round(burnt * 0.5) + ' training allowance)' : '') + '.' });
+    } else {
+      notes.push({ icon:'🎯', text: 'You\'re at or below your target weight of ' + targetWt + 'kg! Current: ' + todayWt + 'kg. Focus shifts to maintaining and building lean mass.' });
+    }
   }
 
   // --- SHOW/HIDE ---
@@ -4006,12 +4031,14 @@ async function syncFromGitHub() {
     let w=sw, fm=w*(sbf/100), lm=w-fm, mu=sm, wa=swa, nk=sn;
     const data=[{week:0,weight:w,fatMass:fm,leanMass:lm,muscle:mu,waist:wa,neck:nk,bmi:Math.round(w/(PROJ_HEIGHT_M*PROJ_HEIGHT_M)*10)/10,bf:sbf}];
     for(let i=1;i<=weeks;i++){
-      const bmr=projBMR(w,hCm,58), tdee=bmr+bmr*0.25+deBurn;
-      const calIn=2000+(1-adh)*300, deficit=(tdee-calIn)*7;
+      const bmr=projBMR(w,hCm,58), adapt=Math.max(0.85, 1-((sw-w)/sw)*0.3), tdee=(bmr*adapt)+bmr*0.25+deBurn; // Metabolic adaptation as weight drops
+      const baseCal=parseFloat(document.getElementById('projDailyCal')?.value)||1800;
+      const calIn=baseCal+(1-adh)*300, deficit=(tdee-calIn)*7;
       let wl=0; if(i<=2)wl=1; else if(i===3)wl=0.5;
       const ewc=deficit/7700+wl;
-      const mgr=(w>100?0.08:w>90?0.06:0.04)*adh;
-      fm=Math.max(fm-ewc*0.85,w*0.05); lm=lm-ewc*0.05+mgr; mu+=mgr*0.7; w=fm+lm;
+      const mgrBase=(w>100?0.08:w>90?0.06:0.04)*adh;
+      const mgr=mgrBase*Math.max(0.1, 1-i/104); // Diminishing returns: muscle gain tapers ~50% by yr1, ~90% by yr2
+      fm=Math.max(fm-ewc*0.85,w*0.15); lm=lm-ewc*0.05+mgr; mu+=mgr*0.7; w=fm+lm; // BF floor 15% (healthy min for 58yr male)
       const flfs=(sw*sbf/100)-fm; wa=swa-flfs/1.3; nk=sn-flfs/8;
       data.push({week:i,weight:Math.round(w*10)/10,fatMass:Math.round(fm*10)/10,leanMass:Math.round(lm*10)/10,muscle:Math.round(mu*10)/10,waist:Math.round(wa*10)/10,neck:Math.round(nk*10)/10,bmi:Math.round(w/(PROJ_HEIGHT_M*PROJ_HEIGHT_M)*10)/10,bf:Math.round(fm/w*1000)/10});
     }
@@ -4056,8 +4083,8 @@ async function syncFromGitHub() {
     for(let i=0;i<=5;i++){const y=p.top+(i/5)*cH;cx.beginPath();cx.moveTo(p.left,y);cx.lineTo(p.left+cW,y);cx.stroke()}
 
     cx.fillStyle='#94a3b8';cx.font='10px -apple-system,sans-serif';cx.textAlign='center';
-    const step=data.length<=13?1:data.length<=26?2:4;
-    for(let i=0;i<data.length;i+=step)cx.fillText('W'+data[i].week,xP(data[i].week),p.top+cH+18);
+    const step=data.length<=13?1:data.length<=26?2:data.length<=52?4:data.length<=104?8:13;
+    for(let i=0;i<data.length;i+=step){const wk=data[i].week;const lbl=wk>=52?Math.round(wk/4.33)+'m':'W'+wk;cx.fillText(lbl,xP(wk),p.top+cH+18);}
 
     cx.textAlign='right';cx.fillStyle=pri[0]?.color||'#94a3b8';
     for(let i=0;i<=5;i++){const v=pR.min+(1-i/5)*(pR.max-pR.min);cx.fillText(Math.round(v*10)/10,p.left-5,p.top+(i/5)*cH+4)}
@@ -4075,6 +4102,8 @@ async function syncFromGitHub() {
 
     // BMI 30 line
     if(projCurrentChart==='weight'){const b30w=30*PROJ_HEIGHT_M*PROJ_HEIGHT_M;if(b30w>=pR.min&&b30w<=pR.max){const y30=yP(b30w,pR);cx.strokeStyle='rgba(245,158,11,0.4)';cx.setLineDash([4,4]);cx.lineWidth=1;cx.beginPath();cx.moveTo(p.left,y30);cx.lineTo(p.left+cW,y30);cx.stroke();cx.setLineDash([]);cx.fillStyle='#f59e0b';cx.font='9px -apple-system,sans-serif';cx.textAlign='left';cx.fillText('BMI 30 ('+Math.round(b30w)+'kg)',p.left+4,y30-4)}}
+    // Target weight line
+    if(projCurrentChart==='weight'){const tw2=parseFloat(document.getElementById('projTargetWeight')?.value)||85;if(tw2>=pR.min&&tw2<=pR.max){const yt=yP(tw2,pR);cx.strokeStyle='rgba(34,197,94,0.5)';cx.setLineDash([4,4]);cx.lineWidth=1.5;cx.beginPath();cx.moveTo(p.left,yt);cx.lineTo(p.left+cW,yt);cx.stroke();cx.setLineDash([]);cx.fillStyle='#22c55e';cx.font='bold 9px -apple-system,sans-serif';cx.textAlign='left';cx.fillText('Target '+tw2+'kg',p.left+4,yt-4)}}
 
     // Legend
     const le=document.getElementById('projChartLegend');
@@ -4333,7 +4362,32 @@ async function syncFromGitHub() {
     const mwRange = mwScore != null ? 0.3 : 0;
     cats.push({ cat: 'Mental Wellbeing', val: mwScore != null ? (mwScore >= 3 ? 'Good' : mwScore >= 2 ? 'Fair' : 'Low') : '\u2014', rag: mwR, impact: mwImpact, range: mwRange, pct: mwScore != null ? mwScore / 4 * 100 : 0, tip: `Energy + stress composite. Median: good +0.4yr, chronic low \u22120.8yr` });
 
-    // 16. Medical History (static modifiers — always applied)
+    // 16. Waist-to-Height Ratio (WHtR) — outperforms BMI for mortality (2023 meta, 20 studies)
+    // Median: HR 1.23 all-cause mortality per category. Threshold: <0.5 = healthy
+    const whtr = Math.round(waist / (PROJ_HEIGHT_M * 100) * 1000) / 1000;
+    const whtrR = whtr < 0.5 ? { color: 'var(--green)', label: 'G', score: 1 } : whtr < 0.6 ? { color: 'var(--amber)', label: 'A', score: 0.5 } : { color: 'var(--red)', label: 'R', score: 0 };
+    const whtrImpact = whtr >= 0.6 ? -((whtr - 0.5) * 6.0) : whtr >= 0.5 ? -((whtr - 0.5) * 3.0) : 0.3;  // ~-0.6yr per 0.1 above 0.5
+    const whtrRange = whtr >= 0.5 ? Math.min((whtr - 0.5) * 1.5, 0.5) : 0.15;
+    cats.push({ cat: 'Waist:Height', val: whtr.toFixed(3), rag: whtrR, impact: whtrImpact, range: whtrRange, pct: Math.max(0, Math.min(100, (0.7 - whtr) / 0.3 * 100)), tip: `<0.5 healthy, <0.6 elevated, \u22650.6 high risk. HR 1.23 all-cause (2023 meta). Outperforms BMI alone.` });
+
+    // 17. ABSI (A Body Shape Index) — orthogonal to BMI, captures central obesity independently
+    // Formula: WC(m) / (BMI^(2/3) × Height(m)^(1/2)). Median: HR 1.55 per SD (Nature 2020)
+    const absi = (waist / 100) / (Math.pow(bmi, 2/3) * Math.pow(PROJ_HEIGHT_M, 0.5));
+    const absiR = absi < 0.078 ? { color: 'var(--green)', label: 'G', score: 1 } : absi < 0.085 ? { color: 'var(--amber)', label: 'A', score: 0.5 } : { color: 'var(--red)', label: 'R', score: 0 };
+    const absiImpact = absi >= 0.085 ? -((absi - 0.078) * 80) : absi >= 0.078 ? -((absi - 0.078) * 40) : 0.2;  // scaled so high ABSI ~ -0.5 to -1.0yr
+    const absiRange = 0.3;  // moderate uncertainty — complex index
+    cats.push({ cat: 'ABSI', val: absi.toFixed(4), rag: absiR, impact: Math.max(absiImpact, -1.5), range: absiRange, pct: Math.max(0, Math.min(100, (0.1 - absi) / 0.03 * 100)), tip: `A Body Shape Index: central obesity independent of BMI. <0.078 low risk. HR 1.55/SD (Nature 2020, 38 studies).` });
+
+    // 18. FFMI (Fat-Free Mass Index) — protective effect of lean mass
+    // Formula: lean mass / height². HR 0.70 for high vs low (protective). Threshold: >19 optimal for men 55-65
+    const leanMass = wt * (1 - (useBF || sbf || 32) / 100);
+    const ffmi = Math.round(leanMass / (PROJ_HEIGHT_M * PROJ_HEIGHT_M) * 10) / 10;
+    const ffmiR = ffmi >= 19 ? { color: 'var(--green)', label: 'G', score: 1 } : ffmi >= 17 ? { color: 'var(--amber)', label: 'A', score: 0.5 } : { color: 'var(--red)', label: 'R', score: 0 };
+    const ffmiImpact = ffmi >= 19 ? 0.5 : ffmi >= 17 ? 0 : -0.8;  // Protective at high, penalty at sarcopenic levels
+    const ffmiRange = 0.25;
+    cats.push({ cat: 'FFMI', val: ffmi.toFixed(1), rag: ffmiR, impact: ffmiImpact, range: ffmiRange, pct: Math.max(0, Math.min(100, (ffmi - 14) / 10 * 100)), tip: `Fat-Free Mass Index: lean mass/height\u00B2. \u226519 protective (HR 0.70). <17 sarcopenia risk. Captures muscle independently of fat.` });
+
+    // 19. Medical History (static modifiers — always applied)
     // Family: mother alive 95 \u2192 median +2.0yr one parent 90+ (parental lifespan meta, 2021)
     // Father 85 (lung ca, smoker) — smoking-attributable, not genetic cardiac risk
     const familyBonus = 2.0; // Median for one parent 90+ (lit: +3-5yr, discounted as father <90)
@@ -4372,7 +4426,8 @@ async function syncFromGitHub() {
       'BMI': 0, 'Body Fat': 0.3, 'Waist': 0.2, 'Blood Pressure': 0.3, 'Resting HR': 0.2,
       'Sleep': 0.8, 'Exercise': 3.0, 'Nutrition': 1.0, 'Hydration': 0.15,
       'RA Activity': -1.5, 'AF Status': -1.25, 'Supplements': 0.2,
-      'Neck (OSA risk)': 0.15, 'Muscle Mass': 0.7, 'Mental Wellbeing': 0.4
+      'Neck (OSA risk)': 0.15, 'Muscle Mass': 0.7, 'Mental Wellbeing': 0.4,
+      'Waist:Height': 0.3, 'ABSI': 0.2, 'FFMI': 0.5
     };
     const allCatsWithGains = cats.map(c => {
       const best = bestCaseMap[c.cat] !== undefined ? bestCaseMap[c.cat] : c.impact;
@@ -4563,8 +4618,8 @@ async function syncFromGitHub() {
 
       // X labels
       cx.fillStyle = '#94a3b8'; cx.font = '10px -apple-system,sans-serif'; cx.textAlign = 'center';
-      const step = tw <= 13 ? 1 : tw <= 26 ? 2 : 4;
-      for (let i = 0; i <= tw; i += step) cx.fillText('W' + trajData[i].week, xP(trajData[i].week), p.top + cH + 16);
+      const step = tw <= 13 ? 1 : tw <= 26 ? 2 : tw <= 52 ? 4 : tw <= 104 ? 8 : 13;
+      for (let i = 0; i <= tw; i += step) { const wk = trajData[i].week; const lbl = wk >= 52 ? Math.round(wk / 4.33) + 'm' : 'W' + wk; cx.fillText(lbl, xP(wk), p.top + cH + 16); }
 
       // Y labels left (LE/HS)
       cx.textAlign = 'right'; cx.fillStyle = '#3b82f6';
@@ -4661,11 +4716,12 @@ async function syncFromGitHub() {
   });
 
   // LOCKED BASELINE SYSTEM: baseline is set once and persisted to localStorage.
-  // Only updates when user explicitly clicks "Reset to Current".
+  // Toggle allows viewing projections "From Baseline" or "From Now" without losing the locked baseline.
   const PROJ_BASELINE_KEY = 'projBaseline';
+  let projMode = 'baseline'; // 'baseline' or 'now'
 
   function projGetCurrentMetrics() {
-    // Get latest values from check-ins for reset purposes
+    // Get latest values from check-ins (7-day averages)
     const ci = JSON.parse(localStorage.getItem('healthCheckins') || '[]');
     if (!ci.length) return null;
     const sorted = ci.sort((a, b) => b.date.localeCompare(a.date));
@@ -4689,6 +4745,7 @@ async function syncFromGitHub() {
   }
 
   function projSaveBaseline() {
+    // Only save to localStorage when in baseline mode (protects locked baseline from "now" values)
     const bl = {
       weight: parseFloat(document.getElementById('projStartWeight').value) || null,
       waist: parseFloat(document.getElementById('projStartWaist').value) || null,
@@ -4697,15 +4754,56 @@ async function syncFromGitHub() {
       neck: parseFloat(document.getElementById('projStartNeck').value) || null,
       lockedDate: new Date().toISOString().slice(0, 10)
     };
-    localStorage.setItem(PROJ_BASELINE_KEY, JSON.stringify(bl));
+    if (projMode === 'baseline') {
+      localStorage.setItem(PROJ_BASELINE_KEY, JSON.stringify(bl));
+    }
     return bl;
   }
 
-  function projResetBaseline() {
-    if (!confirm('Reset baseline to your current 7-day averages? This replaces your locked starting point.')) return;
-    const cur = projGetCurrentMetrics();
-    if (cur) projApplyBaseline(cur);
-    projSaveBaseline();
+  window.projSetMode = projSetMode;
+  function projSetMode(mode) {
+    projMode = mode;
+    const btnBL = document.getElementById('projModeBaseline');
+    const btnNow = document.getElementById('projModeNow');
+    const label = document.getElementById('projBaselineLabel');
+    const controls = document.getElementById('projBaselineControls');
+
+    if (mode === 'now') {
+      // Switch to current metrics — locked baseline is NOT touched
+      btnNow.style.background = 'var(--accent)';
+      btnNow.style.color = '#fff';
+      btnNow.style.fontWeight = '600';
+      btnBL.style.background = 'var(--surface2)';
+      btnBL.style.color = 'var(--dim)';
+      btnBL.style.fontWeight = '400';
+      const today = new Date().toISOString().slice(0, 10);
+      label.textContent = `(from current 7-day averages \u2014 ${today})`;
+      // Disable manual edits in "now" mode — values come from check-ins
+      controls.querySelectorAll('input[type=number]').forEach(el => {
+        if (!['projAdherence','projTargetWeight','projDailyCal'].includes(el.id)) { el.readOnly = true; el.style.opacity = '0.6'; }
+      });
+      // Apply current metrics to form
+      const cur = projGetCurrentMetrics();
+      if (cur) projApplyBaseline(cur);
+    } else {
+      // Switch back to locked baseline
+      btnBL.style.background = 'var(--accent)';
+      btnBL.style.color = '#fff';
+      btnBL.style.fontWeight = '600';
+      btnNow.style.background = 'var(--surface2)';
+      btnNow.style.color = 'var(--dim)';
+      btnNow.style.fontWeight = '400';
+      const saved2 = localStorage.getItem(PROJ_BASELINE_KEY);
+      const blDate = saved2 ? (JSON.parse(saved2).lockedDate || '') : '';
+      label.textContent = `(locked \u2014 ${blDate || 'your starting point'})`;
+      // Re-enable manual edits
+      controls.querySelectorAll('input[type=number]').forEach(el => {
+        if (!['projAdherence'].includes(el.id)) { el.readOnly = false; el.style.opacity = '1'; }
+      });
+      // Restore locked baseline from localStorage
+      const saved = localStorage.getItem(PROJ_BASELINE_KEY);
+      if (saved) projApplyBaseline(JSON.parse(saved));
+    }
     projUpdate();
   }
 
@@ -4713,7 +4811,6 @@ async function syncFromGitHub() {
     // Check if a locked baseline already exists in localStorage
     const saved = localStorage.getItem(PROJ_BASELINE_KEY);
     if (saved) {
-      // Locked baseline exists — apply it and do NOT overwrite
       const bl = JSON.parse(saved);
       projApplyBaseline(bl);
       return;
@@ -4722,11 +4819,17 @@ async function syncFromGitHub() {
     const cur = projGetCurrentMetrics();
     if (cur) {
       projApplyBaseline(cur);
-      projSaveBaseline(); // Lock it
+      projSaveBaseline();
     }
   }
 
   projAutoBaseline();
+  // Show baseline date in label on load
+  const initBL = localStorage.getItem(PROJ_BASELINE_KEY);
+  if (initBL) {
+    const blDate = JSON.parse(initBL).lockedDate;
+    if (blDate) document.getElementById('projBaselineLabel').textContent = `(locked \u2014 ${blDate})`;
+  }
 
   // Defer initial render — section starts collapsed so canvas has 0 width
   // Re-render when section is expanded via click on section-title
