@@ -111,6 +111,8 @@
   /* Fluid balance chart */
   /* Nutrition log */
   .nlog-entry-form{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px}
+  .nlog-entry-form select,.nlog-entry-form input[type="number"],.nlog-entry-form input[type="time"]{border:1px solid rgba(59,130,246,0.4);transition:border-color 0.15s}
+  .nlog-entry-form select:focus,.nlog-entry-form input[type="number"]:focus,.nlog-entry-form input[type="time"]:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 2px rgba(59,130,246,0.15)}
   .nlog-entry-form.editing{border-color:#3b82f6}
   .nlog-entry-form.editing select,.nlog-entry-form.editing input[type="number"],.nlog-entry-form.editing input[type="time"]{color:#3b82f6}
   .nlog-entry-form .nlog-row{display:flex;gap:8px;align-items:end;flex-wrap:wrap}
@@ -458,73 +460,26 @@
   <div class="section has-chart" id="measurementsSection">
     <div class="section-title"><span class="icon">&#128207;</span> Body Measurements</div>
     <div class="section-wrap">
-      <div class="section-inputs">
-        <div class="row">
-          <div class="field">
-            <div class="label">Weight <span class="unit">kg</span></div>
-            <input type="number" id="weight" step="0.1" placeholder="e.g. 115.0" oninput="updateBMI()">
-          </div>
-          <div class="field">
-            <div class="label">Waist <span class="unit">cm</span></div>
-            <input type="number" id="waist" step="0.5" placeholder="at navel">
-          </div>
-        </div>
-        <div class="row" style="margin-top:6px">
-          <div class="field">
-            <div class="label">Hip <span class="unit">cm</span></div>
-            <input type="number" id="hip" step="0.5" placeholder="widest">
-          </div>
-          <div class="field">
-            <div class="label">Neck <span class="unit">cm</span></div>
-            <input type="number" id="neck" step="0.5" placeholder="thickest" oninput="updateNeckRisk()">
-            <div id="neckRisk" style="font-size:10px;margin-top:3px;display:none"></div>
-          </div>
-        </div>
-        <div class="row" style="margin-top:6px">
-          <div class="field">
-            <div class="label">Fat Mass <span class="unit">kg</span></div>
-            <input type="number" id="fatMass" step="0.1" placeholder="watch/scale">
-          </div>
-          <div class="field">
-            <div class="label">Body Fat %</div>
-            <input type="number" id="bodyFat" step="0.1" placeholder="e.g. 28.5">
-          </div>
-        </div>
-        <div class="row" style="margin-top:6px">
-          <div class="field">
-            <div class="label">Muscle <span class="unit">kg</span></div>
-            <input type="number" id="skeletalMuscle" step="0.1" placeholder="watch/scale">
-          </div>
-          <div class="field">
-            <div class="label">Body Water %</div>
-            <input type="number" id="bodyWater" step="0.1" placeholder="e.g. 52.0">
-          </div>
-        </div>
-        <div class="row" style="margin-top:6px">
-          <div class="field" style="flex:0 0 60px;text-align:center">
-            <div class="label">BMI</div>
-            <div id="bmiDisplay" style="padding:9px 0;font-size:14px;font-weight:600;color:var(--dim)">—</div>
-          </div>
-        </div>
-        <!-- Hidden fields to preserve data compatibility -->
+      <div class="section-inputs" style="flex:0 0 140px;min-width:0;display:flex;flex-direction:column;gap:4px">
+        <div class="field"><div class="label">Weight <span class="unit">kg</span></div><input type="number" id="weight" step="0.1" placeholder="115.0" oninput="updateBMI()" style="width:100%"></div>
+        <div class="field"><div class="label">Waist <span class="unit">cm</span></div><input type="number" id="waist" step="0.5" placeholder="navel" style="width:100%"></div>
+        <div class="field"><div class="label">Hip <span class="unit">cm</span></div><input type="number" id="hip" step="0.5" placeholder="widest" style="width:100%"></div>
+        <div class="field"><div class="label">Neck <span class="unit">cm</span></div><input type="number" id="neck" step="0.5" placeholder="thickest" oninput="updateNeckRisk()" style="width:100%"><div id="neckRisk" style="font-size:10px;margin-top:2px;display:none"></div></div>
+        <div class="field"><div class="label">Fat Mass <span class="unit">kg</span></div><input type="number" id="fatMass" step="0.1" placeholder="scale" style="width:100%"></div>
+        <div class="field"><div class="label">BF%</div><input type="number" id="bodyFat" step="0.1" placeholder="28.5" style="width:100%"></div>
+        <div class="field"><div class="label">Muscle <span class="unit">kg</span></div><input type="number" id="skeletalMuscle" step="0.1" placeholder="scale" style="width:100%"></div>
+        <div class="field"><div class="label">Water %</div><input type="number" id="bodyWater" step="0.1" placeholder="52.0" style="width:100%"></div>
+        <div class="field" style="text-align:center"><div class="label">BMI</div><div id="bmiDisplay" style="padding:4px 0;font-size:14px;font-weight:600;color:var(--dim)">—</div></div>
         <input type="hidden" id="chest" value="">
         <input type="hidden" id="upperArm" value="">
         <input type="hidden" id="thigh" value="">
       </div>
-      <div class="section-chart" style="flex:2;min-width:0">
+      <div class="section-chart" style="flex:1;min-width:0">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
           <div class="chart-title" id="bodyChartTitle">Body Comp — 30d</div>
           <input type="range" id="bodyRange" min="0" max="4" value="2" style="width:80px;accent-color:var(--accent)">
         </div>
-        <svg id="svgBody" viewBox="0 0 400 300" style="width:100%;height:auto"></svg>
-        <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:4px;font-size:9px">
-          <span><span style="display:inline-block;width:8px;height:3px;background:#3b82f6;border-radius:2px;margin-right:2px"></span>Weight</span>
-          <span><span style="display:inline-block;width:8px;height:3px;background:#ef4444;border-radius:2px;margin-right:2px"></span>Fat</span>
-          <span><span style="display:inline-block;width:8px;height:3px;background:#22c55e;border-radius:2px;margin-right:2px"></span>Muscle</span>
-          <span><span style="display:inline-block;width:8px;height:3px;background:#f59e0b;border-radius:2px;margin-right:2px"></span>Waist</span>
-          <span><span style="display:inline-block;width:8px;height:3px;background:#a855f7;border-radius:2px;margin-right:2px"></span>BF%</span>
-          <span><span style="display:inline-block;width:8px;height:3px;background:#ec4899;border-radius:2px;margin-right:2px"></span>BMI</span>
-        </div>
+        <svg id="svgBody" viewBox="0 0 400 280" style="width:100%;max-height:none;height:auto"></svg>
       </div>
     </div>
   </div>
@@ -3334,79 +3289,113 @@ function renderBodyChart() {
   const entries = window._bodyAllData.slice(-days);
 
   const series = [
-    { key: c => c.vitals?.weight, color: '#3b82f6', label: 'Wt', unit: 'kg' },
+    { key: c => c.vitals?.weight, color: '#3b82f6', label: 'Weight', unit: 'kg' },
     { key: c => c.measurements?.fat_mass_kg, color: '#ef4444', label: 'Fat', unit: 'kg' },
-    { key: c => c.measurements?.skeletal_muscle_kg, color: '#22c55e', label: 'Musc', unit: 'kg' },
+    { key: c => c.measurements?.skeletal_muscle_kg, color: '#22c55e', label: 'Muscle', unit: 'kg' },
     { key: c => c.measurements?.waist_cm, color: '#f59e0b', label: 'Waist', unit: 'cm' },
     { key: c => c.measurements?.body_fat_pct, color: '#a855f7', label: 'BF%', unit: '%' },
     { key: c => c.measurements?.bmi || (c.vitals?.weight ? calcBMI(c.vitals.weight) : null), color: '#ec4899', label: 'BMI', unit: '' }
   ];
 
-  // Check if any data exists
-  let hasAny = false;
-  series.forEach(s => { entries.forEach(c => { if (s.key(c)) hasAny = true; }); });
-  if (!hasAny) { svg.innerHTML = ''; return; }
+  // Filter to series that have data
+  const activeSeries = series.filter(s => entries.some(c => s.key(c)));
+  if (!activeSeries.length) { svg.innerHTML = ''; return; }
 
-  const W = 400, H = 300, pad = 8, padR = 30, padT = 14, padB = 18;
-  const chartW = W - pad - padR, chartH = H - padT - padB;
+  // Small-multiples layout: each metric gets its own row
+  const W = 400;
+  const rowH = 40;         // height per sparkline row
+  const gapH = 6;          // gap between rows
+  const padL = 52;         // left padding for labels
+  const padR = 52;         // right padding for latest value
+  const padT = 4;
+  const dateRowH = 14;     // bottom date axis
+  const totalH = padT + activeSeries.length * (rowH + gapH) - gapH + dateRowH + 4;
+  const chartW = W - padL - padR;
   const n = entries.length;
   const step = n > 1 ? chartW / (n - 1) : 0;
 
+  svg.setAttribute('viewBox', `0 0 ${W} ${totalH}`);
   let html = '';
 
-  // Gridlines (no Y labels since each series has own scale)
-  for (let i = 0; i <= 4; i++) {
-    const y = padT + (chartH / 4) * i;
-    html += `<line x1="${pad}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="var(--border)" stroke-width="0.5" opacity="0.2"/>`;
-  }
+  // Draw each series as its own row
+  activeSeries.forEach((s, si) => {
+    const rowTop = padT + si * (rowH + gapH);
+    const rowBot = rowTop + rowH;
+    const rowMid = rowTop + rowH / 2;
 
-  // Date labels
-  const labelEvery = n > 60 ? 10 : n > 30 ? 5 : n > 15 ? 3 : n > 8 ? 2 : 1;
-  entries.forEach((c, i) => {
-    if (i % labelEvery !== 0 && i !== n - 1) return;
-    const x = pad + i * step;
-    const d = c.date ? c.date.slice(5) : '';
-    html += `<text x="${x}" y="${H-2}" text-anchor="middle" font-size="7" fill="var(--dim)">${d}</text>`;
-  });
+    // Row background
+    html += `<rect x="${padL - 2}" y="${rowTop}" width="${chartW + 4}" height="${rowH}" rx="4" fill="var(--surface)" opacity="0.3"/>`;
 
-  // Draw each series normalized to its own min/max range
-  series.forEach(s => {
-    const vals = entries.map(c => s.key(c)).filter(v => v);
-    if (vals.length < 1) return;
-    const sMin = Math.min(...vals);
-    const sMax = Math.max(...vals);
+    // Subtle mid-line
+    html += `<line x1="${padL}" y1="${rowMid}" x2="${padL + chartW}" y2="${rowMid}" stroke="var(--border)" stroke-width="0.5" opacity="0.3"/>`;
+
+    // Left label
+    html += `<text x="${padL - 6}" y="${rowMid + 3}" text-anchor="end" font-size="8" font-weight="600" fill="${s.color}">${s.label}</text>`;
+
+    // Get values and normalise within this row
+    const vals = entries.map(c => s.key(c));
+    const validVals = vals.filter(v => v != null && v > 0);
+    if (validVals.length < 1) return;
+    const sMin = Math.min(...validVals);
+    const sMax = Math.max(...validVals);
     const sRange = sMax - sMin || 1;
-    const sPad = sRange * 0.15;
+    const sPad = sRange * 0.2;
 
     function yPos(v) {
-      return padT + chartH - ((v - (sMin - sPad)) / (sRange + sPad * 2)) * chartH;
+      return rowBot - 4 - ((v - (sMin - sPad)) / (sRange + sPad * 2)) * (rowH - 8);
     }
 
+    // Build points
     const pts = [];
     entries.forEach((c, i) => {
       const v = s.key(c);
       if (!v) return;
-      pts.push({ x: pad + i * step, y: yPos(v), v });
+      pts.push({ x: padL + i * step, y: yPos(v), v });
     });
 
+    // Fill area under line
     if (pts.length >= 2) {
-      html += `<polyline points="${pts.map(p=>`${p.x},${p.y}`).join(' ')}" fill="none" stroke="${s.color}" stroke-width="1.5" stroke-linejoin="round" opacity="0.85"/>`;
+      const areaPoints = pts.map(p => `${p.x},${p.y}`).join(' ');
+      html += `<polygon points="${pts[0].x},${rowBot - 4} ${areaPoints} ${pts[pts.length-1].x},${rowBot - 4}" fill="${s.color}" opacity="0.08"/>`;
+      html += `<polyline points="${areaPoints}" fill="none" stroke="${s.color}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>`;
     }
-    const showEvery = n > 30 ? 7 : n > 14 ? 3 : 1;
-    pts.forEach((p, idx) => {
-      html += `<circle cx="${p.x}" cy="${p.y}" r="${n > 30 ? 1.5 : 2.5}" fill="${s.color}"/>`;
-      if (idx === pts.length - 1 || idx % showEvery === 0) {
-        const dispV = Number.isInteger(p.v) ? p.v : p.v.toFixed(1);
-        html += `<text x="${p.x}" y="${p.y - 5}" text-anchor="middle" font-size="7" font-weight="600" fill="${s.color}">${dispV}</text>`;
-      }
+
+    // Dots
+    pts.forEach(p => {
+      html += `<circle cx="${p.x}" cy="${p.y}" r="${n > 30 ? 1.5 : 3}" fill="${s.color}"/>`;
     });
 
-    // Latest value label on right edge
+    // First and last value labels
+    const first = pts[0];
     const last = pts[pts.length - 1];
     if (last) {
       const dispV = Number.isInteger(last.v) ? last.v : last.v.toFixed(1);
-      html += `<text x="${W - padR + 2}" y="${last.y + 3}" font-size="7" font-weight="600" fill="${s.color}" text-anchor="start">${s.label}</text>`;
+      html += `<text x="${W - padR + 6}" y="${rowMid + 3}" font-size="9" font-weight="700" fill="${s.color}" text-anchor="start">${dispV}</text>`;
+      // Show unit smaller
+      html += `<text x="${W - padR + 6}" y="${rowMid + 12}" font-size="6" fill="var(--dim)" text-anchor="start">${s.unit}</text>`;
     }
+    // Delta arrow if first & last exist
+    if (first && last && pts.length >= 2) {
+      const delta = last.v - first.v;
+      const arrow = delta > 0 ? '\u25B2' : delta < 0 ? '\u25BC' : '\u25CF';
+      const dColor = delta === 0 ? 'var(--dim)' : (
+        // For weight, fat, waist, bf%, bmi — down is good; for muscle — up is good
+        s.label === 'Muscle' ? (delta > 0 ? 'var(--green)' : 'var(--red)') :
+        (delta < 0 ? 'var(--green)' : delta > 0 ? 'var(--red)' : 'var(--dim)')
+      );
+      const dStr = (delta > 0 ? '+' : '') + (Number.isInteger(delta) ? delta : delta.toFixed(1));
+      html += `<text x="${W - 2}" y="${rowMid + 3}" font-size="7" fill="${dColor}" text-anchor="end">${arrow}${dStr}</text>`;
+    }
+  });
+
+  // Date axis at bottom
+  const dateY = padT + activeSeries.length * (rowH + gapH) + 6;
+  const labelEvery = n > 60 ? 10 : n > 30 ? 5 : n > 15 ? 3 : n > 8 ? 2 : 1;
+  entries.forEach((c, i) => {
+    if (i % labelEvery !== 0 && i !== n - 1) return;
+    const x = padL + i * step;
+    const d = c.date ? c.date.slice(5) : '';
+    html += `<text x="${x}" y="${dateY}" text-anchor="middle" font-size="7" fill="var(--dim)">${d}</text>`;
   });
 
   svg.innerHTML = html;
