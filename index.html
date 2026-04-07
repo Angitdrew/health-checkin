@@ -29,8 +29,8 @@
   textarea{resize:vertical;min-height:60px}
   select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%239ca3af' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
 
-  .row{display:flex;gap:12px;align-items:flex-end}
-  .row .field{flex:1}
+  .row{display:grid;grid-auto-columns:1fr;grid-auto-flow:column;gap:12px;align-items:end}
+  .row .field{display:flex;flex-direction:column}
   .unit{color:var(--dim);font-size:12px;margin-left:4px}
 
   .rating{display:flex;gap:6px;flex-wrap:wrap}
@@ -80,7 +80,7 @@
   /* Dashboard panels */
   .section-wrap{display:flex;gap:0}
   .section-inputs{flex:1;min-width:0}
-  .section-chart{width:320px;flex-shrink:0;background:var(--surface2);border-left:1px solid var(--border);border-radius:0 12px 12px 0;padding:16px;display:flex;flex-direction:column;justify-content:center;align-items:center}
+  .section-chart{flex:1;min-width:0;flex-shrink:0;background:transparent;border:none;border-radius:0;padding:16px 50px;display:flex;flex-direction:column;justify-content:center;align-items:center}
   .section-chart .chart-title{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--dim);margin-bottom:8px;align-self:flex-start}
   .section-chart .chart-stat{font-size:22px;font-weight:700;margin-bottom:2px}
   .section-chart .chart-sub{font-size:11px;color:var(--dim);margin-bottom:10px}
@@ -96,7 +96,7 @@
   .badge-amber{background:rgba(245,158,11,0.15);color:var(--amber)}
   .badge-red{background:rgba(239,68,68,0.15);color:var(--red)}
 
-  @media(max-width:500px){.row{flex-direction:column;gap:8px} input[type=number]{width:100%}}
+  @media(max-width:500px){.row{grid-auto-flow:row;grid-auto-columns:auto;gap:8px} input[type=number]{width:100%}}
   @media(max-width:900px){.section-chart{display:none} .section.has-chart .section-inputs{padding:20px} .container{max-width:600px}}
 
 
@@ -346,39 +346,19 @@
   <div class="section has-chart">
     <div class="section-title"><span class="icon">&#9790;</span> Sleep</div>
     <div class="section-wrap">
-      <div class="section-inputs">
-    <div class="row">
-      <div class="field">
-        <div class="label">Hours Slept</div>
-        <input type="number" id="sleepHours" step="0.5" placeholder="e.g. 5.0">
-      </div>
-      <div class="field">
-        <div class="label">Nap <span class="unit">min</span></div>
-        <input type="number" id="napMinutes" step="5" placeholder="e.g. 20">
-      </div>
-      <div class="field">
-        <div class="label">Sleep Score <span class="unit">0-100</span></div>
-        <input type="number" id="sleepScore" min="0" max="100" placeholder="e.g. 78">
-      </div>
-    </div>
-    <div class="row">
-      <div class="field">
-        <div class="label">Resting HRV <span class="unit">ms</span></div>
-        <input type="number" id="restingHRV" min="0" max="200" placeholder="e.g. 35">
-      </div>
-      <div class="field">
-        <div class="label">Energy Score <span class="unit">0-100</span></div>
-        <input type="number" id="energyScore" min="0" max="100" placeholder="e.g. 80">
-      </div>
-      <div class="field">
-        <div class="label">MAD worn?</div>
-        <div class="rating">
-          <label><input type="radio" name="madWorn" value="yes"><span>Yes</span></label>
-          <label><input type="radio" name="madWorn" value="no"><span>No</span></label>
-          <label><input type="radio" name="madWorn" value="partial"><span>Partial</span></label>
+      <div class="section-inputs" style="flex:0 0 130px;min-width:0;display:flex;flex-direction:column;gap:4px">
+        <div class="field"><div class="label">Hours Slept</div><input type="number" id="sleepHours" step="0.5" placeholder="5.0" style="width:100%"></div>
+        <div class="field"><div class="label">Nap <span class="unit">min</span></div><input type="number" id="napMinutes" step="5" placeholder="20" style="width:100%"></div>
+        <div class="field"><div class="label">Sleep Score</div><input type="number" id="sleepScore" min="0" max="100" placeholder="78" style="width:100%"></div>
+        <div class="field"><div class="label">HRV <span class="unit">ms</span></div><input type="number" id="restingHRV" min="0" max="200" placeholder="35" style="width:100%"></div>
+        <div class="field"><div class="label">Energy</div><input type="number" id="energyScore" min="0" max="100" placeholder="80" style="width:100%"></div>
+        <div class="field"><div class="label">MAD worn?</div>
+          <div class="rating" style="display:flex;gap:3px">
+            <label><input type="radio" name="madWorn" value="yes"><span>Yes</span></label>
+            <label><input type="radio" name="madWorn" value="no"><span>No</span></label>
+            <label><input type="radio" name="madWorn" value="partial"><span>Partial</span></label>
+          </div>
         </div>
-      </div>
-    </div>
       </div>
       <div class="section-chart" id="chartSleep">
         <div class="chart-title">Sleep — last 14 nights</div>
@@ -768,36 +748,29 @@
   </div>
 
   <!-- VITALS -->
-  <div class="section">
+  <div class="section has-chart">
     <div class="section-title"><span class="icon">&#9829;</span> Vitals</div>
-    <div class="row">
-      <div class="field">
-        <div class="label">Blood Pressure <span class="hint">(if measured)</span></div>
-        <div class="row">
-          <input type="number" id="bpSys" placeholder="Sys" style="width:70px">
-          <span style="color:var(--dim);padding-bottom:10px">/</span>
-          <input type="number" id="bpDia" placeholder="Dia" style="width:70px">
+    <div class="section-wrap">
+      <div class="section-inputs" style="flex:0 0 130px;min-width:0;display:flex;flex-direction:column;gap:4px">
+        <div class="field"><div class="label">BP Sys</div><input type="number" id="bpSys" placeholder="Sys" style="width:100%"></div>
+        <div class="field"><div class="label">BP Dia</div><input type="number" id="bpDia" placeholder="Dia" style="width:100%"></div>
+        <div class="field"><div class="label">Resting HR</div><input type="number" id="restHR" placeholder="72" style="width:100%"></div>
+      </div>
+      <div class="section-chart" style="flex:1;min-width:0">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;width:100%">
+          <div class="chart-title" id="vitalsChartTitle" style="margin-bottom:0">BP &amp; HR — last 7 entries</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:9px;color:var(--dim)">7d</span>
+            <input type="range" id="vitalsRange" min="0" max="4" value="0" step="1" style="width:120px;accent-color:var(--accent)">
+            <span style="font-size:9px;color:var(--dim)">6m</span>
+          </div>
         </div>
-      </div>
-      <div class="field">
-        <div class="label">Resting HR <span class="unit">bpm</span> <span class="hint">(if known)</span></div>
-        <input type="number" id="restHR" placeholder="e.g. 72">
-      </div>
-    </div>
-    <div style="margin-top:12px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-        <div class="chart-title" id="vitalsChartTitle" style="margin-bottom:0">BP &amp; HR — last 7 entries</div>
-        <div style="display:flex;align-items:center;gap:6px">
-          <span style="font-size:9px;color:var(--dim)">7d</span>
-          <input type="range" id="vitalsRange" min="0" max="4" value="0" step="1" style="width:120px;accent-color:var(--accent)">
-          <span style="font-size:9px;color:var(--dim)">6m</span>
+        <svg id="svgVitals" viewBox="0 0 700 140" style="width:100%;max-height:none;height:auto"></svg>
+        <div style="display:flex;gap:10px;font-size:9px;color:var(--dim);margin-top:2px">
+          <span><span style="color:#3b82f6">●</span> Systolic</span>
+          <span><span style="color:#60a5fa">●</span> Diastolic</span>
+          <span><span style="color:#ef4444">●</span> HR</span>
         </div>
-      </div>
-      <svg id="svgVitals" viewBox="0 0 700 140" style="width:100%;height:auto"></svg>
-      <div style="display:flex;gap:10px;font-size:9px;color:var(--dim);margin-top:2px">
-        <span><span style="color:#3b82f6">●</span> Systolic</span>
-        <span><span style="color:#60a5fa">●</span> Diastolic</span>
-        <span><span style="color:#ef4444">●</span> HR</span>
       </div>
     </div>
   </div>
@@ -3262,7 +3235,7 @@ function renderVitalsChart() {
     }
     const showEvery = n > 30 ? 7 : n > 14 ? 3 : 1;
     pts.forEach((p, idx) => {
-      s += `<circle cx="${p.x}" cy="${p.y}" r="${n > 30 ? 1.5 : 2.5}" fill="${color}"/>`;
+      s += `<circle cx="${p.x}" cy="${p.y}" r="${n > 30 ? 1.5 : 2.5}" fill="${color}"><title>${Math.round(p.v)}</title></circle>`;
       if (idx === pts.length - 1 || idx % showEvery === 0) {
         s += `<text x="${p.x}" y="${p.y - 5}" text-anchor="middle" font-size="7" font-weight="600" fill="${color}">${Math.round(p.v)}</text>`;
       }
@@ -3363,7 +3336,8 @@ function renderBodyChart() {
 
     // Dots
     pts.forEach(p => {
-      html += `<circle cx="${p.x}" cy="${p.y}" r="${n > 30 ? 1.5 : 3}" fill="${s.color}"/>`;
+      const dv = Number.isInteger(p.v) ? p.v : p.v.toFixed(1);
+      html += `<circle cx="${p.x}" cy="${p.y}" r="${n > 30 ? 1.5 : 3}" fill="${s.color}"><title>${s.label}: ${dv}${s.unit}</title></circle>`;
     });
 
     // First and last value labels
@@ -3453,6 +3427,17 @@ function renderDashboards() {
     const lastX = points[points.length-1].split(',')[0];
     const areaPath = `M${points.join(' L')} L${lastX},${H} L${firstX},${H} Z`;
 
+    // Build hover dots with tooltips
+    let hoverDots = '';
+    let vi = 0;
+    values.forEach((v, i) => {
+      if (v === null || v === undefined) return;
+      const xy = points[vi].split(',');
+      const dv = Number.isInteger(v) ? v : v.toFixed(1);
+      hoverDots += `<circle cx="${xy[0]}" cy="${xy[1]}" r="6" fill="transparent" stroke="none"><title>${dv}</title></circle>`;
+      vi++;
+    });
+
     svg.innerHTML = `
       <defs><linearGradient id="grad_${svgId}" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0%" stop-color="${color}" stop-opacity="0.3"/>
@@ -3461,6 +3446,7 @@ function renderDashboards() {
       <path d="${areaPath}" fill="url(#grad_${svgId})" />
       <polyline points="${points.join(' ')}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round"/>
       <circle cx="${points[points.length-1].split(',')[0]}" cy="${points[points.length-1].split(',')[1]}" r="3" fill="${color}"/>
+      ${hoverDots}
     `;
 
     // Reference lines
@@ -3488,7 +3474,7 @@ function renderDashboards() {
       const h = (v / max) * (H - pad*2);
       const y = H - pad - h;
       const col = typeof colorFn === 'function' ? colorFn(v) : colorFn;
-      html += `<rect x="${x}" y="${y}" width="${barW}" height="${h}" rx="2" fill="${col}" opacity="0.8"/>`;
+      html += `<rect x="${x}" y="${y}" width="${barW}" height="${h}" rx="2" fill="${col}" opacity="0.8"><title>${Number.isInteger(v) ? v : v.toFixed(1)}</title></rect>`;
     });
     svg.innerHTML = html;
   }
