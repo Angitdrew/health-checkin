@@ -292,6 +292,13 @@
   .proj-hs-nm .proj-hs-nm-arrow{text-align:center;font-size:14px;color:var(--accent)}
   .proj-hs-nm .proj-hs-nm-goal{text-align:center;font-size:10px;padding:2px 6px;border-radius:4px}
   .proj-hs-nm .proj-hs-nm-gain{font-weight:700;text-align:right;font-size:12px}
+  .wt-progress{margin:12px 0;padding:12px 14px;background:var(--surface2);border-radius:8px}
+  .wt-progress-label{display:flex;justify-content:space-between;font-size:10px;color:var(--dim);margin-bottom:6px}
+  .wt-progress-track{position:relative;height:22px;background:rgba(255,255,255,0.06);border-radius:11px;overflow:visible}
+  .wt-progress-fill{height:100%;border-radius:11px;background:linear-gradient(90deg,#22c55e,#3b82f6);transition:width 0.8s ease}
+  .wt-progress-marker{position:absolute;top:-3px;width:3px;height:28px;background:var(--text);border-radius:2px;transform:translateX(-50%)}
+  .wt-progress-vals{display:flex;justify-content:space-between;font-size:11px;margin-top:6px;font-weight:600}
+  .wt-progress-current{position:absolute;top:50%;transform:translate(-50%,-50%);font-size:9px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.5);white-space:nowrap}
   @media(max-width:600px){.proj-controls{flex-direction:column}.proj-metric-grid{grid-template-columns:1fr 1fr}.proj-risk-grid{grid-template-columns:1fr}.proj-hs-row{grid-template-columns:110px 40px 1fr 36px;font-size:10px}}
 </style>
 </head>
@@ -888,6 +895,7 @@
         <div class="proj-hs-date" id="projHSDate"></div>
       </div>
       <div class="proj-hs-grid" id="projHSGrid"></div>
+      <div id="projWeightProgress"></div>
       <div style="margin:14px 0 6px;font-size:11px;font-weight:600">Projected Trajectory — With Goal Adherence</div>
       <canvas id="projHSChart" height="220"></canvas>
       <div class="proj-legend" id="projHSChartLegend"></div>
@@ -4038,7 +4046,12 @@ async function syncFromGitHub() {
       const ewc=deficit/7700+wl;
       const mgrBase=(w>100?0.08:w>90?0.06:0.04)*adh;
       const mgr=mgrBase*Math.max(0.1, 1-i/104); // Diminishing returns: muscle gain tapers ~50% by yr1, ~90% by yr2
-      fm=Math.max(fm-ewc*0.85,w*0.15); lm=lm-ewc*0.05+mgr; mu+=mgr*0.7; w=fm+lm; // BF floor 15% (healthy min for 58yr male)
+      // Soft BF floor: body fights harder as you get leaner — smooth taper near 15%
+      const bfPct=fm/w*100, floorPct=15, cushion=5;
+      let fatLossFactor=1.0; // full loss at high BF%
+      if(bfPct<floorPct+cushion){const prox=Math.max(0,(bfPct-floorPct)/cushion);fatLossFactor=prox*prox;} // quadratic taper: 1→0 over 5% range
+      const effectiveFatLoss=ewc*0.85*Math.max(0.02,fatLossFactor);
+      fm=Math.max(fm-effectiveFatLoss,w*0.12); lm=lm-ewc*0.05+mgr; mu+=mgr*0.7; w=fm+lm;
       const flfs=(sw*sbf/100)-fm; wa=swa-flfs/1.3; nk=sn-flfs/8;
       data.push({week:i,weight:Math.round(w*10)/10,fatMass:Math.round(fm*10)/10,leanMass:Math.round(lm*10)/10,muscle:Math.round(mu*10)/10,waist:Math.round(wa*10)/10,neck:Math.round(nk*10)/10,bmi:Math.round(w/(PROJ_HEIGHT_M*PROJ_HEIGHT_M)*10)/10,bf:Math.round(fm/w*1000)/10});
     }
@@ -4497,10 +4510,32 @@ async function syncFromGitHub() {
       return { week: wk.week, le: wkLE, hs: wkHS, bioAge: wkBioAge };
     });
 
-    // ---- ADJUSTED (GOALS-MET) VALUES — use best-case totals for consistency with needle movers ----
-    const adjLE = bestLE;
-    const adjHS = bestHS;
-    const adjBioAge = bestBioAge;
+    // ---- ADJUSTED (GOALS-MET) VALUES — dynamic: projected body-comp at timeframe endpoint + best-case lifestyle ----
+    // Body-comp categories use projected end-state; lifestyle categories use best-case
+    const bodyCompCats = ['BMI', 'Body Fat', 'Waist', 'Neck (OSA risk)', 'Muscle Mass', 'Waist:Height', 'ABSI', 'FFMI'];
+    const adjTotalImpact = allCatsWithGains.reduce((s, c) => {
+      if (bodyCompCats.includes(c.cat)) {
+        // Use projected end-state impact for body-comp categories
+        return s + c.impact + (c.gain * Math.min(1, pData.length / 52)); // partial improvement scaled to timeframe
+      }
+      return s + c.bestImpact; // lifestyle = best-case
+    }, 0);
+    const adjLE = Math.round((HS_BASE_LE + adjTotalImpact) * 10) / 10;
+    const adjHS = Math.round((HS_BASE_HS + adjTotalImpact * 0.85) * 10) / 10;
+    // Dynamic bio age: project body-comp scores at endpoint
+    const adjBmiScore = projBMI <= 24.9 ? 1 : projBMI <= 29.9 ? 0.5 : 0;
+    const adjBfScore = projBF <= 20 ? 1 : projBF <= 25 ? 0.5 : 0;
+    const adjWaistScore = projWaist < 94 ? 1 : projWaist < 102 ? 0.5 : 0;
+    const adjNeckScore = projEnd.neck < 40 ? 1 : projEnd.neck <= 43 ? 0.5 : 0;
+    const adjMuscleScore = projEnd.muscle >= 38 ? 1 : projEnd.muscle >= 33 ? 0.5 : 0;
+    const nonBodyCount = cats.filter(c => !bodyCompCats.includes(c.cat)).length; // all assumed green for goals-met
+    const bodyScores = [adjBmiScore, adjBfScore, adjWaistScore, adjNeckScore, adjMuscleScore];
+    const adjGreen = nonBodyCount + bodyScores.filter(s => s === 1).length;
+    const adjAmber = bodyScores.filter(s => s === 0.5).length;
+    const adjRed = bodyScores.filter(s => s === 0).length;
+    const adjValid = adjGreen + adjAmber + adjRed;
+    const adjBioOffset = adjValid > 0 ? (adjRed * 3 + adjAmber * 0.5 - adjGreen * 1.2) / adjValid : 0;
+    const adjBioAge = Math.round((HS_AGE + adjBioOffset) * 10) / 10;
 
     // ---- RENDER ----
     document.getElementById('projHSDate').innerHTML = `Based on ${ci.length} check-in${ci.length > 1 ? 's' : ''} · Latest: ${latest.date}`;
@@ -4546,7 +4581,7 @@ async function syncFromGitHub() {
         <div class="proj-hs-ldelta" style="color:${baColor}">${baDiff > 0 ? '+' : ''}${baDiff.toFixed(1)}yr ${baDiff > 0 ? 'older' : baDiff < 0 ? 'younger' : ''}</div>
       </div>
 
-      <div class="proj-hs-grid-row-label">All Goals Met</div>
+      <div class="proj-hs-grid-row-label">Projected @ ${pData.length-1 >= 52 ? Math.round((pData.length-1)/4.33) + ' months' : pData.length-1 + ' weeks'} <span style="font-size:10px;color:var(--dim);font-weight:400">(body-comp projected + lifestyle optimised)</span></div>
       <div class="proj-hs-lbox adj" style="border-top:2px solid rgba(59,130,246,0.4)">
         <div class="proj-hs-ll" style="color:#3b82f6">Adj. Lifespan</div>
         <div class="proj-hs-lyrs" style="color:#3b82f6">${adjYearsLeftLE}<span style="font-size:12px;opacity:0.6"> yrs</span></div>
@@ -4565,6 +4600,35 @@ async function syncFromGitHub() {
         <div class="proj-hs-lage" style="font-size:12px">chrono ${HS_AGE}</div>
         <div class="proj-hs-ldelta" style="color:var(--accent)">${baGain > 0 ? '−' + baGain + 'yr' : baGain < 0 ? '+' + Math.abs(baGain) + 'yr' : '—'}</div>
       </div>`;
+
+    // ---- WEIGHT PROGRESS SCALE ----
+    const wpEl = document.getElementById('projWeightProgress');
+    if (wpEl) {
+      const startWt = pData[0].weight;
+      const currentWt = gv('weight') || startWt;
+      const targetWt = parseFloat(document.getElementById('projTargetWeight')?.value) || 85;
+      const projectedWt = projEnd.weight;
+      const totalDrop = startWt - targetWt;
+      const lost = startWt - currentWt;
+      const pctDone = totalDrop > 0 ? Math.max(0, Math.min(100, (lost / totalDrop) * 100)) : 0;
+      const projPct = totalDrop > 0 ? Math.max(0, Math.min(100, ((startWt - projectedWt) / totalDrop) * 100)) : 0;
+      const toGo = Math.round((currentWt - targetWt) * 10) / 10;
+      const weeks = pData.length - 1;
+      const tfLabel = weeks >= 52 ? Math.round(weeks / 4.33) + 'mo' : weeks + 'wk';
+      wpEl.innerHTML = `<div class="wt-progress">
+        <div class="wt-progress-label"><span>Start ${startWt}kg</span><span style="color:var(--text);font-weight:600">${toGo > 0 ? toGo + 'kg to go' : 'Target reached!'}</span><span>Target ${targetWt}kg</span></div>
+        <div class="wt-progress-track">
+          <div class="wt-progress-fill" style="width:${pctDone}%"></div>
+          <div class="wt-progress-marker" style="left:${projPct}%;background:var(--accent);opacity:0.5" title="Projected @ ${tfLabel}: ${projectedWt}kg"></div>
+          ${pctDone > 5 ? `<div class="wt-progress-current" style="left:${Math.max(8, Math.min(92, pctDone))}%">${currentWt}kg (${Math.round(pctDone)}%)</div>` : ''}
+        </div>
+        <div class="wt-progress-vals">
+          <span style="color:var(--dim)">${startWt}kg</span>
+          <span style="color:var(--accent);font-size:9px">▼ projected ${projectedWt}kg @ ${tfLabel}</span>
+          <span style="color:var(--green)">${targetWt}kg</span>
+        </div>
+      </div>`;
+    }
 
     // Category rows with assumption description
     const catsEl = document.getElementById('projHSCategories');
@@ -4684,7 +4748,7 @@ async function syncFromGitHub() {
         <div style="text-align:center"><span style="color:var(--accent);font-size:12px">→</span><br><span style="font-size:9px;color:var(--green);font-weight:700">+${c.gain.toFixed(1)}</span></div>
         <div class="proj-hs-nm-goal" style="background:${goalColor}20;color:${goalColor}">${c.bestImpact > 0 ? '+' : ''}${c.bestImpact.toFixed(1)}yr</div>
       </div>`;
-    }).join('') + `<div style="font-size:10px;color:var(--accent);margin-top:6px;font-weight:600">Total potential gain: +${totalPotentialGain.toFixed(1)} years if all optimised → LE ${bestLE}</div>`;
+    }).join('') + `<div style="font-size:10px;color:var(--accent);margin-top:6px;font-weight:600">Projected gain @ ${pData.length-1 >= 52 ? Math.round((pData.length-1)/4.33) + 'mo' : (pData.length-1) + 'wk'}: LE → ${adjLE} · Best possible: ${bestLE}</div>`;
 
     // Note
     document.getElementById('projHSNote').innerHTML = `RAG: <span style="color:var(--green)">&#9679;</span> optimal <span style="color:var(--amber)">&#9679;</span> suboptimal <span style="color:var(--red)">&#9679;</span> high risk. Impact = estimated years gained/lost vs population baseline (AU male LE ${HS_BASE_LE}yr). Composite body-comp model (BMI primary, BF%/waist addons). RA/AF impacts calibrated for managed conditions. Trajectory assumes ${Math.round((parseFloat(document.getElementById('projAdherence').value)||85))}% adherence over ${document.getElementById('projTimeframe').value} weeks. Based on published meta-analyses (Lancet, JAMA, AHA, ABS 2022-24). Not medical advice.`;
