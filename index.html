@@ -318,6 +318,12 @@
     </div>
   </div>
 
+  <!-- TODAY'S PROGRESS -->
+  <div class="day-summary" id="daySummary" style="display:none">
+    <div class="day-summary-title">&#128200; Today's Progress</div>
+    <div id="ragPanel" class="rag-panel"></div>
+  </div>
+
   <!-- DAILY GOALS -->
   <div class="section has-chart" id="goalsSection">
     <div class="section-title"><span class="icon">&#127919;</span> Goals — Daily &amp; Weekly <span style="font-size:11px;color:var(--dim);font-weight:400">(Mon–Sun)</span></div>
@@ -336,12 +342,6 @@
         <div id="goalsProgressBars" style="width:100%"></div>
       </div>
     </div>
-  </div>
-
-  <!-- TODAY'S SUMMARY -->
-  <div class="day-summary" id="daySummary" style="display:none">
-    <div class="day-summary-title">&#128203; Today So Far</div>
-    <div id="ragPanel" class="rag-panel"></div>
   </div>
 
   <!-- COACH'S NOTES -->
@@ -893,22 +893,6 @@
     <div id="projTargetWarning" style="display:none;margin:8px 0;padding:10px 14px;border-radius:8px;font-size:12px;line-height:1.5"></div>
     <div id="projWeightProgress"></div>
 
-    <div class="proj-card" id="projHealthStatusCard">
-      <div class="proj-hs-header">
-        <div class="proj-hs-title">&#129657; Health Status Assessment</div>
-        <div class="proj-hs-date" id="projHSDate"></div>
-      </div>
-      <div class="proj-hs-grid" id="projHSGrid"></div>
-      <div style="margin:14px 0 6px;font-size:11px;font-weight:600">Projected Trajectory — With Goal Adherence</div>
-      <canvas id="projHSChart" height="220"></canvas>
-      <div class="proj-legend" id="projHSChartLegend"></div>
-      <div style="margin:14px 0 6px;font-size:11px;font-weight:600">Key Needle Movers</div>
-      <div id="projHSNeedleMovers"></div>
-      <div style="margin:14px 0 6px;font-size:11px;font-weight:600">Current Status by Category</div>
-      <div class="proj-hs-cats" id="projHSCategories"></div>
-      <div class="proj-hs-note" id="projHSNote"></div>
-    </div>
-
     <div class="proj-card">
       <div class="proj-card-title">Projected Outcome</div>
       <div class="proj-metric-grid" id="projOutcomeGrid"></div>
@@ -929,6 +913,22 @@
     <div class="proj-card">
       <div class="proj-card-title">Projected Health Benefits</div>
       <div class="proj-risk-grid" id="projHealthBenefits"></div>
+    </div>
+
+    <div class="proj-card" id="projHealthStatusCard">
+      <div class="proj-hs-header">
+        <div class="proj-hs-title">&#129657; Health Status Assessment</div>
+        <div class="proj-hs-date" id="projHSDate"></div>
+      </div>
+      <div class="proj-hs-grid" id="projHSGrid"></div>
+      <div style="margin:14px 0 6px;font-size:11px;font-weight:600">Projected Trajectory — With Goal Adherence</div>
+      <canvas id="projHSChart" height="220"></canvas>
+      <div class="proj-legend" id="projHSChartLegend"></div>
+      <div style="margin:14px 0 6px;font-size:11px;font-weight:600">Key Needle Movers</div>
+      <div id="projHSNeedleMovers"></div>
+      <div style="margin:14px 0 6px;font-size:11px;font-weight:600">Current Status by Category</div>
+      <div class="proj-hs-cats" id="projHSCategories"></div>
+      <div class="proj-hs-note" id="projHSNote"></div>
     </div>
 
     <div class="proj-card">
