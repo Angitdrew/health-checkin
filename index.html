@@ -217,9 +217,9 @@
   .rag-gauge{display:flex;flex-direction:column;align-items:center;background:linear-gradient(145deg,rgba(255,255,255,0.03),rgba(255,255,255,0.07));border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:14px 6px 10px;transition:transform 0.15s}
   .rag-gauge:active{transform:scale(0.97)}
   .rag-gauge svg{display:block;width:100%;max-width:110px;height:auto}
-  .rag-gauge-label{font-size:11px;color:var(--dim);text-align:center;margin-top:4px;line-height:1.2}
-  .rag-gauge-gap{font-size:10px;text-align:center;margin-top:2px;font-weight:600;line-height:1.2}
-  .rag-gauge-note{font-size:8px;color:var(--dim);text-align:center;margin-top:2px;opacity:0.7}
+  .rag-gauge-label{font-size:12px;color:var(--dim);text-align:center;margin-top:4px;line-height:1.2}
+  .rag-gauge-gap{font-size:11px;text-align:center;margin-top:2px;font-weight:600;line-height:1.2}
+  .rag-gauge-note{font-size:9px;color:var(--dim);text-align:center;margin-top:2px;opacity:0.7}
 
   /* Today's summary panel */
   .day-summary{background:linear-gradient(135deg,rgba(255,255,255,0.02),rgba(255,255,255,0.05));border:1px solid var(--border);border-radius:16px;padding:14px;margin-bottom:16px}
@@ -3203,11 +3203,11 @@ function updateRAGLights() {
 
   const metrics = [
     { label:'Sleep', val:sleep, min:7, max:9, cap:12, unit:'hr', dec:1, note: napMin > 0 ? '+'+napMin+'m nap' : '' },
-    { label:'Protein', val:pro, min:TARGETS.pro.min, max:TARGETS.pro.max, cap:TARGETS.pro.cap, unit:'g', tag:proTier },
+    { label:'Protein', val:pro, min:TARGETS.pro.min, max:TARGETS.pro.max, cap:TARGETS.pro.cap, unit:'g', tag:proTier, redBelow:true },
     { label:'Calories', val:cal, min:calT.min, max:calT.max, cap:3500, unit:'kcal', note: burnt > 0 ? '+'+Math.round(burnt*0.5)+' train' : '' },
-    { label:'Fat', val:fat, min:TARGETS.fat.min, max:TARGETS.fat.max, cap:TARGETS.fat.cap, unit:'g' },
+    { label:'Fat', val:fat, min:TARGETS.fat.min, max:TARGETS.fat.max, cap:TARGETS.fat.cap, unit:'g', redBelow:true },
     { label:'Carbs', val:carb, min:TARGETS.carb.min||0, max:TARGETS.carb.max, cap:TARGETS.carb.cap, unit:'g', invert:true },
-    { label:'Water', val:water, min:wt.min, max:wt.max, cap:wt.cap, unit:'L', dec:1, note: wt.sweat > 0 ? '+'+wt.sweat+'L sweat' : '' },
+    { label:'Water', val:water, min:wt.min, max:wt.max, cap:wt.cap, unit:'L', dec:1, note: wt.sweat > 0 ? '+'+wt.sweat+'L sweat' : '', redBelow:true },
     { label:'Burnt', val:burnt, min:200, max:800, cap:1200, unit:'kcal' },
     { label:'Sun', val:vitD, min:600, max:1500, cap:3000, unit:'IU' }
   ];
@@ -3235,6 +3235,13 @@ function updateRAGLights() {
     if (!m.val && m.val !== 0) return '#4b5563';
     if (m.invert) return m.val <= m.max ? '#22c55e' : '#ef4444';
     if (m.val === 0) return '#4b5563';
+    // Protein & Fat: red below, green in zone, orange above (muscle-sparing priority)
+    if (m.redBelow) {
+      if (m.val < m.min) return '#ef4444';
+      if (m.val <= m.max) return '#22c55e';
+      return '#f59e0b';
+    }
+    // Everything else: amber below, green in zone, red above
     if (m.val < m.min) return '#f59e0b';
     if (m.val <= m.max) return '#22c55e';
     return '#ef4444';
@@ -3261,10 +3268,10 @@ function updateRAGLights() {
         else { gapText = Math.round(m.max - m.val) + ' left'; gapColor = '#22c55e'; }
       } else if (m.val < m.min) {
         const need = m.dec ? (m.min - m.val).toFixed(m.dec) : Math.round(m.min - m.val);
-        gapText = need + ' to go'; gapColor = '#f59e0b';
+        gapText = need + ' to go'; gapColor = m.redBelow ? '#ef4444' : '#f59e0b';
       } else if (m.val > m.max) {
         const over = m.dec ? (m.val - m.max).toFixed(m.dec) : Math.round(m.val - m.max);
-        gapText = over + ' over'; gapColor = '#ef4444';
+        gapText = over + ' over'; gapColor = m.redBelow ? '#f59e0b' : '#ef4444';
       } else {
         gapText = '\u2713'; gapColor = '#22c55e';
       }
@@ -3291,8 +3298,8 @@ function updateRAGLights() {
         <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="${STROKE}"/>
         ${(m.min > 0 || m.max > 0) ? `<path d="${arcPath(cx,cy,r,zoneLAngle,zoneRAngle)}" fill="none" stroke="rgba(34,197,94,0.1)" stroke-width="${STROKE+2}"/>` : ''}
         ${m.val > 0 && pct > 0.003 ? `<path d="${arcPath(cx,cy,r,SA,valAngle)}" fill="none" stroke="${color}" stroke-width="${STROKE}" stroke-linecap="round" filter="url(#rg${idx})"/>` : ''}
-        <text x="${cx}" y="${cy - 2}" text-anchor="middle" dominant-baseline="central" fill="${m.val > 0 ? color : '#4b5563'}" font-size="17" font-weight="700" font-family="-apple-system,BlinkMacSystemFont,sans-serif">${displayVal}</text>
-        <text x="${cx}" y="${cy + 13}" text-anchor="middle" fill="#6b7280" font-size="9" font-family="-apple-system,sans-serif">${m.unit}</text>
+        <text x="${cx}" y="${cy - 2}" text-anchor="middle" dominant-baseline="central" fill="${m.val > 0 ? color : '#4b5563'}" font-size="20" font-weight="700" font-family="-apple-system,BlinkMacSystemFont,sans-serif">${displayVal}</text>
+        <text x="${cx}" y="${cy + 14}" text-anchor="middle" fill="#6b7280" font-size="10" font-family="-apple-system,sans-serif">${m.unit}</text>
       </svg>
       <div class="rag-gauge-label">${m.label}${tagHTML}</div>
       ${gapText ? `<div class="rag-gauge-gap" style="color:${gapColor}">${gapText}</div>` : ''}
