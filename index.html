@@ -355,7 +355,7 @@
     <div class="section-title"><span class="icon">&#9790;</span> Sleep</div>
     <div class="section-wrap">
       <div class="section-inputs" style="flex:0 0 130px;min-width:0;display:flex;flex-direction:column;gap:4px">
-        <div class="field"><div class="label">Hours Slept</div><input type="number" id="sleepHours" step="0.5" placeholder="5.0" style="width:100%"></div>
+        <div class="field"><div class="label">Hours Slept</div><div style="display:flex;gap:4px;align-items:center"><input type="number" id="sleepHrs" min="0" max="23" step="1" placeholder="7" style="width:46%;text-align:center"><span style="color:var(--dim);font-size:11px">h</span><input type="number" id="sleepMin" min="0" max="59" step="5" placeholder="30" style="width:46%;text-align:center"><span style="color:var(--dim);font-size:11px">m</span></div></div>
         <div class="field"><div class="label">Nap <span class="unit">min</span></div><input type="number" id="napMinutes" step="5" placeholder="20" style="width:100%"></div>
         <div class="field"><div class="label">Sleep Score</div><input type="number" id="sleepScore" min="0" max="100" placeholder="78" style="width:100%"></div>
         <div class="field"><div class="label">HRV <span class="unit">ms</span></div><input type="number" id="restingHRV" min="0" max="200" placeholder="35" style="width:100%"></div>
@@ -2259,7 +2259,7 @@ function collectData() {
       resting_hr: parseInt(document.getElementById('restHR').value) || null
     },
     sleep: {
-      hours: parseFloat(document.getElementById('sleepHours').value) || null,
+      hours: (parseInt(document.getElementById('sleepHrs').value) || 0) + (parseInt(document.getElementById('sleepMin').value) || 0) / 60 || null,
       nap_minutes: parseInt(document.getElementById('napMinutes').value) || null,
       sleep_score: parseInt(document.getElementById('sleepScore').value) || null,
       hrv: parseInt(document.getElementById('restingHRV').value) || null,
@@ -2872,7 +2872,7 @@ function toggleHistory() {
         ${c.measurements&&c.measurements.skeletal_muscle_kg ? `<div class="data-row"><span>Muscle</span><span>${c.measurements.skeletal_muscle_kg} kg</span></div>` : ''}
         ${c.measurements&&c.measurements.waist_cm ? `<div class="data-row"><span>Waist</span><span>${c.measurements.waist_cm} cm</span></div>` : ''}
         ${c.nutrition&&c.nutrition.totals&&c.nutrition.totals.calories ? `<div class="data-row"><span>Nutrition</span><span>${c.nutrition.totals.calories} kcal | P:${c.nutrition.totals.protein_g||0}g C:${c.nutrition.totals.carbs_g||0}g F:${c.nutrition.totals.fat_g||0}g</span></div>` : (c.nutrition&&c.nutrition.calories ? `<div class="data-row"><span>Nutrition</span><span>${c.nutrition.calories} kcal | P:${c.nutrition.protein_g||'—'}g C:${c.nutrition.carbs_g||'—'}g F:${c.nutrition.fat_g||'—'}g</span></div>` : '')}
-        ${c.sleep.hours ? `<div class="data-row"><span>Sleep</span><span>${c.sleep.hours} hr${c.sleep.nap_minutes ? ' + ' + c.sleep.nap_minutes + 'min nap' : ''} ${c.sleep.sleep_score ? '(Score: ' + c.sleep.sleep_score + ')' : c.sleep.quality ? '(Q: ' + c.sleep.quality + '/5)' : ''}${c.sleep.hrv ? ' · HRV ' + c.sleep.hrv + 'ms' : ''}${c.sleep.energy_score ? ' · Energy ' + c.sleep.energy_score : ''}</span></div>` : ''}
+        ${c.sleep.hours ? `<div class="data-row"><span>Sleep</span><span>${Math.floor(c.sleep.hours)}h ${Math.round((c.sleep.hours%1)*60)}m${c.sleep.nap_minutes ? ' + ' + c.sleep.nap_minutes + 'm nap' : ''} ${c.sleep.sleep_score ? '(Score: ' + c.sleep.sleep_score + ')' : c.sleep.quality ? '(Q: ' + c.sleep.quality + '/5)' : ''}${c.sleep.hrv ? ' · HRV ' + c.sleep.hrv + 'ms' : ''}${c.sleep.energy_score ? ' · Energy ' + c.sleep.energy_score : ''}</span></div>` : ''}
         ${c.wellbeing.energy ? `<div class="data-row"><span>Energy</span><span>${c.wellbeing.energy}/10</span></div>` : ''}
         ${c.cardiac.af_symptoms ? `<div class="data-row"><span>AF</span><span>${c.cardiac.af_symptoms}</span></div>` : ''}
         ${c.wellbeing.ra_flare ? `<div class="data-row"><span>RA</span><span>${c.wellbeing.ra_flare}</span></div>` : ''}
@@ -2994,7 +2994,9 @@ function getWaterTarget() {
 }
 
 function getTotalSleep() {
-  const overnight = parseFloat(document.getElementById('sleepHours').value) || 0;
+  const hrs = parseInt(document.getElementById('sleepHrs').value) || 0;
+  const min = parseInt(document.getElementById('sleepMin').value) || 0;
+  const overnight = hrs + min / 60;
   const napMin = parseInt(document.getElementById('napMinutes').value) || 0;
   return overnight + napMin / 60;
 }
@@ -3502,7 +3504,8 @@ function updateAllTargets() {
 
 // Activity targets are updated via renderActivityLog() -> updateAllTargets()
 
-document.getElementById('sleepHours').addEventListener('input', updateAllTargets);
+document.getElementById('sleepHrs').addEventListener('input', updateAllTargets);
+document.getElementById('sleepMin').addEventListener('input', updateAllTargets);
 document.getElementById('napMinutes').addEventListener('input', updateAllTargets);
 document.getElementById('sleepScore').addEventListener('input', updateAllTargets);
 document.getElementById('restingHRV').addEventListener('input', updateAllTargets);
@@ -3945,7 +3948,7 @@ function loadTodayData() {
   }
   // Sleep
   if (saved.sleep) {
-    setVal('sleepHours', saved.sleep.hours);
+    if (saved.sleep.hours) { const _sh = saved.sleep.hours; setVal('sleepHrs', Math.floor(_sh)); setVal('sleepMin', Math.round((_sh % 1) * 60)); }
     if (saved.sleep.nap_minutes) setVal('napMinutes', saved.sleep.nap_minutes);
     if (saved.sleep.sleep_score) setVal('sleepScore', saved.sleep.sleep_score);
     else if (saved.sleep.quality) setVal('sleepScore', saved.sleep.quality * 20);
