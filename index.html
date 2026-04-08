@@ -211,19 +211,14 @@
   .goal-progress-fill{height:100%;border-radius:6px;transition:width 0.3s}
 
   /* RAG panel */
-  .rag-panel{display:flex;flex-direction:column;gap:6px}
-  .rag-row{display:flex;align-items:center;gap:8px}
-  .rag-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
-  .rag-dot.green{background:var(--green);box-shadow:0 0 4px rgba(34,197,94,0.4)}
-  .rag-dot.amber{background:var(--amber);box-shadow:0 0 4px rgba(245,158,11,0.4)}
-  .rag-dot.red{background:var(--red);box-shadow:0 0 4px rgba(239,68,68,0.4)}
-  .rag-dot.grey{background:var(--border)}
-  .rag-label{font-size:11px;color:var(--dim);width:90px;flex-shrink:0;line-height:1.2}
-  .rag-bar-wrap{flex:1;min-width:0;display:flex;align-items:center;gap:8px}
-  .rag-bar-track{flex:1;min-width:0;height:14px;background:var(--surface);border:1px solid var(--border);border-radius:7px;position:relative;overflow:hidden}
-  .rag-bar-zone{position:absolute;top:0;bottom:0;background:rgba(34,197,94,0.12);border-left:1.5px dashed var(--green);border-right:1.5px dashed var(--green)}
-  .rag-bar-fill{position:absolute;top:1px;bottom:1px;left:0;border-radius:6px;transition:width 0.3s}
-  .rag-bar-value{font-size:11px;font-weight:600;min-width:80px;flex-shrink:0;text-align:right;white-space:nowrap}
+  /* Radial arc gauge grid */
+  .rag-panel{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  @media(max-width:600px){.rag-panel{grid-template-columns:repeat(2,1fr);gap:6px}}
+  .rag-gauge{display:flex;flex-direction:column;align-items:center;background:var(--surface2);border-radius:12px;padding:10px 6px 8px;position:relative;overflow:hidden;transition:box-shadow 0.2s}
+  .rag-gauge:hover{box-shadow:0 0 16px rgba(255,255,255,0.04)}
+  .rag-gauge svg{display:block}
+  .rag-gauge-label{font-size:9px;color:var(--dim);text-align:center;margin-top:2px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+  .rag-gauge-sub{font-size:8px;color:var(--dim);text-align:center;opacity:0.7;margin-top:1px}
 
   /* Today's summary panel */
   .day-summary{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px}
@@ -879,7 +874,7 @@
         <div class="proj-fg"><label>Body Fat %</label><input type="number" id="projStartBF" value="32" step="0.1"></div>
         <div class="proj-fg"><label>Muscle (kg)</label><input type="number" id="projStartMuscle" value="38" step="0.1"></div>
         <div class="proj-fg"><label>Neck (cm)</label><input type="number" id="projStartNeck" value="44" step="0.1"></div>
-        <div class="proj-fg"><label>Target (kg)</label><input type="number" id="projTargetWeight" value="85" step="1" min="60" max="120"></div>
+        <div class="proj-fg"><label>Target (kg)</label><input type="number" id="projTargetWeight" value="85" step="1" min="80" max="120"></div>
         <div class="proj-fg"><label>Daily Cal</label><input type="number" id="projDailyCal" value="1800" step="100" min="1200" max="3000"></div>
         <div class="proj-fg"><label>Adherence %</label><input type="number" id="projAdherence" value="85" min="50" max="100" step="5"></div>
         <div class="proj-fg"><label>Timeframe</label>
@@ -894,6 +889,7 @@
       </div>
     </div>
 
+    <div id="projTargetWarning" style="display:none;margin:8px 0;padding:10px 14px;border-radius:8px;font-size:12px;line-height:1.5"></div>
     <div id="projWeightProgress"></div>
 
     <div class="proj-card" id="projHealthStatusCard">
@@ -1764,6 +1760,7 @@ const ACT_ICONS = { bjj:'🥋', boxing:'🥊', shadowboxing:'🥊', bagwork:'�
 const ACT_NAMES = { bjj:'BJJ', boxing:'Boxing', shadowboxing:'Shadow Boxing', bagwork:'Bag Work', skipping:'Skipping', mma:'Carioti MMA', weights:'Weights', airbike:'Airbike', walking:'Walking', zone2:'Zone 2 Cardio', bands:'Band Work (Rehab)', exball:'Exercise Ball (Core)', yardwork:'Yard Work', mobility:'Mobility/Yoga', sauna:'Sauna', rest:'Rest Day', other:'Other' };
 let activityEntries = [];
 let actIdCounter = 0;
+let _actPreviewEntry = null; // phantom activity for live protein/macro/burn preview
 
 function addActivityEntry() {
   const type = document.getElementById('actType').value;
@@ -1779,6 +1776,7 @@ function addActivityEntry() {
   const name = ACT_NAMES[type] || type;
   const desc = type === 'rest' ? 'Rest Day' : name + ' \u00b7 ' + dur + 'min \u00b7 RPE ' + rpe;
   activityEntries.push({ id: actIdCounter, type, duration: dur, rpe, kcal, desc, icon: ACT_ICONS[type] || '🏃' });
+  _actPreviewEntry = null; // clear phantom — real entry now committed
   document.getElementById('actType').value = '';
   document.getElementById('actDuration').value = '';
   if (rpeEl) rpeEl.checked = false;
@@ -1791,14 +1789,26 @@ function updateActivityPreview() {
   const el = document.getElementById('actBurnPreview');
   const type = document.getElementById('actType').value;
   const dur = parseInt(document.getElementById('actDuration').value) || 0;
-  if (!type || dur <= 0 || type === 'rest') { el.style.display = 'none'; return; }
+  if (!type || dur <= 0 || type === 'rest') {
+    el.style.display = 'none';
+    // Clear phantom and revert targets
+    if (_actPreviewEntry) { _actPreviewEntry = null; if (typeof updateAllTargets === 'function') updateAllTargets(); }
+    return;
+  }
   const rpeEl = document.querySelector('input[name="actRpe"]:checked');
   const rpe = rpeEl ? parseInt(rpeEl.value) : 5;
   const base = BURN_RATES[type] || 6.0;
   const rpeMultiplier = 1 + (rpe - 5) * 0.12;
   const kcal = Math.round(base * dur * rpeMultiplier);
-  el.textContent = '~' + kcal + ' kcal burn';
+  // Set phantom activity so protein tier preview updates live
+  _actPreviewEntry = { type, duration: dur, rpe, kcal };
+  // Show burn + protein tier in preview
+  const tierBefore = (function(){ const saved = _actPreviewEntry; _actPreviewEntry = null; const t = getProteinTier(); _actPreviewEntry = saved; return t; })();
+  const tierAfter = getProteinTier();
+  const tierChanged = tierBefore.label !== tierAfter.label;
+  el.innerHTML = '~' + kcal + ' kcal burn' + (tierChanged ? ' · <span style="color:var(--accent)">Protein → ' + tierAfter.label + '</span>' : '');
   el.style.display = 'block';
+  if (typeof updateAllTargets === 'function') updateAllTargets();
 }
 
 function removeActivityEntry(id) {
@@ -2991,6 +3001,8 @@ function getTotalSleep() {
 function calcCaloriesBurnt() {
   let total = 0;
   activityEntries.forEach(e => { total += e.kcal || 0; });
+  // Include phantom activity preview burn
+  if (_actPreviewEntry && _actPreviewEntry.kcal) total += _actPreviewEntry.kcal;
   return total;
 }
 
@@ -3010,6 +3022,87 @@ function getCalorieTarget() {
     burnt: burnt,
     base: projCal
   };
+}
+
+// Dynamic macro targets — protein titrated by daily training load, fat fills remaining cal, carbs keto-low
+// Evidence basis (50+ male, resistance + combat sports, caloric deficit):
+//   - Anabolic resistance at 50+: need higher protein per meal to trigger MPS (Moore 2015, Bauer 2013)
+//   - Deficit muscle-sparing: 2.3-3.1g/kg FFM optimal (Helms 2014, Hector & Phillips 2018)
+//   - Combat sports recovery: BJJ/boxing are highly catabolic — protein needs at upper end
+//   - Overweight adjustment: use lean mass or target weight, not total BW (inflated by fat mass)
+//   - Daily titration: rest days need less, heavy training days need more
+// Protein tiers (g/kg reference weight):
+//   Rest / light (walk, mobility, bands only):  1.6 – 2.0
+//   Moderate (weights, airbike, exball, yard):   2.0 – 2.2
+//   Heavy (BJJ, boxing, MMA, or long sessions):  2.2 – 2.4
+//   Very heavy (multiple combat + weights):      2.4 – 2.6
+
+// Activity intensity classification for protein titration — continuous sliding scale
+// Weighted training load: heavy=1.0/min, moderate=0.5/min, light=0.1/min
+// Maps smoothly to protein multiplier: 1.6 g/kg (rest) → 2.4 g/kg (peak) over 0–120 load
+const PRO_TIER_HEAVY = new Set(['bjj','boxing','mma','skipping']); // high-catabolic combat/HIIT
+const PRO_TIER_MOD   = new Set(['weights','airbike','zone2','bagwork','shadowboxing','yardwork','exball']); // moderate load
+// everything else (walking, bands, mobility, sauna, rest) = light
+
+function getProteinTier() {
+  const entries = _actPreviewEntry ? [...activityEntries, _actPreviewEntry] : activityEntries;
+  // Compute weighted training load
+  let heavyMin = 0, modMin = 0, lightMin = 0;
+  entries.forEach(e => {
+    if (e.type === 'rest') return;
+    const dur = e.duration || 0;
+    if (PRO_TIER_HEAVY.has(e.type)) { heavyMin += dur; }
+    else if (PRO_TIER_MOD.has(e.type)) { modMin += dur; }
+    else { lightMin += dur; }
+  });
+  const load = heavyMin * 1.0 + modMin * 0.5 + lightMin * 0.1;
+  // Smooth ramp: 0 load → 1.6 g/kg ref, 120+ load → 2.2 g/kg ref
+  // Evidence: rest ~1.7 g/kg FFM (PROT-AGE+exercise), peak ~2.6 g/kg FFM (Helms 2014 deficit range)
+  // Morton 2018 meta-analysis: diminishing returns above 1.62 g/kg total BW for RT gains
+  // Scaled to ref weight (lean mass + target weight blend) to avoid inflation from fat mass
+  const t = Math.max(0, Math.min(1, load / 120));
+  const mult = 1.6 + t * 0.6; // 1.6 → 2.2 g/kg ref weight
+  const band = 0.25; // tight band width: ~20g range
+  // Descriptive label for UI
+  let label;
+  if (load < 5) label = 'Rest';
+  else if (load < 25) label = 'Light';
+  else if (load < 50) label = 'Moderate';
+  else if (load < 90) label = 'Heavy';
+  else label = 'Very Heavy';
+  return { min: mult, max: mult + band, label, load: Math.round(load) };
+}
+
+function updateMacroTargets() {
+  const projCal = parseFloat(document.getElementById('projDailyCal')?.value) || 1800;
+  // Use today's weigh-in if available, otherwise projStartWeight
+  const todayWt = parseFloat(document.getElementById('weight')?.value) || 0;
+  const bodyWt = todayWt > 0 ? todayWt : (parseFloat(document.getElementById('projStartWeight')?.value) || 112);
+  const bf = parseFloat(document.getElementById('projStartBF')?.value) || 32;
+  const targetWt = parseFloat(document.getElementById('projTargetWeight')?.value) || 85;
+  // Reference weight: blend of lean mass and target weight (avoids over/under-counting)
+  const leanMass = bodyWt * (1 - bf / 100);
+  const refWt = (leanMass + targetWt) / 2; // ~80kg at 112kg/32%BF/85kg target
+  // Protein: titrated by today's training load
+  const tier = getProteinTier();
+  const proMin = Math.round(refWt * tier.min);
+  const proMax = Math.round(refWt * tier.max);
+  TARGETS.pro.min = proMin;
+  TARGETS.pro.max = proMax;
+  TARGETS.pro.cap = Math.round(refWt * 3.0);
+  TARGETS.pro._tier = tier.label; // expose tier label for UI
+  // Carbs: keto-low, scale gently with calories
+  const carbMax = Math.max(15, Math.round(projCal * 0.015));
+  TARGETS.carb.max = carbMax;
+  TARGETS.carb.cap = Math.max(40, carbMax * 2);
+  // Fat: fill remaining calories after protein midpoint and carb allowance
+  const proMidCal = ((proMin + proMax) / 2) * 4;
+  const carbMidCal = (carbMax / 2) * 4;
+  const fatCal = Math.max(400, projCal - proMidCal - carbMidCal);
+  const fatMid = Math.round(fatCal / 9);
+  TARGETS.fat.min = Math.max(50, Math.round(fatMid * 0.8));
+  TARGETS.fat.max = Math.round(fatMid * 1.2);
+  TARGETS.fat.cap = Math.max(150, Math.round(fatMid * 1.8));
 }
 
 function renderTargetBar(containerId, key, value) {
@@ -3055,6 +3148,8 @@ function renderTargetBar(containerId, key, value) {
   }
   // Show sweat note on water target
   const sweatNote = (key === 'water' && calcSweatLoss() > 0) ? ` <span style="font-size:10px;color:var(--dim)">(+${calcSweatLoss()}L sweat)</span>` : '';
+  // Show training tier on protein target
+  const proTierNote = (key === 'pro' && t._tier) ? ` <span style="font-size:9px;color:var(--accent);font-weight:600">${t._tier}</span>` : '';
   // Preview ghost fill from pending nutrition entry
   let ghostHTML = '';
   if (typeof _nlogPreview !== 'undefined' && _nlogPreview) {
@@ -3073,7 +3168,7 @@ function renderTargetBar(containerId, key, value) {
 
   el.innerHTML = `
     <div class="target-header">
-      <span class="target-label">${t.label}${sweatNote}</span>
+      <span class="target-label">${t.label}${sweatNote}${proTierNote}</span>
       <span>${valueHTML}</span>
     </div>
     <div class="target-track">
@@ -3118,12 +3213,14 @@ function updateRAGLights() {
     return 'var(--border)';
   }
 
+  const calT = getCalorieTarget();
+  const proTier = TARGETS.pro._tier ? ` <span style="font-size:9px;color:var(--accent)">${TARGETS.pro._tier}</span>` : '';
   const metrics = [
     { label:'Sleep',             val:sleep, min:7,    max:9,    cap:12,   unit:'hr',   decimals:1, note: napMin > 0 ? `(+${napMin}min nap)` : '' },
-    { label:'Protein',           val:pro,   min:160,  max:220,  cap:300,  unit:'g' },
-    { label:'Calories Eaten', val:cal,   min:getCalorieTarget().min, max:getCalorieTarget().max, cap:3500, unit:'kcal', note: burnt > 0 ? `(+${Math.round(burnt*0.5)} for training)` : '' },
-    { label:'Fat',               val:fat,   min:120,  max:160,  cap:250,  unit:'g' },
-    { label:'Carbs',             val:carb,  min:20,   max:30,   cap:60,   unit:'g', invertCarbs:true },
+    { label:'Protein' + proTier, val:pro,   min:TARGETS.pro.min, max:TARGETS.pro.max, cap:TARGETS.pro.cap, unit:'g' },
+    { label:'Calories Eaten', val:cal,   min:calT.min, max:calT.max, cap:3500, unit:'kcal', note: burnt > 0 ? `(+${Math.round(burnt*0.5)} for training)` : '' },
+    { label:'Fat',               val:fat,   min:TARGETS.fat.min, max:TARGETS.fat.max, cap:TARGETS.fat.cap, unit:'g' },
+    { label:'Carbs',             val:carb,  min:TARGETS.carb.min || 0, max:TARGETS.carb.max, cap:TARGETS.carb.cap, unit:'g', invertCarbs:true },
     { label:'Water',             val:water, min:wt.min, max:wt.max, cap:wt.cap, unit:'L', decimals:1, note: wt.sweat > 0 ? `(+${wt.sweat}L sweat)` : '' },
     { label:'Calories Burnt',     val:burnt, min:200,  max:800,  cap:1200, unit:'kcal' },
     { label:'Sun (Vit D)',        val:vitD,  min:600,  max:1500, cap:3000, unit:'IU' }
@@ -3354,6 +3451,8 @@ function updateAllTargets() {
   TARGETS.net.cap = calTarget.cap + burnt;
   renderTargetBar('targetNet', 'net', calIn);
 
+  // Dynamically adjust macro targets based on daily calorie target
+  updateMacroTargets();
   renderTargetBar('targetPro', 'pro', parseInt(document.getElementById('totalPro').textContent) || 0);
   renderTargetBar('targetFat', 'fat', parseInt(document.getElementById('totalFat').textContent) || 0);
   renderTargetBar('targetCarb', 'carb', parseInt(document.getElementById('totalCarb').textContent) || 0);
@@ -4196,6 +4295,42 @@ async function syncFromGitHub() {
   function projWeeklyBurn() { return PROJ_SESSIONS.reduce((s,x) => s + x.freq*x.dur*x.burn, 0); }
   function projBMR(w,h,a) { return 10*w + 6.25*h - 5*a + 5; }
 
+  // Reverse-solve: find daily calorie intake to reach targetWt in given weeks
+  // Shared weight simulation: simulates end weight for a given daily cal intake over N weeks
+  function projSimEndWeight(dailyCal, weeksOverride) {
+    const gv = id => parseFloat(document.getElementById(id).value) || 0;
+    const sw = gv('projStartWeight')||112, sbf = gv('projStartBF')||32;
+    const adh = (gv('projAdherence')||85)/100;
+    const weeks = weeksOverride || parseInt(document.getElementById('projTimeframe').value)||26;
+    const weBurn = projWeeklyBurn()*adh, deBurn = weBurn/7, hCm = PROJ_HEIGHT_M*100;
+    let w=sw, fm=w*(sbf/100), lm=w-fm;
+    for(let i=1;i<=weeks;i++){
+      const bmr=projBMR(w,hCm,58), adapt=Math.max(0.85,1-((sw-w)/sw)*0.3);
+      const tdee=(bmr*adapt)+bmr*0.25+deBurn;
+      const calIn=dailyCal+(1-adh)*300, deficit=(tdee-calIn)*7;
+      let wl=0; if(i<=2)wl=1; else if(i===3)wl=0.5;
+      const ewc=deficit/7700+wl;
+      const mgrBase=(w>100?0.08:w>90?0.06:0.04)*adh;
+      const mgr=mgrBase*Math.max(0.1,1-i/104);
+      const bfPct=fm/w*100, floorPct=15, cushion=5;
+      let flf=1.0; if(bfPct<floorPct+cushion){const p2=Math.max(0,(bfPct-floorPct)/cushion);flf=p2*p2;}
+      fm=Math.max(fm-ewc*0.85*Math.max(0.02,flf),w*0.12); lm=lm-ewc*0.05+mgr; w=fm+lm;
+    }
+    return w;
+  }
+
+  function projSolveCal(targetWt) {
+    // Binary search: find cal that produces targetWt (within 0.5kg)
+    let lo=1200, hi=3500;
+    for(let iter=0;iter<20;iter++){
+      const mid=(lo+hi)/2;
+      const endW=projSimEndWeight(mid);
+      if(endW > targetWt) hi=mid; else lo=mid;
+      if(hi-lo<10) break;
+    }
+    return Math.round((lo+hi)/2/50)*50; // round to nearest 50
+  }
+
   function projRun() {
     const gv = id => parseFloat(document.getElementById(id).value) || 0;
     const sw = gv('projStartWeight')||112, swa = gv('projStartWaist')||118, sbf = gv('projStartBF')||32;
@@ -4347,7 +4482,7 @@ async function syncFromGitHub() {
       const pct = Math.max(2, Math.min(98, ((clientX - rect.left) / rect.width) * 100));
       // Convert pct to weight: left=barMax, right=barMin
       const newTarget = Math.round(barMax - (pct / 100) * barRange);
-      const clamped = Math.max(60, Math.min(120, newTarget));
+      const clamped = Math.max(80, Math.min(120, newTarget));
       handle.style.left = pct + '%';
       handle.style.transition = 'none';
       // Update label on handle
@@ -4358,12 +4493,18 @@ async function syncFromGitHub() {
       if (headerLbl) headerLbl.textContent = 'Target ' + clamped + 'kg';
       // Sync to input field
       document.getElementById('projTargetWeight').value = clamped;
-      // Debounced full recalc (heavy)
+      // Debounced full recalc: reverse-solve daily cal then cascade
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
+        // Auto-calculate required daily calories to reach this target
+        const requiredCal = projSolveCal(clamped);
+        const calEl = document.getElementById('projDailyCal');
+        if (calEl && Math.abs(requiredCal - parseFloat(calEl.value)) > 25) {
+          calEl.value = Math.max(1200, Math.min(3000, requiredCal));
+        }
         projSaveBaseline();
         projUpdate();
-      }, 150);
+      }, 200);
     }
 
     function onMouseDown(e) {
@@ -4380,7 +4521,11 @@ async function syncFromGitHub() {
       handle.style.transition = '';
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
-      // Final recalc
+      // Final recalc: reverse-solve cal then cascade
+      const tw = parseFloat(document.getElementById('projTargetWeight').value) || 85;
+      const requiredCal = projSolveCal(tw);
+      const calEl = document.getElementById('projDailyCal');
+      if (calEl) calEl.value = Math.max(1200, Math.min(3000, requiredCal));
       projSaveBaseline();
       projUpdate();
     }
@@ -4399,6 +4544,10 @@ async function syncFromGitHub() {
       handle.style.transition = '';
       document.removeEventListener('touchmove', onTouchMove);
       document.removeEventListener('touchend', onTouchEnd);
+      const tw = parseFloat(document.getElementById('projTargetWeight').value) || 85;
+      const requiredCal = projSolveCal(tw);
+      const calEl = document.getElementById('projDailyCal');
+      if (calEl) calEl.value = Math.max(1200, Math.min(3000, requiredCal));
       projSaveBaseline();
       projUpdate();
     }
@@ -4408,8 +4557,12 @@ async function syncFromGitHub() {
 
     // Also allow clicking anywhere on the track to set target
     track.addEventListener('click', (e) => {
-      if (e.target.closest('.wt-target-handle')) return; // don't fire on handle click
+      if (e.target.closest('.wt-target-handle')) return;
       onMove(e.clientX);
+      const tw = parseFloat(document.getElementById('projTargetWeight').value) || 85;
+      const requiredCal = projSolveCal(tw);
+      const calEl = document.getElementById('projDailyCal');
+      if (calEl) calEl.value = Math.max(1200, Math.min(3000, requiredCal));
       projSaveBaseline();
       projUpdate();
     });
@@ -4841,7 +4994,7 @@ async function syncFromGitHub() {
       const targetWt = parseFloat(document.getElementById('projTargetWeight')?.value) || 85;
       const projectedWt = projEnd.weight;
       // Bar range: startWt (left=0%) to minTarget (right=100%)
-      const barMin = 60, barMax = startWt; // 60kg minimum possible target
+      const barMin = 80, barMax = startWt; // 80kg minimum possible target (model BF floor limits below this)
       const barRange = barMax - barMin;
       const currentPct = barRange > 0 ? Math.max(0, Math.min(100, (barMax - currentWt) / barRange * 100)) : 0;
       const targetPct = barRange > 0 ? Math.max(2, Math.min(98, (barMax - targetWt) / barRange * 100)) : 50;
@@ -4993,13 +5146,73 @@ async function syncFromGitHub() {
     document.getElementById('projHSNote').innerHTML = `RAG: <span style="color:var(--green)">&#9679;</span> optimal <span style="color:var(--amber)">&#9679;</span> suboptimal <span style="color:var(--red)">&#9679;</span> high risk. Impact = estimated years gained/lost vs population baseline (AU male LE ${HS_BASE_LE}yr). Composite body-comp model (BMI primary, BF%/waist addons). RA/AF impacts calibrated for managed conditions. Trajectory assumes ${Math.round((parseFloat(document.getElementById('projAdherence').value)||85))}% adherence over ${document.getElementById('projTimeframe').value} weeks. Based on published meta-analyses (Lancet, JAMA, AHA, ABS 2022-24). Not medical advice.`;
   }
 
+  // Auto-calculate daily calories from target weight + timeframe + adherence
+  // Returns { cal, achievable, minEndWeight, lossPerWeek }
+  let _projAutoCalcEnabled = true; // flag to prevent recursion
+  function projAutoCalc() {
+    if (!_projAutoCalcEnabled) return;
+    const tw = parseFloat(document.getElementById('projTargetWeight')?.value) || 85;
+    const requiredCal = projSolveCal(tw);
+    const calEl = document.getElementById('projDailyCal');
+    if (!calEl) return;
+    const clamped = Math.max(1200, Math.min(3000, requiredCal));
+    // Only update if meaningfully different (prevents jitter)
+    if (Math.abs(clamped - parseFloat(calEl.value)) > 25) {
+      calEl.value = clamped;
+    }
+    // Check if target is achievable (solver hit the floor at 1200)
+    const weeks = parseInt(document.getElementById('projTimeframe').value) || 26;
+    const sw = parseFloat(document.getElementById('projStartWeight').value) || 112;
+    const lossNeeded = sw - tw;
+    const lossPerWeek = lossNeeded / weeks;
+    const achievable = requiredCal > 1200;
+    const tooAggressive = lossPerWeek > 1.0; // >1kg/week is medically aggressive
+    const veryAggressive = lossPerWeek > 1.5;
+    // Compute actual min weight achievable at 1200cal for this timeframe (for warning msg)
+    const minEndWt = achievable ? tw : Math.round(projSimEndWeight(1200, weeks) * 10) / 10;
+    const tfLabel = weeks >= 52 ? Math.round(weeks / 4.33) + ' months' : weeks + ' weeks';
+    // Show warning if needed
+    const warnEl = document.getElementById('projTargetWarning');
+    if (warnEl) {
+      if (veryAggressive && !achievable) {
+        warnEl.style.display = 'block';
+        warnEl.style.background = 'rgba(239,68,68,0.15)';
+        warnEl.style.color = 'var(--red)';
+        warnEl.innerHTML = `⚠️ <strong>Not achievable in ${tfLabel}:</strong> Even at 1200cal/day, best projected weight is ~${minEndWt}kg (${lossPerWeek.toFixed(1)}kg/week needed). Risk of muscle loss and metabolic damage. Increase target or extend timeframe.`;
+      } else if (veryAggressive) {
+        warnEl.style.display = 'block';
+        warnEl.style.background = 'rgba(239,68,68,0.15)';
+        warnEl.style.color = 'var(--red)';
+        warnEl.innerHTML = `⚠️ <strong>Very aggressive:</strong> ${lossPerWeek.toFixed(1)}kg/week needed — exceeds safe 1kg/week. Requires ${clamped}cal/day. Risk of muscle loss, metabolic slowdown, and rebound. Consider a longer timeframe.`;
+      } else if (tooAggressive) {
+        warnEl.style.display = 'block';
+        warnEl.style.background = 'rgba(245,158,11,0.15)';
+        warnEl.style.color = 'var(--amber)';
+        warnEl.innerHTML = `⚡ <strong>Ambitious:</strong> ${lossPerWeek.toFixed(1)}kg/week — at the upper limit of safe loss. ${!achievable ? 'Best achievable at 1200cal/day: ~' + minEndWt + 'kg in ' + tfLabel + '.' : 'Requires ' + clamped + 'cal/day adherence.'}`;
+      } else if (!achievable) {
+        warnEl.style.display = 'block';
+        warnEl.style.background = 'rgba(245,158,11,0.15)';
+        warnEl.style.color = 'var(--amber)';
+        warnEl.innerHTML = `ℹ️ Target ${tw}kg is below the model floor — best achievable in ${tfLabel} at 1200cal/day is ~${minEndWt}kg. Body-fat resistance limits further loss. Try extending the timeframe.`;
+      } else {
+        warnEl.style.display = 'none';
+      }
+    }
+  }
+
   function projUpdate() {
+    // Auto-calc daily cal from target (unless user manually set cal)
+    projAutoCalc();
+    _projAutoCalcEnabled = false; // prevent re-entrance from input listeners
     const proj=projRun();
     projDrawChart(proj);
     projRenderOutcome(proj);
     projRenderBenefits(proj);
     projRenderAssumptions(proj);
     projRenderHealthStatus(proj);
+    _projAutoCalcEnabled = true;
+    // Cascade to coaches notes, target bars, RAG lights (they read projTargetWeight/projDailyCal)
+    if (typeof updateAllTargets === 'function') updateAllTargets();
   }
 
   // Tab switching
