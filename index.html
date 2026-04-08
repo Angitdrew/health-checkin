@@ -294,11 +294,16 @@
   .proj-hs-nm .proj-hs-nm-gain{font-weight:700;text-align:right;font-size:12px}
   .wt-progress{margin:12px 0;padding:12px 14px;background:var(--surface2);border-radius:8px}
   .wt-progress-label{display:flex;justify-content:space-between;font-size:10px;color:var(--dim);margin-bottom:6px}
-  .wt-progress-track{position:relative;height:22px;background:rgba(255,255,255,0.06);border-radius:11px;overflow:visible}
-  .wt-progress-fill{height:100%;border-radius:11px;background:linear-gradient(90deg,#22c55e,#3b82f6);transition:width 0.8s ease}
-  .wt-progress-marker{position:absolute;top:-3px;width:3px;height:28px;background:var(--text);border-radius:2px;transform:translateX(-50%)}
+  .wt-progress-track{position:relative;height:22px;background:rgba(255,255,255,0.06);border-radius:11px;overflow:visible;cursor:pointer}
+  .wt-progress-fill{height:100%;border-radius:11px;background:linear-gradient(90deg,#22c55e,#3b82f6);transition:width 0.3s ease;pointer-events:none}
+  .wt-progress-marker{position:absolute;top:-3px;width:3px;height:28px;background:var(--text);border-radius:2px;transform:translateX(-50%);pointer-events:none}
   .wt-progress-vals{display:flex;justify-content:space-between;font-size:11px;margin-top:6px;font-weight:600}
-  .wt-progress-current{position:absolute;top:50%;transform:translate(-50%,-50%);font-size:9px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.5);white-space:nowrap}
+  .wt-progress-current{position:absolute;top:50%;transform:translate(-50%,-50%);font-size:9px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.5);white-space:nowrap;pointer-events:none}
+  .wt-target-handle{position:absolute;top:-6px;width:18px;height:34px;background:var(--green);border:2px solid #fff;border-radius:6px;transform:translateX(-50%);cursor:grab;z-index:5;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.4);transition:background 0.15s}
+  .wt-target-handle:hover{background:#16a34a}
+  .wt-target-handle.dragging{cursor:grabbing;background:#15803d;box-shadow:0 2px 12px rgba(34,197,94,0.5)}
+  .wt-target-handle::after{content:'⋮';color:rgba(255,255,255,0.8);font-size:12px;font-weight:700;line-height:1}
+  .wt-target-label{position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:700;color:var(--green);white-space:nowrap;pointer-events:none}
   @media(max-width:600px){.proj-controls{flex-direction:column}.proj-metric-grid{grid-template-columns:1fr 1fr}.proj-risk-grid{grid-template-columns:1fr}.proj-hs-row{grid-template-columns:110px 40px 1fr 36px;font-size:10px}}
 </style>
 </head>
@@ -487,7 +492,7 @@
         </div>
         <div class="field" style="flex:1;min-width:100px">
           <div class="label">Type</div>
-          <select id="nlogType" onchange="onNlogTypeChange()"
+          <select id="nlogType" onchange="onNlogTypeChange()">
             <option value="">— Select —</option>
             <optgroup label="Food">
               <option value="food">🍽 Food</option>
@@ -889,13 +894,14 @@
       </div>
     </div>
 
+    <div id="projWeightProgress"></div>
+
     <div class="proj-card" id="projHealthStatusCard">
       <div class="proj-hs-header">
         <div class="proj-hs-title">&#129657; Health Status Assessment</div>
         <div class="proj-hs-date" id="projHSDate"></div>
       </div>
       <div class="proj-hs-grid" id="projHSGrid"></div>
-      <div id="projWeightProgress"></div>
       <div style="margin:14px 0 6px;font-size:11px;font-weight:600">Projected Trajectory — With Goal Adherence</div>
       <canvas id="projHSChart" height="220"></canvas>
       <div class="proj-legend" id="projHSChartLegend"></div>
@@ -1278,6 +1284,49 @@ const NLOG_DRINK_SUBS = {
   water: [{ id:'plain', name:'Plain Water', cal:0 },{ id:'sparkling', name:'Sparkling', cal:0 }],
 };
 
+// ===== SMART DEFAULTS: frequency-based learning =====
+// Tracks how often each subtype is selected per type, persisted in localStorage
+// Structure: { "electrolyte": { "zero": 12, "sugar": 2, "tablet": 1 }, "coffee": { "long_black": 15 }, ... }
+function getNlogFreqs() { try { return JSON.parse(localStorage.getItem('nlogFreqs') || '{}'); } catch { return {}; } }
+function recordNlogChoice(type, subId) {
+  if (!type || !subId) return;
+  const f = getNlogFreqs();
+  if (!f[type]) f[type] = {};
+  f[type][subId] = (f[type][subId] || 0) + 1;
+  localStorage.setItem('nlogFreqs', JSON.stringify(f));
+}
+function getSmartDefault(type) {
+  const f = getNlogFreqs();
+  if (!f[type]) return null;
+  // Return the subId with highest frequency
+  let best = null, bestCount = 0;
+  Object.entries(f[type]).forEach(([id, count]) => { if (count > bestCount) { best = id; bestCount = count; } });
+  return best;
+}
+// Also track food selections: key = "food", subId = foodDB index
+function recordNlogFoodChoice(foodIdx, servingIdx) {
+  if (foodIdx == null) return;
+  const f = getNlogFreqs();
+  if (!f._food) f._food = {};
+  const k = String(foodIdx);
+  f._food[k] = (f._food[k] || 0) + 1;
+  // Track serving per food
+  if (!f._foodServing) f._foodServing = {};
+  f._foodServing[k] = servingIdx;
+  localStorage.setItem('nlogFreqs', JSON.stringify(f));
+}
+function getSmartFoodDefault() {
+  const f = getNlogFreqs();
+  if (!f._food) return null;
+  let best = null, bestCount = 0;
+  Object.entries(f._food).forEach(([idx, count]) => { if (count > bestCount) { best = parseInt(idx); bestCount = count; } });
+  return best;
+}
+function getSmartFoodServing(foodIdx) {
+  const f = getNlogFreqs();
+  return f._foodServing ? f._foodServing[String(foodIdx)] : null;
+}
+
 // Populate food dropdown
 function buildNlogFoodSelect() {
   const sel = document.getElementById('nlogFoodSelect');
@@ -1314,14 +1363,34 @@ function onNlogTypeChange() {
 
   if (type === 'food') {
     document.getElementById('nlogCtxFood').classList.add('active');
+    // Apply smart food default
+    const smartFood = getSmartFoodDefault();
+    if (smartFood != null) {
+      const foodSel = document.getElementById('nlogFoodSelect');
+      foodSel.value = smartFood;
+      foodSel.dispatchEvent(new Event('change'));
+      setTimeout(() => {
+        const smartServing = getSmartFoodServing(smartFood);
+        if (smartServing != null) document.getElementById('nlogFoodServing').value = smartServing;
+        previewNlogEntry();
+      }, 60);
+    }
   } else if (type === 'coffee') {
     document.getElementById('nlogCtxCoffee').classList.add('active');
+    // Apply smart coffee default
+    const smartCoffee = getSmartDefault('coffee');
+    if (smartCoffee) {
+      document.getElementById('nlogCoffeeType').value = smartCoffee;
+    }
   } else if (type) {
     // All other drinks
     document.getElementById('nlogCtxDrink').classList.add('active');
     const subs = NLOG_DRINK_SUBS[type] || [{ id:'plain', name:'Plain', cal:0 }];
     const subSel = document.getElementById('nlogDrinkSub');
     subSel.innerHTML = subs.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+    // Apply smart default (learned from frequency)
+    const smartSub = getSmartDefault(type);
+    if (smartSub && subs.some(s => s.id === smartSub)) subSel.value = smartSub;
     // Hide subtype for water (it's just water)
     document.getElementById('nlogDrinkSubWrap').style.display = type === 'water' ? 'none' : '';
     // Default volume
@@ -1346,17 +1415,16 @@ document.getElementById('nlogFoodSelect').addEventListener('change', function() 
   }
 });
 
-// Add entry to log
-let nlogIdCounter = 0;
-function addNlogEntry() {
+// Build an entry object from current form state (without adding it)
+function buildNlogEntry(assignId) {
   const type = document.getElementById('nlogType').value;
-  if (!type) return;
+  if (!type) return null;
   const time = document.getElementById('nlogTime').value || '00:00';
-  let entry = { id: ++nlogIdCounter, time, type, icon: NLOG_ICONS[type]||'🍽', cal:0, pro:0, carb:0, fat:0, omega3:0, fluid_ml:0, caffeine_mg:0, alcohol_std:0, desc:'', raw:{} };
+  let entry = { id: assignId ? ++nlogIdCounter : 0, time, type, icon: NLOG_ICONS[type]||'🍽', cal:0, pro:0, carb:0, fat:0, omega3:0, fluid_ml:0, caffeine_mg:0, alcohol_std:0, desc:'', raw:{} };
 
   if (type === 'food') {
     const foodIdx = parseInt(document.getElementById('nlogFoodSelect').value);
-    if (isNaN(foodIdx)) return;
+    if (isNaN(foodIdx)) return null;
     const food = foodDB[foodIdx];
     const qty = parseInt(document.getElementById('nlogFoodQty').value) || 1;
     if (food.name.startsWith('Custom')) {
@@ -1399,17 +1467,81 @@ function addNlogEntry() {
     entry.carb = Math.round((sub.carb||0) * ml / 100 * 10) / 10;
     if (type === 'alcohol') {
       entry.alcohol_std = sub.std || 0;
-      entry.fluid_ml = Math.round(ml * 0.5); // alcohol is net ~50% hydration
-      entry.cal = sub.cal || 0; // alcohol cals are per-serve not per-100ml
+      entry.fluid_ml = Math.round(ml * 0.5);
+      entry.cal = sub.cal || 0;
       entry.desc = sub.name;
     } else {
-      entry.fluid_ml = type === 'soft_drink' ? Math.round(ml * 0.9) : ml; // soft drinks ~90% hydration; coconut water & others = full
+      entry.fluid_ml = type === 'soft_drink' ? Math.round(ml * 0.9) : ml;
       entry.desc = (sub.name || type) + ' · ' + ml + 'mL';
     }
     if (sub.caff) entry.caffeine_mg = sub.caff;
     entry.raw = { subtype:subId, ml };
   }
+  return entry;
+}
 
+// Live preview: show pending entry delta on summary bar + target bars
+let _nlogPreview = null; // global preview state for target bars to read
+function previewNlogEntry() {
+  const pending = buildNlogEntry(false);
+  // Clear any existing preview spans
+  document.querySelectorAll('.ns-preview').forEach(el => el.remove());
+
+  if (!pending) { _nlogPreview = null; if (typeof updateAllTargets === 'function') updateAllTargets(); return; }
+
+  // Compute current totals
+  let tCal=0, tPro=0, tCarb=0, tFat=0, tFluid=0, tCaff=0, tAlc=0;
+  nlogEntries.forEach(e => { tCal+=e.cal; tPro+=e.pro; tCarb+=e.carb; tFat+=e.fat; tFluid+=e.fluid_ml; tCaff+=e.caffeine_mg; tAlc+=e.alcohol_std; });
+
+  // Store preview for target bar rendering
+  _nlogPreview = { cal:pending.cal, pro:pending.pro, carb:pending.carb, fat:pending.fat, fluid_ml:pending.fluid_ml, caffeine_mg:pending.caffeine_mg, alcohol_std:pending.alcohol_std };
+
+  // Show deltas on summary bar
+  const items = [
+    { id:'nsCal', d:pending.cal, t:tCal+pending.cal, u:'' },
+    { id:'nsPro', d:pending.pro, t:tPro+pending.pro, u:'g' },
+    { id:'nsCarb', d:pending.carb, t:tCarb+pending.carb, u:'g' },
+    { id:'nsFat', d:pending.fat, t:tFat+pending.fat, u:'g' },
+    { id:'nsFluid', d:pending.fluid_ml, t:tFluid+pending.fluid_ml, u:'' },
+    { id:'nsCaff', d:pending.caffeine_mg, t:tCaff+pending.caffeine_mg, u:'' },
+    { id:'nsAlc', d:pending.alcohol_std, t:tAlc+pending.alcohol_std, u:'' }
+  ];
+  items.forEach(({id, d, t, u}) => {
+    if (!d) return;
+    const el = document.getElementById(id);
+    if (!el || !el.parentElement) return;
+    const pvSpan = document.createElement('span');
+    pvSpan.className = 'ns-preview';
+    pvSpan.style.cssText = 'display:block;font-size:10px;color:var(--accent);font-weight:600;line-height:1;margin-top:1px';
+    const dStr = id === 'nsAlc' ? d.toFixed(1) : Math.round(d);
+    const tStr = id === 'nsAlc' ? t.toFixed(1) : Math.round(t);
+    pvSpan.textContent = '+' + dStr + u + ' → ' + tStr + u;
+    el.parentElement.appendChild(pvSpan);
+  });
+
+  // Show summary bar if hidden
+  const summaryEl = document.getElementById('nlogSummary');
+  if (summaryEl && summaryEl.style.display === 'none' && (pending.cal || pending.fluid_ml || pending.caffeine_mg)) {
+    summaryEl.style.display = 'flex';
+  }
+
+  // Re-render target bars to show preview ghost fill
+  if (typeof updateAllTargets === 'function') updateAllTargets();
+}
+
+// Add entry to log
+let nlogIdCounter = 0;
+function addNlogEntry() {
+  const entry = buildNlogEntry(true);
+  if (!entry) return;
+  // Record choice for smart defaults
+  if (entry.type === 'food' && entry.raw.foodIdx != null) {
+    recordNlogFoodChoice(entry.raw.foodIdx, entry.raw.servingIdx);
+  } else if (entry.type === 'coffee' && entry.raw.coffeeType) {
+    recordNlogChoice('coffee', entry.raw.coffeeType);
+  } else if (entry.raw.subtype) {
+    recordNlogChoice(entry.type, entry.raw.subtype);
+  }
   nlogEntries.push(entry);
   // Sort by time
   nlogEntries.sort((a,b) => a.time.localeCompare(b.time));
@@ -1428,7 +1560,17 @@ function resetNlogForm() {
   document.getElementById('nlogFoodQty').value = 1;
   document.getElementById('nlogFoodCustom').style.display = 'none';
   document.getElementById('nlogTime').value = '';
+  // Clear live preview deltas
+  document.querySelectorAll('.ns-preview').forEach(el => el.remove());
+  _nlogPreview = null;
+  if (typeof updateAllTargets === 'function') updateAllTargets();
 }
+
+// Wire up live preview on all nutrition form inputs
+['nlogType','nlogFoodSelect','nlogFoodServing','nlogFoodQty','nlogCoffeeType','nlogCoffeeShots','nlogCoffeeMilk','nlogDrinkML','nlogDrinkSub','nlogCustomCal','nlogCustomPro','nlogCustomCarb','nlogCustomFat'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) { el.addEventListener('change', previewNlogEntry); el.addEventListener('input', previewNlogEntry); }
+});
 
 function removeNlogEntry(id) {
   nlogEntries = nlogEntries.filter(e => e.id !== id);
@@ -1608,6 +1750,14 @@ function updateFluidTotal() { updateNlogTotals(); }
 // Init dropdowns
 buildNlogFoodSelect();
 buildNlogCoffeeSelect();
+// Seed smart defaults for known preferences (only if no history yet)
+if (!localStorage.getItem('nlogFreqs')) {
+  localStorage.setItem('nlogFreqs', JSON.stringify({
+    electrolyte: { zero: 3 },       // sugar-free default
+    coconut_water: { sb_fermented: 3 }, // SB fermented default
+    coffee: { long_black: 3 }        // long black default
+  }));
+}
 
 // ===== ACTIVITY LOG ENGINE =====
 const ACT_ICONS = { bjj:'🥋', boxing:'🥊', shadowboxing:'🥊', bagwork:'🥊', skipping:'🪢', mma:'🥋', weights:'🏋️', airbike:'🚴', walking:'🚶', zone2:'🏃', bands:'🩹', exball:'⚽', yardwork:'🌿', mobility:'🧘', sauna:'🧖', rest:'😴', other:'🏃' };
@@ -2905,6 +3055,22 @@ function renderTargetBar(containerId, key, value) {
   }
   // Show sweat note on water target
   const sweatNote = (key === 'water' && calcSweatLoss() > 0) ? ` <span style="font-size:10px;color:var(--dim)">(+${calcSweatLoss()}L sweat)</span>` : '';
+  // Preview ghost fill from pending nutrition entry
+  let ghostHTML = '';
+  if (typeof _nlogPreview !== 'undefined' && _nlogPreview) {
+    const previewMap = { cal:_nlogPreview.cal, pro:_nlogPreview.pro, fat:_nlogPreview.fat, carb:_nlogPreview.carb, water:_nlogPreview.fluid_ml/1000 };
+    const pvDelta = previewMap[key] || 0;
+    if (pvDelta > 0) {
+      const pvTotal = value + pvDelta;
+      const pvPct = Math.min(pvTotal / t.cap * 100, 100);
+      const pvColor = pvTotal < t.min ? 'var(--amber)' : pvTotal <= t.max ? 'var(--green)' : 'var(--red)';
+      ghostHTML = `<div style="position:absolute;top:1px;bottom:1px;left:${pct}%;width:${Math.max(0,pvPct-pct)}%;border-radius:0 6px 6px 0;background:${pvColor};opacity:0.35;transition:width 0.3s"></div>`;
+      // Show preview total
+      const pvStr = Number.isInteger(pvTotal) ? pvTotal : pvTotal.toFixed(1);
+      valueHTML += ` <span style="font-size:10px;color:var(--accent);font-weight:600">→ ${pvStr}</span>`;
+    }
+  }
+
   el.innerHTML = `
     <div class="target-header">
       <span class="target-label">${t.label}${sweatNote}</span>
@@ -2914,6 +3080,7 @@ function renderTargetBar(containerId, key, value) {
       <div class="target-zone" style="left:${zonePctL}%;width:${zoneW}%"></div>
       ${burnHTML}
       <div class="target-fill" style="width:${pct}%;background:${fillColor}"></div>
+      ${ghostHTML}
     </div>
     <div class="target-limits">${limitsHTML}</div>
   `;
@@ -4164,7 +4331,89 @@ async function syncFromGitHub() {
   const HS_AGE = 58; // DOB: 23 Apr 1967
   // LOCKED baseline values from Master Health Profile — absolute fallbacks only (never change with daily check-ins)
   // Source: Medical History/Master Health Profile - Andrew Potts.xlsx
-  const HS_PROFILE = { bpSys: 125, bpDia: 78, rhr: 78, waist: 117, hip: 120, whr: 0.975 };
+  const HS_PROFILE = { bpSys: 125, bpDia: 78, rhr: 78, waist: 118, hip: 120, whr: 0.983 };
+
+  // Drag handler for target weight slider
+  let _wtDragActive = false;
+  function _wtInitDrag(barMax, barMin) {
+    const handle = document.getElementById('wtTargetHandle');
+    const track = document.getElementById('wtProgressTrack');
+    if (!handle || !track) return;
+    const barRange = barMax - barMin;
+    let debounceTimer = null;
+
+    function onMove(clientX) {
+      const rect = track.getBoundingClientRect();
+      const pct = Math.max(2, Math.min(98, ((clientX - rect.left) / rect.width) * 100));
+      // Convert pct to weight: left=barMax, right=barMin
+      const newTarget = Math.round(barMax - (pct / 100) * barRange);
+      const clamped = Math.max(60, Math.min(120, newTarget));
+      handle.style.left = pct + '%';
+      handle.style.transition = 'none';
+      // Update label on handle
+      const lbl = handle.querySelector('.wt-target-label');
+      if (lbl) lbl.textContent = clamped + 'kg';
+      // Update header label
+      const headerLbl = handle.closest('.wt-progress')?.querySelector('.wt-progress-label span:last-child');
+      if (headerLbl) headerLbl.textContent = 'Target ' + clamped + 'kg';
+      // Sync to input field
+      document.getElementById('projTargetWeight').value = clamped;
+      // Debounced full recalc (heavy)
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        projSaveBaseline();
+        projUpdate();
+      }, 150);
+    }
+
+    function onMouseDown(e) {
+      e.preventDefault();
+      _wtDragActive = true;
+      handle.classList.add('dragging');
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    }
+    function onMouseMove(e) { if (_wtDragActive) onMove(e.clientX); }
+    function onMouseUp() {
+      _wtDragActive = false;
+      handle.classList.remove('dragging');
+      handle.style.transition = '';
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      // Final recalc
+      projSaveBaseline();
+      projUpdate();
+    }
+    // Touch support
+    function onTouchStart(e) {
+      e.preventDefault();
+      _wtDragActive = true;
+      handle.classList.add('dragging');
+      document.addEventListener('touchmove', onTouchMove, { passive: false });
+      document.addEventListener('touchend', onTouchEnd);
+    }
+    function onTouchMove(e) { if (_wtDragActive && e.touches[0]) { e.preventDefault(); onMove(e.touches[0].clientX); } }
+    function onTouchEnd() {
+      _wtDragActive = false;
+      handle.classList.remove('dragging');
+      handle.style.transition = '';
+      document.removeEventListener('touchmove', onTouchMove);
+      document.removeEventListener('touchend', onTouchEnd);
+      projSaveBaseline();
+      projUpdate();
+    }
+
+    handle.addEventListener('mousedown', onMouseDown);
+    handle.addEventListener('touchstart', onTouchStart, { passive: false });
+
+    // Also allow clicking anywhere on the track to set target
+    track.addEventListener('click', (e) => {
+      if (e.target.closest('.wt-target-handle')) return; // don't fire on handle click
+      onMove(e.clientX);
+      projSaveBaseline();
+      projUpdate();
+    });
+  }
 
   function projRenderHealthStatus(proj) {
     const ci = JSON.parse(localStorage.getItem('healthCheckins') || '[]');
@@ -4484,14 +4733,18 @@ async function syncFromGitHub() {
     }
     const w0BodyImpact = bodyCompImpact(w0.bmi, w0.bf, w0.waist, w0.neck, w0.muscle);
 
+    // Compute lifestyle improvement delta (difference between current and best-case for non-body-comp categories)
+    const lifestyleDelta = allCatsWithGains.filter(c => !['BMI','Body Fat','Waist','Neck (OSA risk)','Muscle Mass','Waist:Height','ABSI','FFMI'].includes(c.cat)).reduce((s, c) => s + (c.bestImpact - c.impact), 0);
+
     const trajData = pData.map((wk, i) => {
       const wkBodyImpact = bodyCompImpact(wk.bmi, wk.bf, wk.waist, wk.neck, wk.muscle);
       // Delta = how much body-comp improved since W0
       const bodyDelta = wkBodyImpact - w0BodyImpact;
-      const exBonus = Math.min(i / pData.length * 1.2, 1.2); // Median exercise adaptation bonus
-      // Anchor to projectedLE + improvements
-      const wkLE = Math.round((projectedLE + bodyDelta + exBonus) * 10) / 10;
-      const wkHS = Math.round((projectedHS + (bodyDelta + exBonus) * 0.85) * 10) / 10;
+      // Lifestyle improvement ramps up gradually (assumes adherence drives lifestyle toward optimal)
+      const lifestyleRamp = lifestyleDelta * Math.min(i / pData.length, 1);
+      // Anchor to projectedLE + body-comp improvements + lifestyle ramp
+      const wkLE = Math.round((projectedLE + bodyDelta + lifestyleRamp) * 10) / 10;
+      const wkHS = Math.round((projectedHS + (bodyDelta + lifestyleRamp) * 0.85) * 10) / 10;
       // Bio age scoring
       const wkBmiScore = wk.bmi <= 24.9 ? 1 : wk.bmi <= 29.9 ? 0.5 : 0;
       const wkBfScore = wk.bf <= 20 ? 1 : wk.bf <= 25 ? 0.5 : 0;
@@ -4510,32 +4763,11 @@ async function syncFromGitHub() {
       return { week: wk.week, le: wkLE, hs: wkHS, bioAge: wkBioAge };
     });
 
-    // ---- ADJUSTED (GOALS-MET) VALUES — dynamic: projected body-comp at timeframe endpoint + best-case lifestyle ----
-    // Body-comp categories use projected end-state; lifestyle categories use best-case
-    const bodyCompCats = ['BMI', 'Body Fat', 'Waist', 'Neck (OSA risk)', 'Muscle Mass', 'Waist:Height', 'ABSI', 'FFMI'];
-    const adjTotalImpact = allCatsWithGains.reduce((s, c) => {
-      if (bodyCompCats.includes(c.cat)) {
-        // Use projected end-state impact for body-comp categories
-        return s + c.impact + (c.gain * Math.min(1, pData.length / 52)); // partial improvement scaled to timeframe
-      }
-      return s + c.bestImpact; // lifestyle = best-case
-    }, 0);
-    const adjLE = Math.round((HS_BASE_LE + adjTotalImpact) * 10) / 10;
-    const adjHS = Math.round((HS_BASE_HS + adjTotalImpact * 0.85) * 10) / 10;
-    // Dynamic bio age: project body-comp scores at endpoint
-    const adjBmiScore = projBMI <= 24.9 ? 1 : projBMI <= 29.9 ? 0.5 : 0;
-    const adjBfScore = projBF <= 20 ? 1 : projBF <= 25 ? 0.5 : 0;
-    const adjWaistScore = projWaist < 94 ? 1 : projWaist < 102 ? 0.5 : 0;
-    const adjNeckScore = projEnd.neck < 40 ? 1 : projEnd.neck <= 43 ? 0.5 : 0;
-    const adjMuscleScore = projEnd.muscle >= 38 ? 1 : projEnd.muscle >= 33 ? 0.5 : 0;
-    const nonBodyCount = cats.filter(c => !bodyCompCats.includes(c.cat)).length; // all assumed green for goals-met
-    const bodyScores = [adjBmiScore, adjBfScore, adjWaistScore, adjNeckScore, adjMuscleScore];
-    const adjGreen = nonBodyCount + bodyScores.filter(s => s === 1).length;
-    const adjAmber = bodyScores.filter(s => s === 0.5).length;
-    const adjRed = bodyScores.filter(s => s === 0).length;
-    const adjValid = adjGreen + adjAmber + adjRed;
-    const adjBioOffset = adjValid > 0 ? (adjRed * 3 + adjAmber * 0.5 - adjGreen * 1.2) / adjValid : 0;
-    const adjBioAge = Math.round((HS_AGE + adjBioOffset) * 10) / 10;
+    // ---- ADJUSTED VALUES — derived from trajectory endpoint (single source of truth) ----
+    const trajEnd = trajData[trajData.length - 1];
+    const adjLE = trajEnd.le;
+    const adjHS = trajEnd.hs;
+    const adjBioAge = trajEnd.bioAge;
 
     // ---- RENDER ----
     document.getElementById('projHSDate').innerHTML = `Based on ${ci.length} check-in${ci.length > 1 ? 's' : ''} · Latest: ${latest.date}`;
@@ -4601,33 +4833,40 @@ async function syncFromGitHub() {
         <div class="proj-hs-ldelta" style="color:var(--accent)">${baGain > 0 ? '−' + baGain + 'yr' : baGain < 0 ? '+' + Math.abs(baGain) + 'yr' : '—'}</div>
       </div>`;
 
-    // ---- WEIGHT PROGRESS SCALE ----
+    // ---- WEIGHT PROGRESS SCALE with draggable target ----
     const wpEl = document.getElementById('projWeightProgress');
-    if (wpEl) {
+    if (wpEl && !_wtDragActive) {
       const startWt = pData[0].weight;
       const currentWt = gv('weight') || startWt;
       const targetWt = parseFloat(document.getElementById('projTargetWeight')?.value) || 85;
       const projectedWt = projEnd.weight;
-      const totalDrop = startWt - targetWt;
-      const lost = startWt - currentWt;
-      const pctDone = totalDrop > 0 ? Math.max(0, Math.min(100, (lost / totalDrop) * 100)) : 0;
-      const projPct = totalDrop > 0 ? Math.max(0, Math.min(100, ((startWt - projectedWt) / totalDrop) * 100)) : 0;
+      // Bar range: startWt (left=0%) to minTarget (right=100%)
+      const barMin = 60, barMax = startWt; // 60kg minimum possible target
+      const barRange = barMax - barMin;
+      const currentPct = barRange > 0 ? Math.max(0, Math.min(100, (barMax - currentWt) / barRange * 100)) : 0;
+      const targetPct = barRange > 0 ? Math.max(2, Math.min(98, (barMax - targetWt) / barRange * 100)) : 50;
+      const projPct = barRange > 0 ? Math.max(0, Math.min(100, (barMax - projectedWt) / barRange * 100)) : 0;
       const toGo = Math.round((currentWt - targetWt) * 10) / 10;
       const weeks = pData.length - 1;
       const tfLabel = weeks >= 52 ? Math.round(weeks / 4.33) + 'mo' : weeks + 'wk';
       wpEl.innerHTML = `<div class="wt-progress">
-        <div class="wt-progress-label"><span>Start ${startWt}kg</span><span style="color:var(--text);font-weight:600">${toGo > 0 ? toGo + 'kg to go' : 'Target reached!'}</span><span>Target ${targetWt}kg</span></div>
-        <div class="wt-progress-track">
-          <div class="wt-progress-fill" style="width:${pctDone}%"></div>
+        <div class="wt-progress-label"><span>Start ${startWt}kg</span><span style="color:var(--text);font-weight:600">${toGo > 0 ? toGo + 'kg to go' : 'Target reached!'}</span><span style="color:var(--green);font-weight:700">Target ${targetWt}kg</span></div>
+        <div class="wt-progress-track" id="wtProgressTrack">
+          <div class="wt-progress-fill" style="width:${currentPct}%"></div>
           <div class="wt-progress-marker" style="left:${projPct}%;background:var(--accent);opacity:0.5" title="Projected @ ${tfLabel}: ${projectedWt}kg"></div>
-          ${pctDone > 5 ? `<div class="wt-progress-current" style="left:${Math.max(8, Math.min(92, pctDone))}%">${currentWt}kg (${Math.round(pctDone)}%)</div>` : ''}
+          ${currentPct > 5 ? `<div class="wt-progress-current" style="left:${Math.max(5, Math.min(92, currentPct))}%">${currentWt}kg</div>` : ''}
+          <div class="wt-target-handle" id="wtTargetHandle" style="left:${targetPct}%" title="Drag to set target weight">
+            <div class="wt-target-label">${targetWt}kg</div>
+          </div>
         </div>
         <div class="wt-progress-vals">
           <span style="color:var(--dim)">${startWt}kg</span>
           <span style="color:var(--accent);font-size:9px">▼ projected ${projectedWt}kg @ ${tfLabel}</span>
-          <span style="color:var(--green)">${targetWt}kg</span>
+          <span style="color:var(--green)">${barMin}kg</span>
         </div>
       </div>`;
+      // Wire up drag interaction
+      _wtInitDrag(startWt, barMin);
     }
 
     // Category rows with assumption description
@@ -4871,20 +5110,25 @@ async function syncFromGitHub() {
     projUpdate();
   }
 
+  // Canonical baseline values — the definitive starting point (from Master Health Profile)
+  const PROJ_CANONICAL_BASELINE = { weight:112, waist:118, bf:32, muscle:38, neck:44, lockedDate:'2026-04-04' };
+
   function projAutoBaseline() {
-    // Check if a locked baseline already exists in localStorage
+    // Check if saved baseline matches canonical values; if not, reset it
     const saved = localStorage.getItem(PROJ_BASELINE_KEY);
     if (saved) {
       const bl = JSON.parse(saved);
-      projApplyBaseline(bl);
-      return;
+      // Validate saved baseline hasn't drifted from canonical hard values
+      if (bl.weight === PROJ_CANONICAL_BASELINE.weight && bl.waist === PROJ_CANONICAL_BASELINE.waist &&
+          bl.bf === PROJ_CANONICAL_BASELINE.bf && bl.muscle === PROJ_CANONICAL_BASELINE.muscle &&
+          bl.neck === PROJ_CANONICAL_BASELINE.neck) {
+        projApplyBaseline(bl);
+        return;
+      }
     }
-    // No baseline saved yet — seed from check-in data (first-time only), then lock it
-    const cur = projGetCurrentMetrics();
-    if (cur) {
-      projApplyBaseline(cur);
-      projSaveBaseline();
-    }
+    // No valid baseline — lock canonical values
+    projApplyBaseline(PROJ_CANONICAL_BASELINE);
+    localStorage.setItem(PROJ_BASELINE_KEY, JSON.stringify(PROJ_CANONICAL_BASELINE));
   }
 
   projAutoBaseline();
