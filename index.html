@@ -211,17 +211,18 @@
   .goal-progress-fill{height:100%;border-radius:6px;transition:width 0.3s}
 
   /* RAG panel */
-  /* Radial arc gauge grid */
-  .rag-panel{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-  @media(max-width:600px){.rag-panel{grid-template-columns:repeat(2,1fr);gap:6px}}
-  .rag-gauge{display:flex;flex-direction:column;align-items:center;background:var(--surface2);border-radius:12px;padding:10px 6px 8px;position:relative;overflow:hidden;transition:box-shadow 0.2s}
-  .rag-gauge:hover{box-shadow:0 0 16px rgba(255,255,255,0.04)}
-  .rag-gauge svg{display:block}
-  .rag-gauge-label{font-size:9px;color:var(--dim);text-align:center;margin-top:2px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
-  .rag-gauge-sub{font-size:8px;color:var(--dim);text-align:center;opacity:0.7;margin-top:1px}
+  /* Donut gauge grid */
+  .rag-panel{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  @media(max-width:600px){.rag-panel{grid-template-columns:repeat(2,1fr);gap:10px}}
+  .rag-gauge{display:flex;flex-direction:column;align-items:center;background:linear-gradient(145deg,rgba(255,255,255,0.03),rgba(255,255,255,0.07));border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:14px 6px 10px;transition:transform 0.15s}
+  .rag-gauge:active{transform:scale(0.97)}
+  .rag-gauge svg{display:block;width:100%;max-width:110px;height:auto}
+  .rag-gauge-label{font-size:11px;color:var(--dim);text-align:center;margin-top:4px;line-height:1.2}
+  .rag-gauge-gap{font-size:10px;text-align:center;margin-top:2px;font-weight:600;line-height:1.2}
+  .rag-gauge-note{font-size:8px;color:var(--dim);text-align:center;margin-top:2px;opacity:0.7}
 
   /* Today's summary panel */
-  .day-summary{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px}
+  .day-summary{background:linear-gradient(135deg,rgba(255,255,255,0.02),rgba(255,255,255,0.05));border:1px solid var(--border);border-radius:16px;padding:14px;margin-bottom:16px}
   .day-summary-title{font-size:13px;font-weight:600;margin-bottom:10px;display:flex;align-items:center;gap:6px}
   .day-summary .summary-empty{font-size:12px;color:var(--dim);font-style:italic}
   /* PROJECTION SECTION */
@@ -3197,80 +3198,105 @@ function updateRAGLights() {
   const wt = getWaterTarget();
   const vitDEl = document.querySelector('#targetVitD .target-value');
   const vitD = vitDEl ? parseInt(vitDEl.textContent) || 0 : 0;
-
-  function ragColor(val, min, max, invert) {
-    if (!val && val !== 0) return 'grey';
-    if (invert) return val <= max ? 'green' : 'red';
-    if (val < min) return 'amber';
-    if (val <= max) return 'green';
-    return 'red';
-  }
-
-  function fillColor(color) {
-    if (color === 'green') return 'var(--green)';
-    if (color === 'amber') return 'var(--amber)';
-    if (color === 'red') return 'var(--red)';
-    return 'var(--border)';
-  }
-
   const calT = getCalorieTarget();
-  const proTier = TARGETS.pro._tier ? ` <span style="font-size:9px;color:var(--accent)">${TARGETS.pro._tier}</span>` : '';
+  const proTier = TARGETS.pro._tier || '';
+
   const metrics = [
-    { label:'Sleep',             val:sleep, min:7,    max:9,    cap:12,   unit:'hr',   decimals:1, note: napMin > 0 ? `(+${napMin}min nap)` : '' },
-    { label:'Protein' + proTier, val:pro,   min:TARGETS.pro.min, max:TARGETS.pro.max, cap:TARGETS.pro.cap, unit:'g' },
-    { label:'Calories Eaten', val:cal,   min:calT.min, max:calT.max, cap:3500, unit:'kcal', note: burnt > 0 ? `(+${Math.round(burnt*0.5)} for training)` : '' },
-    { label:'Fat',               val:fat,   min:TARGETS.fat.min, max:TARGETS.fat.max, cap:TARGETS.fat.cap, unit:'g' },
-    { label:'Carbs',             val:carb,  min:TARGETS.carb.min || 0, max:TARGETS.carb.max, cap:TARGETS.carb.cap, unit:'g', invertCarbs:true },
-    { label:'Water',             val:water, min:wt.min, max:wt.max, cap:wt.cap, unit:'L', decimals:1, note: wt.sweat > 0 ? `(+${wt.sweat}L sweat)` : '' },
-    { label:'Calories Burnt',     val:burnt, min:200,  max:800,  cap:1200, unit:'kcal' },
-    { label:'Sun (Vit D)',        val:vitD,  min:600,  max:1500, cap:3000, unit:'IU' }
+    { label:'Sleep', val:sleep, min:7, max:9, cap:12, unit:'hr', dec:1, note: napMin > 0 ? '+'+napMin+'m nap' : '' },
+    { label:'Protein', val:pro, min:TARGETS.pro.min, max:TARGETS.pro.max, cap:TARGETS.pro.cap, unit:'g', tag:proTier },
+    { label:'Calories', val:cal, min:calT.min, max:calT.max, cap:3500, unit:'kcal', note: burnt > 0 ? '+'+Math.round(burnt*0.5)+' train' : '' },
+    { label:'Fat', val:fat, min:TARGETS.fat.min, max:TARGETS.fat.max, cap:TARGETS.fat.cap, unit:'g' },
+    { label:'Carbs', val:carb, min:TARGETS.carb.min||0, max:TARGETS.carb.max, cap:TARGETS.carb.cap, unit:'g', invert:true },
+    { label:'Water', val:water, min:wt.min, max:wt.max, cap:wt.cap, unit:'L', dec:1, note: wt.sweat > 0 ? '+'+wt.sweat+'L sweat' : '' },
+    { label:'Burnt', val:burnt, min:200, max:800, cap:1200, unit:'kcal' },
+    { label:'Sun', val:vitD, min:600, max:1500, cap:3000, unit:'IU' }
   ];
 
   const hasAnyData = metrics.some(m => m.val > 0);
   if (!hasAnyData) { panel.style.display = 'none'; return; }
   panel.style.display = 'block';
 
-  ragEl.innerHTML = metrics.map(m => {
-    let color;
-    if (m.invertCarbs) {
-      color = m.val <= m.min ? 'green' : m.val <= m.max ? 'amber' : 'red';
-    } else {
-      color = m.val > 0 ? ragColor(m.val, m.min, m.max, m.invert) : 'grey';
+  // SVG arc helper
+  function arcPath(cx, cy, r, startAngle, endAngle) {
+    if (endAngle - startAngle >= Math.PI * 1.999) {
+      const mid = { x: cx + r*Math.cos(startAngle + Math.PI), y: cy + r*Math.sin(startAngle + Math.PI) };
+      const end = { x: cx + r*Math.cos(endAngle), y: cy + r*Math.sin(endAngle) };
+      const start = { x: cx + r*Math.cos(startAngle), y: cy + r*Math.sin(startAngle) };
+      return `M ${start.x} ${start.y} A ${r} ${r} 0 1 1 ${mid.x} ${mid.y} A ${r} ${r} 0 1 1 ${end.x} ${end.y}`;
     }
-    const fillPct = m.val > 0 ? Math.min(m.val / m.cap * 100, 100) : 0;
-    const zoneLPct = m.min / m.cap * 100;
-    const zoneRPct = m.max / m.cap * 100;
-    const displayVal = m.decimals ? m.val.toFixed(m.decimals) : Math.round(m.val);
-    let gapStr = '';
-    if (m.val > 0) {
-      if (m.invertCarbs) {
-        if (m.val > m.max) {
-          const over = Math.round(m.val - m.max);
-          gapStr = ` <span style="font-size:10px;color:var(--red)">(${over} over)</span>`;
-        } else if (m.val > m.min) {
-          const left = Math.round(m.max - m.val);
-          gapStr = ` <span style="font-size:10px;color:var(--amber)">(${left} left)</span>`;
-        }
+    const s = { x: cx + r*Math.cos(startAngle), y: cy + r*Math.sin(startAngle) };
+    const e = { x: cx + r*Math.cos(endAngle), y: cy + r*Math.sin(endAngle) };
+    const large = (endAngle - startAngle) > Math.PI ? 1 : 0;
+    return `M ${s.x} ${s.y} A ${r} ${r} 0 ${large} 1 ${e.x} ${e.y}`;
+  }
+
+  // Colour logic
+  function getColor(m) {
+    if (!m.val && m.val !== 0) return '#4b5563';
+    if (m.invert) return m.val <= m.max ? '#22c55e' : '#ef4444';
+    if (m.val === 0) return '#4b5563';
+    if (m.val < m.min) return '#f59e0b';
+    if (m.val <= m.max) return '#22c55e';
+    return '#ef4444';
+  }
+
+  const W = 100, H = 100, cx = W/2, cy = H/2, r = 38;
+  const SA = -Math.PI/2; // 12 o'clock
+  const FULL = Math.PI * 2;
+  const STROKE = 6;
+
+  ragEl.innerHTML = metrics.map((m, idx) => {
+    const color = getColor(m);
+    const pct = Math.min(m.val / m.cap, 1);
+    const valAngle = SA + FULL * Math.max(pct, 0.001);
+    const zoneLAngle = SA + FULL * (m.min / m.cap);
+    const zoneRAngle = SA + FULL * (m.max / m.cap);
+    const displayVal = m.dec ? m.val.toFixed(m.dec) : Math.round(m.val);
+
+    // Gap text
+    let gapText = '', gapColor = '';
+    if (m.val > 0 || m.invert) {
+      if (m.invert) {
+        if (m.val > m.max) { gapText = Math.round(m.val - m.max) + ' over'; gapColor = '#ef4444'; }
+        else { gapText = Math.round(m.max - m.val) + ' left'; gapColor = '#22c55e'; }
       } else if (m.val < m.min) {
-        const need = m.decimals ? (m.min - m.val).toFixed(m.decimals) : Math.round(m.min - m.val);
-        gapStr = ` <span style="font-size:10px;color:var(--amber)">(${need} to go)</span>`;
+        const need = m.dec ? (m.min - m.val).toFixed(m.dec) : Math.round(m.min - m.val);
+        gapText = need + ' to go'; gapColor = '#f59e0b';
       } else if (m.val > m.max) {
-        const over = m.decimals ? (m.val - m.max).toFixed(m.decimals) : Math.round(m.val - m.max);
-        gapStr = ` <span style="font-size:10px;color:var(--red)">(${over} over)</span>`;
+        const over = m.dec ? (m.val - m.max).toFixed(m.dec) : Math.round(m.val - m.max);
+        gapText = over + ' over'; gapColor = '#ef4444';
+      } else {
+        gapText = '\u2713'; gapColor = '#22c55e';
       }
     }
-    const showVal = m.val > 0 || m.invertCarbs;
-    const valStr = showVal ? `<span style="color:${fillColor(color)}">${displayVal}</span> <span style="font-size:10px;color:var(--dim)">${m.unit}</span>${gapStr}` : `<span style="color:var(--dim)">—</span>`;
-    return `<div class="rag-row">
-      <div class="rag-dot ${color}"></div>
-      <span class="rag-label">${m.label}${m.note ? ` <span style="font-size:10px;color:var(--dim)">${m.note}</span>` : ''}</span>
-      <div class="rag-bar-wrap">
-        <div class="rag-bar-track">
-          <div class="rag-bar-zone" style="left:${zoneLPct}%;width:${zoneRPct - zoneLPct}%"></div>
-          <div class="rag-bar-fill" style="width:${fillPct}%;background:${fillColor(color)}"></div>
-        </div>
-        <div class="rag-bar-value">${valStr}</div>
-      </div>
+
+    const tagHTML = m.tag ? `<span style="color:#60a5fa;font-size:9px"> ${m.tag}</span>` : '';
+    const noteHTML = m.note ? `<div class="rag-gauge-note">${m.note}</div>` : '';
+
+    // Glow colour for filter
+    const glowR = color === '#22c55e' ? '34' : color === '#f59e0b' ? '245' : color === '#ef4444' ? '239' : '100';
+    const glowG = color === '#22c55e' ? '197' : color === '#f59e0b' ? '158' : color === '#ef4444' ? '68' : '100';
+    const glowB = color === '#22c55e' ? '94' : color === '#f59e0b' ? '11' : color === '#ef4444' ? '68' : '100';
+
+    return `<div class="rag-gauge">
+      <svg viewBox="0 0 ${W} ${H}">
+        <defs>
+          <filter id="rg${idx}" x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur stdDeviation="3" result="b"/>
+            <feFlood flood-color="rgb(${glowR},${glowG},${glowB})" flood-opacity="0.3" result="c"/>
+            <feComposite in="c" in2="b" operator="in" result="glow"/>
+            <feMerge><feMergeNode in="glow"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+        <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="${STROKE}"/>
+        ${(m.min > 0 || m.max > 0) ? `<path d="${arcPath(cx,cy,r,zoneLAngle,zoneRAngle)}" fill="none" stroke="rgba(34,197,94,0.1)" stroke-width="${STROKE+2}"/>` : ''}
+        ${m.val > 0 && pct > 0.003 ? `<path d="${arcPath(cx,cy,r,SA,valAngle)}" fill="none" stroke="${color}" stroke-width="${STROKE}" stroke-linecap="round" filter="url(#rg${idx})"/>` : ''}
+        <text x="${cx}" y="${cy - 2}" text-anchor="middle" dominant-baseline="central" fill="${m.val > 0 ? color : '#4b5563'}" font-size="17" font-weight="700" font-family="-apple-system,BlinkMacSystemFont,sans-serif">${displayVal}</text>
+        <text x="${cx}" y="${cy + 13}" text-anchor="middle" fill="#6b7280" font-size="9" font-family="-apple-system,sans-serif">${m.unit}</text>
+      </svg>
+      <div class="rag-gauge-label">${m.label}${tagHTML}</div>
+      ${gapText ? `<div class="rag-gauge-gap" style="color:${gapColor}">${gapText}</div>` : ''}
+      ${noteHTML}
     </div>`;
   }).join('');
 }
