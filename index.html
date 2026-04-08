@@ -25,6 +25,8 @@
 
   input[type=number],input[type=text],input[type=time],textarea,select{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:14px;font-family:inherit;box-sizing:border-box;height:40px}
   input[type=number]{width:120px}
+  .sleep-hm{width:48px!important;text-align:center;padding:6px 4px!important;font-size:15px!important;-moz-appearance:textfield}
+  .sleep-hm::-webkit-outer-spin-button,.sleep-hm::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
   textarea{height:auto}
   textarea{resize:vertical;min-height:60px}
   select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%239ca3af' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
@@ -354,8 +356,8 @@
   <div class="section has-chart">
     <div class="section-title"><span class="icon">&#9790;</span> Sleep</div>
     <div class="section-wrap">
-      <div class="section-inputs" style="flex:0 0 130px;min-width:0;display:flex;flex-direction:column;gap:4px">
-        <div class="field"><div class="label">Hours Slept</div><div style="display:flex;gap:4px;align-items:center"><input type="number" id="sleepHrs" min="0" max="23" step="1" placeholder="7" style="width:46%;text-align:center"><span style="color:var(--dim);font-size:11px">h</span><input type="number" id="sleepMin" min="0" max="59" step="5" placeholder="30" style="width:46%;text-align:center"><span style="color:var(--dim);font-size:11px">m</span></div></div>
+      <div class="section-inputs" style="flex:0 0 140px;min-width:0;display:flex;flex-direction:column;gap:4px">
+        <div class="field"><div class="label">Hours Slept</div><div style="display:flex;gap:2px;align-items:center"><input type="number" id="sleepHrs" min="0" max="23" step="1" placeholder="7" class="sleep-hm"><span style="color:var(--dim);font-size:11px;flex-shrink:0">h</span><input type="number" id="sleepMin" min="0" max="59" step="5" placeholder="30" class="sleep-hm"><span style="color:var(--dim);font-size:11px;flex-shrink:0">m</span></div></div>
         <div class="field"><div class="label">Nap <span class="unit">min</span></div><input type="number" id="napMinutes" step="5" placeholder="20" style="width:100%"></div>
         <div class="field"><div class="label">Sleep Score</div><input type="number" id="sleepScore" min="0" max="100" placeholder="78" style="width:100%"></div>
         <div class="field"><div class="label">HRV <span class="unit">ms</span></div><input type="number" id="restingHRV" min="0" max="200" placeholder="35" style="width:100%"></div>
