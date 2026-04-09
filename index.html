@@ -880,15 +880,9 @@
         <div class="proj-fg"><label>Target (kg)</label><input type="number" id="projTargetWeight" value="89" step="1" min="75" max="120"></div>
         <div class="proj-fg"><label>Daily Cal</label><input type="number" id="projDailyCal" value="1800" step="100" min="1200" max="3000"></div>
         <div class="proj-fg"><label>Adherence %</label><input type="number" id="projAdherence" value="85" min="50" max="100" step="5"></div>
-        <div class="proj-fg"><label>Timeframe</label>
-          <select id="projTimeframe">
-            <option value="13">3 months</option>
-            <option value="26">6 months</option>
-            <option value="36" selected>9 months</option>
-            <option value="52">12 months</option>
-            <option value="104">2 years</option>
-            <option value="156">3 years</option>
-          </select>
+        <div class="proj-fg" style="min-width:160px"><label>Timeframe <span id="projWeeksLabel" style="font-weight:400;color:var(--dim)">36 wk</span></label>
+          <input type="range" id="projWeeksSlider" min="8" max="104" value="36" step="1" style="width:100%;accent-color:var(--accent)">
+          <div id="projTargetDateLabel" style="font-size:10px;color:var(--dim);margin-top:1px;text-align:center"></div>
         </div>
       </div>
     </div>
@@ -4333,6 +4327,20 @@ async function syncFromGitHub() {
 
   function projWeeklyBurn() { return PROJ_SESSIONS.reduce((s,x) => s + x.freq*x.dur*x.burn, 0); }
   function projBMR(w,h,a) { return 10*w + 6.25*h - 5*a + 5; }
+  function projGetWeeks() {
+    const slider = document.getElementById('projWeeksSlider');
+    if (!slider) return 26;
+    const weeks = parseInt(slider.value) || 26;
+    // Update weeks label
+    const wkLbl = document.getElementById('projWeeksLabel');
+    if (wkLbl) wkLbl.textContent = weeks + ' wk';
+    // Calculate and show target date
+    const target = new Date();
+    target.setDate(target.getDate() + weeks * 7);
+    const dateLbl = document.getElementById('projTargetDateLabel');
+    if (dateLbl) dateLbl.textContent = target.toLocaleDateString('en-AU', { day:'numeric', month:'short', year:'numeric' });
+    return weeks;
+  }
 
   // Reverse-solve: find daily calorie intake to reach targetWt in given weeks
   // Shared weight simulation: simulates end weight for a given daily cal intake over N weeks
@@ -4340,7 +4348,7 @@ async function syncFromGitHub() {
     const gv = id => parseFloat(document.getElementById(id).value) || 0;
     const sw = gv('projStartWeight')||112, sbf = gv('projStartBF')||32;
     const adh = (gv('projAdherence')||85)/100;
-    const weeks = weeksOverride || parseInt(document.getElementById('projTimeframe').value)||26;
+    const weeks = weeksOverride || projGetWeeks();
     const weBurn = projWeeklyBurn()*adh, deBurn = weBurn/7, hCm = PROJ_HEIGHT_M*100;
     let w=sw, fm=w*(sbf/100), lm=w-fm;
     for(let i=1;i<=weeks;i++){
@@ -4375,7 +4383,7 @@ async function syncFromGitHub() {
     const sw = gv('projStartWeight')||112, swa = gv('projStartWaist')||118, sbf = gv('projStartBF')||32;
     const sm = gv('projStartMuscle')||38, sn = gv('projStartNeck')||44;
     const adh = (gv('projAdherence')||85)/100;
-    const weeks = parseInt(document.getElementById('projTimeframe').value)||26;
+    const weeks = projGetWeeks();
     const weBurn = projWeeklyBurn()*adh, deBurn = weBurn/7, hCm = PROJ_HEIGHT_M*100;
     let w=sw, fm=w*(sbf/100), lm=w-fm, mu=sm, wa=swa, nk=sn;
     const data=[{week:0,weight:w,fatMass:fm,leanMass:lm,muscle:mu,waist:wa,neck:nk,bmi:Math.round(w/(PROJ_HEIGHT_M*PROJ_HEIGHT_M)*10)/10,bf:sbf}];
@@ -5182,7 +5190,7 @@ async function syncFromGitHub() {
     }).join('') + `<div style="font-size:10px;color:var(--accent);margin-top:6px;font-weight:600">Projected gain @ ${pData.length-1 >= 52 ? Math.round((pData.length-1)/4.33) + 'mo' : (pData.length-1) + 'wk'}: LE → ${adjLE} · Best possible: ${bestLE}</div>`;
 
     // Note
-    document.getElementById('projHSNote').innerHTML = `RAG: <span style="color:var(--green)">&#9679;</span> optimal <span style="color:var(--amber)">&#9679;</span> suboptimal <span style="color:var(--red)">&#9679;</span> high risk. Impact = estimated years gained/lost vs population baseline (AU male LE ${HS_BASE_LE}yr). Composite body-comp model (BMI primary, BF%/waist addons). RA/AF impacts calibrated for managed conditions. Trajectory assumes ${Math.round((parseFloat(document.getElementById('projAdherence').value)||85))}% adherence over ${document.getElementById('projTimeframe').value} weeks. Based on published meta-analyses (Lancet, JAMA, AHA, ABS 2022-24). Not medical advice.`;
+    document.getElementById('projHSNote').innerHTML = `RAG: <span style="color:var(--green)">&#9679;</span> optimal <span style="color:var(--amber)">&#9679;</span> suboptimal <span style="color:var(--red)">&#9679;</span> high risk. Impact = estimated years gained/lost vs population baseline (AU male LE ${HS_BASE_LE}yr). Composite body-comp model (BMI primary, BF%/waist addons). RA/AF impacts calibrated for managed conditions. Trajectory assumes ${Math.round((parseFloat(document.getElementById('projAdherence').value)||85))}% adherence over ${projGetWeeks()} weeks. Based on published meta-analyses (Lancet, JAMA, AHA, ABS 2022-24). Not medical advice.`;
   }
 
   // Auto-calculate daily calories from target weight + timeframe + adherence
@@ -5200,7 +5208,7 @@ async function syncFromGitHub() {
       calEl.value = clamped;
     }
     // Check if target is achievable (solver hit the floor at 1200)
-    const weeks = parseInt(document.getElementById('projTimeframe').value) || 26;
+    const weeks = projGetWeeks();
     const sw = parseFloat(document.getElementById('projStartWeight').value) || 112;
     const lossNeeded = sw - tw;
     const lossPerWeek = lossNeeded / weeks;
@@ -5209,7 +5217,9 @@ async function syncFromGitHub() {
     const veryAggressive = lossPerWeek > 1.5;
     // Compute actual min weight achievable at 1200cal for this timeframe (for warning msg)
     const minEndWt = achievable ? tw : Math.round(projSimEndWeight(1200, weeks) * 10) / 10;
-    const tfLabel = weeks >= 52 ? Math.round(weeks / 4.33) + ' months' : weeks + ' weeks';
+    const targetD = new Date(); targetD.setDate(targetD.getDate() + weeks * 7);
+    const tdStr = targetD.toLocaleDateString('en-AU', { day:'numeric', month:'short', year:'numeric' });
+    const tfLabel = (weeks >= 52 ? Math.round(weeks / 4.33) + ' months' : weeks + ' weeks') + ' (by ' + tdStr + ')';
     // Show warning if needed
     const warnEl = document.getElementById('projTargetWarning');
     if (warnEl) {
@@ -5282,12 +5292,19 @@ async function syncFromGitHub() {
     const sorted = ci.sort((a, b) => b.date.localeCompare(a.date));
     const last7 = sorted.slice(0, 7);
     function avg7(fn) { const v = last7.map(fn).filter(x => x != null && x > 0); return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length * 10) / 10 : null; }
+    // Weight: use today's weigh-in if available, otherwise most recent
+    const todayDate = document.getElementById('checkinDate')?.value || new Date().toISOString().slice(0, 10);
+    const todayCI = sorted.find(c => c.date === todayDate);
+    const wtSource = todayCI?.vitals?.weight ? todayCI : sorted.find(c => c.vitals?.weight > 0);
+    const latestWt = wtSource?.vitals?.weight || null;
+    const dataDate = wtSource?.date || sorted[0]?.date || todayDate;
     return {
-      weight: avg7(c => c.vitals?.weight),
+      weight: latestWt,
       waist: avg7(c => c.measurements?.waist_cm),
       neck: avg7(c => c.measurements?.neck_cm),
       bf: sorted.find(c => c.measurements?.body_fat_pct > 0)?.measurements?.body_fat_pct || null,
-      muscle: sorted.find(c => c.measurements?.skeletal_muscle_kg > 0)?.measurements?.skeletal_muscle_kg || null
+      muscle: sorted.find(c => c.measurements?.skeletal_muscle_kg > 0)?.measurements?.skeletal_muscle_kg || null,
+      dataDate: dataDate
     };
   }
 
@@ -5312,6 +5329,9 @@ async function syncFromGitHub() {
     if (projMode === 'baseline') {
       localStorage.setItem(PROJ_BASELINE_KEY, JSON.stringify(bl));
     }
+    // Always persist timeframe weeks (independent of baseline/now mode)
+    const slEl = document.getElementById('projWeeksSlider');
+    if (slEl) localStorage.setItem('projWeeksSlider', slEl.value);
     return bl;
   }
 
@@ -5331,15 +5351,16 @@ async function syncFromGitHub() {
       btnBL.style.background = 'var(--surface2)';
       btnBL.style.color = 'var(--dim)';
       btnBL.style.fontWeight = '400';
-      const today = new Date().toISOString().slice(0, 10);
-      label.textContent = `(from current 7-day averages \u2014 ${today})`;
       // Disable manual edits in "now" mode — values come from check-ins
       controls.querySelectorAll('input[type=number]').forEach(el => {
         if (!['projAdherence','projTargetWeight','projDailyCal'].includes(el.id)) { el.readOnly = true; el.style.opacity = '0.6'; }
       });
       // Apply current metrics to form
       const cur = projGetCurrentMetrics();
-      if (cur) projApplyBaseline(cur);
+      if (cur) {
+        projApplyBaseline(cur);
+        label.textContent = `(from ${cur.dataDate === (document.getElementById('checkinDate')?.value) ? 'today\u2019s' : 'latest'} check-in \u2014 ${cur.dataDate})`;
+      }
     } else {
       // Switch back to locked baseline
       btnBL.style.background = 'var(--accent)';
@@ -5384,6 +5405,9 @@ async function syncFromGitHub() {
   }
 
   projAutoBaseline();
+  // Restore persisted timeframe weeks
+  const savedWks = localStorage.getItem('projWeeksSlider');
+  if (savedWks) document.getElementById('projWeeksSlider').value = savedWks;
   // Show baseline date in label on load
   const initBL = localStorage.getItem(PROJ_BASELINE_KEY);
   if (initBL) {
