@@ -3921,6 +3921,43 @@ function getFluidBalance() {
 }
 
 // ===== LOAD TODAY'S SAVED DATA =====
+// Set placeholders from most recent check-in so user sees their last values as grey hints
+function setLastInputPlaceholders() {
+  const today = document.getElementById('checkinDate').value;
+  const all = JSON.parse(localStorage.getItem('healthCheckins') || '[]');
+  // Find most recent check-in before the selected date (or any most recent if none before)
+  const sorted = all.filter(c => c.date < today).sort((a, b) => b.date.localeCompare(a.date));
+  const prev = sorted[0];
+  if (!prev) return;
+  function ph(id, val) { if (val != null && val !== 0) { const el = document.getElementById(id); if (el) el.placeholder = val; } }
+  // Vitals
+  if (prev.vitals) {
+    ph('weight', prev.vitals.weight);
+    ph('bpSys', prev.vitals.bp_systolic);
+    ph('bpDia', prev.vitals.bp_diastolic);
+    ph('restHR', prev.vitals.resting_hr);
+  }
+  // Sleep
+  if (prev.sleep && prev.sleep.hours) {
+    ph('sleepHrs', Math.floor(prev.sleep.hours));
+    ph('sleepMin', Math.round((prev.sleep.hours % 1) * 60));
+    ph('napMinutes', prev.sleep.nap_minutes);
+    ph('sleepScore', prev.sleep.sleep_score);
+    ph('restingHRV', prev.sleep.hrv);
+    ph('energyScore', prev.sleep.energy_score);
+  }
+  // Measurements
+  if (prev.measurements) {
+    ph('waist', prev.measurements.waist_cm);
+    ph('hip', prev.measurements.hip_cm);
+    ph('neck', prev.measurements.neck_cm);
+    ph('fatMass', prev.measurements.fat_mass_kg);
+    ph('bodyFat', prev.measurements.body_fat_pct);
+    ph('skeletalMuscle', prev.measurements.skeletal_muscle_kg);
+    ph('bodyWater', prev.measurements.body_water_pct);
+  }
+}
+
 function loadTodayData() {
   const today = document.getElementById('checkinDate').value;
   if (!today) return;
@@ -4084,6 +4121,7 @@ function loadTodayData() {
   if (saved.notes) document.getElementById('notes').value = saved.notes;
 }
 
+setLastInputPlaceholders();
 loadTodayData();
 
 // ===== TODAY'S SUMMARY =====
@@ -4135,6 +4173,7 @@ document.getElementById('checkinDate').addEventListener('change', function() {
   const actRpe = document.querySelector('input[name="actRpe"]:checked');
   if (actRpe) actRpe.checked = false;
   renderActivityLog();
+  setLastInputPlaceholders();
   loadTodayData();
   renderDashboards();
   renderDaySummary();
@@ -5329,15 +5368,20 @@ async function syncFromGitHub() {
     if (projMode === 'baseline') {
       localStorage.setItem(PROJ_BASELINE_KEY, JSON.stringify(bl));
     }
-    // Always persist timeframe weeks (independent of baseline/now mode)
+    // Always persist user-adjustable settings (independent of baseline/now mode)
     const slEl = document.getElementById('projWeeksSlider');
     if (slEl) localStorage.setItem('projWeeksSlider', slEl.value);
+    const adhEl = document.getElementById('projAdherence');
+    if (adhEl) localStorage.setItem('projAdherence', adhEl.value);
+    const twEl = document.getElementById('projTargetWeight');
+    if (twEl) localStorage.setItem('projTargetWeight', twEl.value);
     return bl;
   }
 
   window.projSetMode = projSetMode;
   function projSetMode(mode) {
     projMode = mode;
+    localStorage.setItem('projMode', mode);
     const btnBL = document.getElementById('projModeBaseline');
     const btnNow = document.getElementById('projModeNow');
     const label = document.getElementById('projBaselineLabel');
@@ -5405,15 +5449,22 @@ async function syncFromGitHub() {
   }
 
   projAutoBaseline();
-  // Restore persisted timeframe weeks
+  // Restore persisted settings
   const savedWks = localStorage.getItem('projWeeksSlider');
   if (savedWks) document.getElementById('projWeeksSlider').value = savedWks;
+  const savedAdh = localStorage.getItem('projAdherence');
+  if (savedAdh) document.getElementById('projAdherence').value = savedAdh;
+  const savedTW = localStorage.getItem('projTargetWeight');
+  if (savedTW) document.getElementById('projTargetWeight').value = savedTW;
   // Show baseline date in label on load
   const initBL = localStorage.getItem(PROJ_BASELINE_KEY);
   if (initBL) {
     const blDate = JSON.parse(initBL).lockedDate;
     if (blDate) document.getElementById('projBaselineLabel').textContent = `(locked \u2014 ${blDate})`;
   }
+  // Restore baseline/now mode
+  const savedMode = localStorage.getItem('projMode');
+  if (savedMode === 'now') projSetMode('now');
 
   // Defer initial render — section starts collapsed so canvas has 0 width
   // Re-render when section is expanded via click on section-title
