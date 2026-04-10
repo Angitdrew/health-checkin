@@ -453,11 +453,11 @@
     <div class="section-wrap">
       <div class="section-inputs" style="flex:0 0 140px;min-width:0;display:flex;flex-direction:column;gap:4px">
         <div class="field"><div class="label">Weight <span class="unit">kg</span></div><input type="number" id="weight" step="0.1" placeholder="115.0" oninput="updateBMI()" style="width:100%"></div>
-        <div class="field"><div class="label">Waist <span class="unit">cm</span></div><input type="number" id="waist" step="0.5" placeholder="navel" style="width:100%"></div>
+        <div class="field"><div class="label">Waist <span class="unit">cm</span></div><input type="number" id="waist" step="0.5" placeholder="navel" oninput="updateNavyBF()" style="width:100%"></div>
         <div class="field"><div class="label">Hip <span class="unit">cm</span></div><input type="number" id="hip" step="0.5" placeholder="widest" style="width:100%"></div>
-        <div class="field"><div class="label">Neck <span class="unit">cm</span></div><input type="number" id="neck" step="0.5" placeholder="thickest" oninput="updateNeckRisk()" style="width:100%"><div id="neckRisk" style="font-size:10px;margin-top:2px;display:none"></div></div>
+        <div class="field"><div class="label">Neck <span class="unit">cm</span></div><input type="number" id="neck" step="0.5" placeholder="thickest" oninput="updateNeckRisk();updateNavyBF()" style="width:100%"><div id="neckRisk" style="font-size:10px;margin-top:2px;display:none"></div></div>
         <div class="field"><div class="label">Fat Mass <span class="unit">kg</span></div><input type="number" id="fatMass" step="0.1" placeholder="scale" style="width:100%"></div>
-        <div class="field"><div class="label">BF%</div><input type="number" id="bodyFat" step="0.1" placeholder="28.5" style="width:100%"></div>
+        <div class="field"><div class="label">BF% <span id="bfSource" style="font-weight:400;font-size:9px;color:var(--dim)"></span></div><input type="number" id="bodyFat" step="0.1" placeholder="28.5" oninput="updateNavyBF()" style="width:100%"><div id="navyBfDisplay" style="font-size:10px;margin-top:2px;display:none"></div></div>
         <div class="field"><div class="label">Muscle <span class="unit">kg</span></div><input type="number" id="skeletalMuscle" step="0.1" placeholder="scale" style="width:100%"></div>
         <div class="field"><div class="label">Water %</div><input type="number" id="bodyWater" step="0.1" placeholder="52.0" style="width:100%"></div>
         <div class="field" style="text-align:center"><div class="label">BMI</div><div id="bmiDisplay" style="padding:4px 0;font-size:14px;font-weight:600;color:var(--dim)">—</div></div>
@@ -2915,6 +2915,37 @@ function updateBMI() {
   el.style.color = bmi < 18.5 ? 'var(--amber)' : bmi < 25 ? 'var(--green)' : bmi < 30 ? 'var(--amber)' : 'var(--red)';
 }
 
+// US Navy body fat formula (men): more stable than BIA, validated against DEXA
+// BF% = 86.010 × log10(waist − neck) − 70.041 × log10(height) + 36.76 (all cm)
+const NAVY_HEIGHT_CM = 177;
+function updateNavyBF() {
+  const waist = parseFloat(document.getElementById('waist').value) || 0;
+  const neck = parseFloat(document.getElementById('neck').value) || 0;
+  const display = document.getElementById('navyBfDisplay');
+  const source = document.getElementById('bfSource');
+  const bfInput = document.getElementById('bodyFat');
+  if (!display || !waist || !neck || waist <= neck) {
+    if (display) display.style.display = 'none';
+    if (source) source.textContent = '';
+    return;
+  }
+  const navyBF = Math.round((86.010 * Math.log10(waist - neck) - 70.041 * Math.log10(NAVY_HEIGHT_CM) + 36.76) * 10) / 10;
+  if (navyBF < 3 || navyBF > 60) { display.style.display = 'none'; return; }
+  display.style.display = 'block';
+  // If no manual BF% entered, auto-fill with Navy estimate
+  if (!bfInput.value) {
+    bfInput.value = navyBF;
+    if (source) source.textContent = '(Navy)';
+    display.innerHTML = '<span style="color:var(--accent)">Auto: Navy method</span>';
+  } else {
+    // Show comparison
+    const manual = parseFloat(bfInput.value);
+    const diff = Math.abs(manual - navyBF).toFixed(1);
+    display.innerHTML = `<span style="color:var(--dim)">Navy: ${navyBF}% (${diff}% ${manual > navyBF ? 'higher' : 'lower'})</span>`;
+    if (source) source.textContent = '(watch)';
+  }
+}
+
 function updateNeckRisk() {
   const el = document.getElementById('neckRisk');
   if (!el) return;
@@ -3043,7 +3074,7 @@ function getCalorieTarget() {
 
 // Activity intensity classification for protein titration — continuous sliding scale
 // Weighted training load: heavy=1.0/min, moderate=0.5/min, light=0.1/min
-// Maps smoothly to protein multiplier: 1.6 g/kg (rest) → 2.4 g/kg (peak) over 0–120 load
+// Maps smoothly to protein multiplier: 2.0 g/kg (rest) → 2.6 g/kg (peak) over 0–120 load
 const PRO_TIER_HEAVY = new Set(['bjj','boxing','mma','skipping']); // high-catabolic combat/HIIT
 const PRO_TIER_MOD   = new Set(['weights','airbike','zone2','bagwork','shadowboxing','yardwork','exball']); // moderate load
 // everything else (walking, bands, mobility, sauna, rest) = light
@@ -3061,11 +3092,11 @@ function getProteinTier() {
   });
   const load = heavyMin * 1.0 + modMin * 0.5 + lightMin * 0.1;
   // Smooth ramp: 0 load → 1.6 g/kg ref, 120+ load → 2.2 g/kg ref
-  // Evidence: rest ~1.7 g/kg FFM (PROT-AGE+exercise), peak ~2.6 g/kg FFM (Helms 2014 deficit range)
-  // Morton 2018 meta-analysis: diminishing returns above 1.62 g/kg total BW for RT gains
+  // Evidence: PROT-AGE 2013 (≥1.2 g/kg over-65), Helms 2014 (2.3–3.1 g/kg FFM in deficit),
+  // ISSN 2017 (1.6–2.2 g/kg athletes), upscaled for age 58 + deficit + muscle sparing
   // Scaled to ref weight (lean mass + target weight blend) to avoid inflation from fat mass
   const t = Math.max(0, Math.min(1, load / 120));
-  const mult = 1.6 + t * 0.6; // 1.6 → 2.2 g/kg ref weight
+  const mult = 2.0 + t * 0.6; // 2.0 → 2.6 g/kg ref weight (age 58, deficit, muscle-sparing)
   const band = 0.25; // tight band width: ~20g range
   // Descriptive label for UI
   let label;
@@ -3082,7 +3113,9 @@ function updateMacroTargets() {
   // Use today's weigh-in if available, otherwise projStartWeight
   const todayWt = parseFloat(document.getElementById('weight')?.value) || 0;
   const bodyWt = todayWt > 0 ? todayWt : (parseFloat(document.getElementById('projStartWeight')?.value) || 112);
-  const bf = parseFloat(document.getElementById('projStartBF')?.value) || 32;
+  // BF%: prefer today's entry (Navy or watch), fall back to projection baseline
+  const todayBF = parseFloat(document.getElementById('bodyFat')?.value) || 0;
+  const bf = todayBF > 0 ? todayBF : (parseFloat(document.getElementById('projStartBF')?.value) || 32);
   const targetWt = parseFloat(document.getElementById('projTargetWeight')?.value) || 85;
   // Reference weight: blend of lean mass and target weight (avoids over/under-counting)
   const leanMass = bodyWt * (1 - bf / 100);
@@ -4090,6 +4123,7 @@ function loadTodayData() {
     setVal('hip', saved.measurements.hip_cm);
     setVal('neck', saved.measurements.neck_cm);
     updateNeckRisk();
+    updateNavyBF();
     setVal('chest', saved.measurements.chest_cm);
     setVal('upperArm', saved.measurements.upper_arm_cm);
     setVal('thigh', saved.measurements.thigh_cm);
