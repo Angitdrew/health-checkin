@@ -2347,7 +2347,7 @@ function collectData() {
 // ===== GOALS SYSTEM =====
 const DEFAULT_GOALS = [
   // Daily nutrition & health (auto-assessed every day)
-  { id: 'g_protein',  label: 'Hit protein target (160-220g)',      auto: 'protein' },
+  { id: 'g_protein',  label: 'Hit protein target (dynamic)',        auto: 'protein' },
   { id: 'g_calories', label: 'Stay in calorie range (dynamic)',  auto: 'calories' },
   { id: 'g_carbs',    label: 'Keep carbs under 30g',              auto: 'carbs' },
   { id: 'g_water',    label: 'Hit water target',                   auto: 'water' },
@@ -2512,7 +2512,7 @@ function renderGoals() {
     }
     return `<div class="goal-row ${g.checked ? 'achieved' : ''}">
       <input type="checkbox" ${g.checked ? 'checked' : ''} onchange="toggleGoal(${i})">
-      <span class="goal-label">${g.auto === 'protein' && typeof TARGETS !== 'undefined' ? 'Hit protein target (' + (TARGETS.pro?.min||160) + '-' + (TARGETS.pro?.max||220) + 'g)' : g.label}</span>
+      <span class="goal-label">${g.label}</span>
       ${weeklyTag}
       ${g.auto ? '<span class="goal-auto">AUTO</span>' : `<button class="goal-remove" onclick="removeGoal(${i})" title="Remove">&times;</button>`}
     </div>`;
@@ -2574,7 +2574,7 @@ function autoAssessGoals(goals, dateStr) {
     let result = null;
 
     // Daily nutrition/health goals — when value is 0 (no data), explicitly uncheck
-    if (g.auto === 'protein')  result = pro > 0 ? pro >= (typeof TARGETS !== 'undefined' && TARGETS.pro?.min ? TARGETS.pro.min : 160) : false;
+    if (g.auto === 'protein') { const pMin = (function(){ try { return TARGETS.pro.min; } catch(e) { return 160; } })(); result = pro > 0 ? pro >= pMin : false; }
     if (g.auto === 'calories') { const ct = getCalorieTarget(); result = cal > 0 ? (cal >= ct.min && cal <= ct.max) : false; }
     if (g.auto === 'carbs')    result = carb > 0 ? carb <= 30 : false;
     if (g.auto === 'water')    result = water > 0 ? water >= getWaterTarget().min : false;
@@ -3107,6 +3107,13 @@ function updateMacroTargets() {
   TARGETS.fat.min = Math.max(50, Math.round(fatMid * 0.8));
   TARGETS.fat.max = Math.round(fatMid * 1.2);
   TARGETS.fat.cap = Math.max(150, Math.round(fatMid * 1.8));
+  // Update protein goal label to reflect dynamic targets
+  const stored = JSON.parse(localStorage.getItem('dailyGoals') || '{}');
+  const today = document.getElementById('checkinDate')?.value;
+  if (today && stored[today]) {
+    const pg = stored[today].find(g => g.auto === 'protein');
+    if (pg) { pg.label = 'Hit protein target (' + proMin + '-' + proMax + 'g)'; localStorage.setItem('dailyGoals', JSON.stringify(stored)); }
+  }
 }
 
 function renderTargetBar(containerId, key, value) {
