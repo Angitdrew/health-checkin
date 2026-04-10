@@ -2512,7 +2512,7 @@ function renderGoals() {
     }
     return `<div class="goal-row ${g.checked ? 'achieved' : ''}">
       <input type="checkbox" ${g.checked ? 'checked' : ''} onchange="toggleGoal(${i})">
-      <span class="goal-label">${g.auto === 'protein' ? 'Hit protein target (' + (TARGETS.pro?.min||160) + '-' + (TARGETS.pro?.max||220) + 'g)' : g.label}</span>
+      <span class="goal-label">${g.auto === 'protein' && typeof TARGETS !== 'undefined' ? 'Hit protein target (' + (TARGETS.pro?.min||160) + '-' + (TARGETS.pro?.max||220) + 'g)' : g.label}</span>
       ${weeklyTag}
       ${g.auto ? '<span class="goal-auto">AUTO</span>' : `<button class="goal-remove" onclick="removeGoal(${i})" title="Remove">&times;</button>`}
     </div>`;
@@ -2574,7 +2574,7 @@ function autoAssessGoals(goals, dateStr) {
     let result = null;
 
     // Daily nutrition/health goals — when value is 0 (no data), explicitly uncheck
-    if (g.auto === 'protein')  result = pro > 0 ? pro >= (TARGETS.pro?.min || 160) : false;
+    if (g.auto === 'protein')  result = pro > 0 ? pro >= (typeof TARGETS !== 'undefined' && TARGETS.pro?.min ? TARGETS.pro.min : 160) : false;
     if (g.auto === 'calories') { const ct = getCalorieTarget(); result = cal > 0 ? (cal >= ct.min && cal <= ct.max) : false; }
     if (g.auto === 'carbs')    result = carb > 0 ? carb <= 30 : false;
     if (g.auto === 'water')    result = water > 0 ? water >= getWaterTarget().min : false;
