@@ -2610,6 +2610,9 @@ function renderGoalsProgress(dateStr) {
   const stored = JSON.parse(localStorage.getItem('dailyGoals') || '{}');
   const checkins = JSON.parse(localStorage.getItem('healthCheckins') || '[]');
   const days = getWeekDays(dateStr);
+  // Day-of-week marker: how far through the week are we (for pace line)
+  const dayIdx = days.indexOf(dateStr) + 1; // 1=Mon ... 7=Sun
+  const pacePct = Math.round(dayIdx / 7 * 100);
 
   // Collect goals with hits and weekly targets
   const goalMap = {};
@@ -2663,6 +2666,7 @@ function renderGoalsProgress(dateStr) {
     <div class="goal-progress-track" style="position:relative">
       <div style="position:absolute;top:0;bottom:0;left:${proZoneL}%;width:${proZoneR-proZoneL}%;background:rgba(34,197,94,0.15);border-radius:3px"></div>
       <div class="goal-progress-fill" style="width:${proPct}%;background:${proColor}"></div>
+      <div style="position:absolute;top:-2px;bottom:-2px;left:${pacePct}%;width:2px;background:rgba(255,255,255,0.5);border-radius:1px" title="Day ${dayIdx}/7 pace"></div>
     </div>
     <div style="font-size:9px;color:var(--dim);display:flex;justify-content:space-between;margin-top:2px">
       <span>${weeklyProDays} days logged</span><span>avg ${proAvg}g/day</span>
@@ -2688,7 +2692,7 @@ function renderGoalsProgress(dateStr) {
     }
     return `<div class="goal-progress">
       <div class="goal-progress-label"><span>${shortLabel}</span><span>${targetLabel}</span></div>
-      <div class="goal-progress-track"><div class="goal-progress-fill" style="width:${pct}%;background:${color}"></div></div>
+      <div class="goal-progress-track" style="position:relative"><div class="goal-progress-fill" style="width:${pct}%;background:${color}"></div><div style="position:absolute;top:-2px;bottom:-2px;left:${pacePct}%;width:2px;background:rgba(255,255,255,0.5);border-radius:1px" title="Day ${dayIdx}/7 pace"></div></div>
     </div>`;
   }).join('');
 
