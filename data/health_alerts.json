@@ -1,0 +1,18 @@
+{
+  "generated": "2026-07-25T23:45:57.988Z",
+  "source": "daily-health-checkin",
+  "date": "2026-07-26",
+  "count": 1,
+  "alerts": [
+    {
+      "key": "bp",
+      "label": "BP",
+      "last_date": "2026-04-10",
+      "days_since": 107,
+      "cadence": "2–3×/wk",
+      "severity": "now",
+      "title": "Health: log BP (107d overdue)",
+      "message": "BP not logged in 107 days — target 2–3×/wk. Update your Daily Check-in."
+    }
+  ]
+}
