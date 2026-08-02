@@ -1,18 +1,18 @@
 {
-  "generated": "2026-07-31T22:03:13.962Z",
+  "generated": "2026-08-02T00:15:02.465Z",
   "source": "daily-health-checkin",
-  "date": "2026-08-01",
+  "date": "2026-08-02",
   "count": 1,
   "alerts": [
     {
       "key": "pain",
       "label": "Pain",
       "last_date": "2026-07-27",
-      "days_since": 5,
+      "days_since": 6,
       "cadence": "daily",
       "severity": "soon",
-      "title": "Health: log Pain (5d overdue)",
-      "message": "Pain not logged in 5 days — target daily. Update your Daily Check-in."
+      "title": "Health: log Pain (6d overdue)",
+      "message": "Pain not logged in 6 days — target daily. Update your Daily Check-in."
     }
   ]
 }
