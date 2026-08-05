@@ -1,0 +1,163 @@
+[
+ {
+  "date": "2026-07-06",
+  "type": "boxing",
+  "duration": 60,
+  "rpe": 6,
+  "source_head": "Boxing @ 10"
+ },
+ {
+  "date": "2026-07-07",
+  "type": "bjj",
+  "duration": 60,
+  "rpe": 6,
+  "source_head": "BJJ GI @12MD"
+ },
+ {
+  "date": "2026-07-09",
+  "type": "bjj",
+  "duration": 60,
+  "rpe": 6,
+  "source_head": "BJJ GI @12MD"
+ },
+ {
+  "date": "2026-07-10",
+  "type": "boxing",
+  "duration": 60,
+  "rpe": 6,
+  "source_head": "Boxing at 10am (Tom)"
+ },
+ {
+  "date": "2026-07-10",
+  "type": "weights",
+  "duration": 10,
+  "rpe": 6,
+  "source_head": "kettlebell & pullup routine"
+ },
+ {
+  "date": "2026-07-12",
+  "type": "bagwork",
+  "duration": 15,
+  "rpe": 6,
+  "source_head": "shadow box / skip / bag work"
+ },
+ {
+  "date": "2026-07-13",
+  "type": "boxing",
+  "duration": 60,
+  "rpe": 6,
+  "source_head": "Boxing @ 9"
+ },
+ {
+  "date": "2026-07-13",
+  "type": "weights",
+  "duration": 10,
+  "rpe": 6,
+  "source_head": "kettlebell & pullup routine"
+ },
+ {
+  "date": "2026-07-19",
+  "type": "weights",
+  "duration": 10,
+  "rpe": 6,
+  "source_head": "kettlebell & pullup routine"
+ },
+ {
+  "date": "2026-07-20",
+  "type": "boxing",
+  "duration": 60,
+  "rpe": 6,
+  "source_head": "Boxing @ 9"
+ },
+ {
+  "date": "2026-07-21",
+  "type": "walking",
+  "duration": 30,
+  "rpe": 4,
+  "source_head": "Stepz Active @ 10am"
+ },
+ {
+  "date": "2026-07-22",
+  "type": "bagwork",
+  "duration": 15,
+  "rpe": 6,
+  "source_head": "shadow box / skip / bag work"
+ },
+ {
+  "date": "2026-07-24",
+  "type": "bagwork",
+  "duration": 15,
+  "rpe": 6,
+  "source_head": "shadow box / skip / bag work"
+ },
+ {
+  "date": "2026-07-24",
+  "type": "boxing",
+  "duration": 60,
+  "rpe": 6,
+  "source_head": "Boxing 9am tbc (Tom - Fri)"
+ },
+ {
+  "date": "2026-07-24",
+  "type": "weights",
+  "duration": 10,
+  "rpe": 6,
+  "source_head": "kettlebell & pullup routine"
+ },
+ {
+  "date": "2026-07-27",
+  "type": "bagwork",
+  "duration": 15,
+  "rpe": 6,
+  "source_head": "shadow box / skip / bag work"
+ },
+ {
+  "date": "2026-07-27",
+  "type": "boxing",
+  "duration": 60,
+  "rpe": 6,
+  "source_head": "Boxing @ 9"
+ },
+ {
+  "date": "2026-07-28",
+  "type": "bjj",
+  "duration": 60,
+  "rpe": 6,
+  "source_head": "BJJ (Gi) @ 12MD"
+ },
+ {
+  "date": "2026-07-28",
+  "type": "weights",
+  "duration": 10,
+  "rpe": 6,
+  "source_head": "kettlebell & pullup routine"
+ },
+ {
+  "date": "2026-08-01",
+  "type": "boxing",
+  "duration": 60,
+  "rpe": 6,
+  "source_head": "Boxing @ Carioti 11am"
+ },
+ {
+  "date": "2026-08-02",
+  "type": "weights",
+  "duration": 10,
+  "rpe": 6,
+  "source_head": "kettlebell & pullup routine"
+ },
+ {
+  "date": "2026-08-03",
+  "type": "weights",
+  "duration": 10,
+  "rpe": 6,
+  "source_head": "kettlebell & pullup routine"
+ },
+ {
+  "date": "2026-08-04",
+  "type": "boxing",
+  "duration": 60,
+  "rpe": 6,
+  "source_head": "Boxing @ 9am"
+ }
+]
