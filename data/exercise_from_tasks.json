@@ -159,5 +159,12 @@
   "duration": 60,
   "rpe": 6,
   "source_head": "Boxing @ 9am"
+ },
+ {
+  "date": "2026-08-12",
+  "type": "bagwork",
+  "duration": 15,
+  "rpe": 6,
+  "source_head": "Shadowbox, skip, bag work @430pm"
  }
 ]
