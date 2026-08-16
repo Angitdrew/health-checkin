@@ -176,6 +176,13 @@
  },
  {
   "date": "2026-08-16",
+  "type": "bagwork",
+  "duration": 15,
+  "rpe": 6,
+  "source_head": "Shadowbox, skip, bag work @5:40pm"
+ },
+ {
+  "date": "2026-08-16",
   "type": "weights",
   "duration": 45,
   "rpe": 6,
