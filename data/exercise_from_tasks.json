@@ -187,5 +187,12 @@
   "duration": 45,
   "rpe": 6,
   "source_head": "Gym @3:30pm"
+ },
+ {
+  "date": "2026-08-20",
+  "type": "bjj",
+  "duration": 60,
+  "rpe": 6,
+  "source_head": "BJJ @12md"
  }
 ]
