@@ -201,5 +201,12 @@
   "duration": 15,
   "rpe": 6,
   "source_head": "Shadowbox, skip, bag work @4pm"
+ },
+ {
+  "date": "2026-08-25",
+  "type": "boxing",
+  "duration": 60,
+  "rpe": 6,
+  "source_head": "Boxing with Tom at 9:00 a.m."
  }
 ]
