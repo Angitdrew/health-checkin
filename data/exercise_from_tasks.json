@@ -208,5 +208,12 @@
   "duration": 60,
   "rpe": 6,
   "source_head": "Boxing with Tom at 9:00 a.m."
+ },
+ {
+  "date": "2026-09-01",
+  "type": "bjj",
+  "duration": 60,
+  "rpe": 6,
+  "source_head": "BJJ @12md"
  }
 ]
