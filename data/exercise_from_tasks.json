@@ -229,5 +229,12 @@
   "duration": 60,
   "rpe": 6,
   "source_head": "BJJ @12md"
+ },
+ {
+  "date": "2026-09-11",
+  "type": "boxing",
+  "duration": 60,
+  "rpe": 6,
+  "source_head": "Boxing @9am"
  }
 ]
